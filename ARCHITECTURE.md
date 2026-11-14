@@ -93,6 +93,7 @@ lib/
     │   ├── db_provider.dart
     │   └── mappers/   # Pure DB↔domain mapper functions
     ├── plugin/        # Plugin lifecycle, PluginEventBus, plugin storage
+    ├── sync/          # Sync Location interface and its adapters (Library Sync)
     └── player/        # Player engine, AudioSession
 ```
 
@@ -134,6 +135,7 @@ schemas and migration runners remain removed.
 | `NotificationDAO` | Notification persistence |
 | `LyricsDAO` | Lyrics cache keyed by media ID |
 | `PluginStorageDAO` | Per-plugin key-value persistent storage |
+| `SyncDAO` | Library Sync bookkeeping, reading the Synced Library, applying a merge in one transaction |
 
 **Constructor pattern** — `const` constructors accept `Future<Isar>`:
 
@@ -152,6 +154,7 @@ PlaylistDAO(DBProvider.db, TrackDAO(DBProvider.db))
 | `playlist_mapper.dart` | `Playlist` ↔ `PlaylistDB`, `PlaylistType` ↔ `PlaylistTypeDB` |
 | `collection_mapper.dart` | `ArtistSummary`/`AlbumSummary`/`PlaylistSummary` ↔ `PlaylistDB` |
 | `lyrics_mapper.dart` | `Lyrics` ↔ `LyricsDB` |
+| `track_json_mapper.dart` | `TrackDB` and its embedded types ↔ JSON maps (backup format, Device State) |
 
 ---
 

@@ -9,6 +9,7 @@ import 'package:Bloomee/services/db/dao/download_dao.dart';
 import 'package:Bloomee/services/db/database_schemas.dart';
 import 'package:Bloomee/core/models/backup/recovery_copy.dart';
 import 'package:Bloomee/plugins/utils/media_id.dart';
+import 'package:Bloomee/services/db/mappers/track_json_mapper.dart';
 
 /// Portable snapshots and atomic imports. The live Isar instance is never closed.
 class BackupDAO {
@@ -170,7 +171,7 @@ class BackupDAO {
         'schemaVersion': BackupDocument.version,
         'kind': playlistName == null ? 'backup' : 'playlist',
         'createdAt': DateTime.now().toUtc().toIso8601String(),
-        'tracks': tracks.values.map(_trackMap).toList(),
+        'tracks': tracks.values.map(trackDBToJson).toList(),
         'playlists': playlists,
         if (playlistName == null) ...{
           'history': history,
@@ -198,7 +199,7 @@ class BackupDAO {
   /// Decode every nested entity before preview/commit, including unselected data.
   static void validateEntities(BackupDocument document) {
     for (final t in document.rows('tracks')) {
-      _track(t);
+      trackDBFromJson(t);
     }
     for (final p in document.rows('playlists')) {
       _playlist(p);
@@ -229,7 +230,7 @@ class BackupDAO {
       throw const FormatException(
           'Legacy files support new-copy or merge import only.');
     }
-    final trackRows = document.rows('tracks').map(_track).toList();
+    final trackRows = document.rows('tracks').map(trackDBFromJson).toList();
     final playlistRows = document.rows('playlists').map(_playlist).toList();
     return isar.writeTxnSync(() {
       if (receiptKey != null &&
@@ -504,7 +505,7 @@ class BackupDAO {
       source.txnSync(() {
         final tracks = {
           for (final t in source.trackDBs.where().findAllSync())
-            t.mediaId: _trackMap(t)
+            t.mediaId: trackDBToJson(t)
               ..['title'] = t.title.trim().isEmpty ? t.mediaId : t.title
         };
         var broken = 0;
@@ -578,50 +579,14 @@ class BackupDAO {
         brokenEntries: brokenEntries);
   }
 
-  static Map<String, dynamic>? _artMap(ArtworkDB? a) => a == null
-      ? null
-      : {
-          'url': a.url,
-          'urlLow': a.urlLow,
-          'urlHigh': a.urlHigh,
-          'layout': a.layout.name,
-        };
-  static Map<String, dynamic> _artistMap(ArtistSummaryDB a) => {
-        'mediaId': a.mediaId,
-        'name': a.name,
-        'url': a.url,
-        'subtitle': a.subtitle,
-        'thumbnail': _artMap(a.thumbnail),
-      };
-  static Map<String, dynamic>? _albumMap(AlbumSummaryDB? a) => a == null
-      ? null
-      : {
-          'mediaId': a.mediaId,
-          'title': a.name,
-          'year': a.year,
-          'url': a.url,
-          'artists': a.artists?.map(_artistMap).toList(),
-          'thumbnail': _artMap(a.thumbnail),
-        };
-  static Map<String, dynamic> _trackMap(TrackDB t) => {
-        'mediaId': t.mediaId,
-        'title': t.title,
-        'artists': t.artists?.map(_artistMap).toList(),
-        'album': _albumMap(t.album),
-        'thumbnail': _artMap(t.thumbnail),
-        'durationMs': t.durationMs,
-        'genre': t.genre,
-        'language': t.language,
-        'isExplicit': t.isExplicit,
-      };
   static Map<String, dynamic> _playlistMap(PlaylistDB p) => {
         'name': p.name,
         'type': p.type.name,
         'subtitle': p.subtitle,
         'description': p.description,
-        'thumbnail': _artMap(p.thumbnail),
-        'artists': p.artists?.map(_artistMap).toList(),
-        'album': _albumMap(p.album),
+        'thumbnail': artworkDBToJson(p.thumbnail),
+        'artists': p.artists?.map(artistSummaryDBToJson).toList(),
+        'album': albumSummaryDBToJson(p.album),
         'isPinned': p.isPinned,
         'sortOrder': p.sortOrder,
         'createdAt': p.createdAt.toUtc().toIso8601String(),
@@ -633,69 +598,23 @@ class BackupDAO {
                 'mediaId': p.remotePlaylist!.mediaId,
                 'url': p.remotePlaylist!.url,
                 'subtitle': p.remotePlaylist!.subtitle,
-                'artists': p.remotePlaylist!.artists?.map(_artistMap).toList(),
-                'album': _albumMap(p.remotePlaylist!.album),
-                'thumbnail': _artMap(p.remotePlaylist!.thumbnail),
+                'artists': p.remotePlaylist!.artists
+                    ?.map(artistSummaryDBToJson)
+                    .toList(),
+                'album': albumSummaryDBToJson(p.remotePlaylist!.album),
+                'thumbnail': artworkDBToJson(p.remotePlaylist!.thumbnail),
               },
       };
 
-  static ArtworkDB? _art(dynamic value) {
-    if (value == null) return null;
-    final m = value as Map<String, dynamic>;
-    return ArtworkDB()
-      ..url = m['url'] as String? ?? ''
-      ..urlLow = m['urlLow'] as String?
-      ..urlHigh = m['urlHigh'] as String?
-      ..layout =
-          ImageLayoutDB.values.byName(m['layout'] as String? ?? 'square');
-  }
-
-  static List<ArtistSummaryDB>? _artists(dynamic value) => value == null
-      ? null
-      : (value as List).map((v) {
-          final a = v as Map<String, dynamic>;
-          return ArtistSummaryDB()
-            ..name = a['name'] as String?
-            ..mediaId = a['mediaId'] as String?
-            ..url = a['url'] as String?
-            ..subtitle = a['subtitle'] as String?
-            ..thumbnail = _art(a['thumbnail']);
-        }).toList();
-  static AlbumSummaryDB? _album(dynamic value) {
-    if (value == null) return null;
-    final a = value as Map<String, dynamic>;
-    if (a['year'] != null && a['year'] is! String && a['year'] is! int) {
-      throw const FormatException('Invalid album year.');
-    }
-    return AlbumSummaryDB()
-      ..name = a['title'] as String? ?? ''
-      ..mediaId = a['mediaId'] as String?
-      ..url = a['url'] as String?
-      ..year = a['year']?.toString()
-      ..artists = _artists(a['artists'])
-      ..thumbnail = _art(a['thumbnail']);
-  }
-
-  static TrackDB _track(Map<String, dynamic> t) => TrackDB(
-        mediaId: t['mediaId'] as String,
-        title: t['title'] as String,
-        artists: _artists(t['artists']),
-        album: _album(t['album']),
-        thumbnail: _art(t['thumbnail']),
-        durationMs: t['durationMs'] as int?,
-        genre: t['genre'] as String?,
-        language: t['language'] as String?,
-        isExplicit: t['isExplicit'] as bool? ?? false,
-      );
   static PlaylistDB _playlist(Map<String, dynamic> p) {
     final row = PlaylistDB(
         name: p['name'] as String,
         type: PlaylistTypeDB.values.byName(p['type'] as String),
         description: p['description'] as String?,
         subtitle: p['subtitle'] as String?,
-        thumbnail: _art(p['thumbnail']),
-        artists: _artists(p['artists']),
-        album: _album(p['album']),
+        thumbnail: artworkDBFromJson(p['thumbnail']),
+        artists: artistSummariesDBFromJson(p['artists']),
+        album: albumSummaryDBFromJson(p['album']),
         sortOrder: p['sortOrder'] as int? ?? 0,
         isPinned: p['isPinned'] as bool? ?? false,
         createdat: p['createdAt'] == null
@@ -711,9 +630,9 @@ class BackupDAO {
           mediaId: r['mediaId'] as String?,
           url: r['url'] as String?,
           subtitle: r['subtitle'] as String?,
-          artists: _artists(r['artists']),
-          album: _album(r['album']),
-          thumbnail: _art(r['thumbnail']));
+          artists: artistSummariesDBFromJson(r['artists']),
+          album: albumSummaryDBFromJson(r['album']),
+          thumbnail: artworkDBFromJson(r['thumbnail']));
     }
     return row;
   }

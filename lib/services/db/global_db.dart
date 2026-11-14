@@ -133,6 +133,11 @@ class PlaylistDB {
   int sortOrder;
   bool isPinned;
 
+  /// Permanent Library Sync identity, shared by every Device's copy of this
+  /// playlist. Null until the playlist is first synced.
+  @Index()
+  String? syncId;
+
   @Backlink(to: 'playlist')
   final entries = IsarLinks<PlaylistEntryDB>();
 
@@ -175,6 +180,29 @@ class PlaylistEntryDB {
   void syncPlaylistId() {
     playlistId = playlist.value?.id;
   }
+}
+
+/// This Device's own Library Sync bookkeeping. The single row ([ownId])
+/// exists once sync has been enabled.
+@collection
+class SyncDeviceDB {
+  static const ownId = 1;
+
+  Id id = ownId;
+
+  /// Permanent ID naming this Device's Device State; never changes.
+  String deviceId;
+
+  /// A label chosen by the owner; renaming changes nothing about what syncs.
+  String deviceName;
+
+  DateTime? lastSyncAt;
+
+  SyncDeviceDB({
+    required this.deviceId,
+    required this.deviceName,
+    this.lastSyncAt,
+  });
 }
 
 @collection
