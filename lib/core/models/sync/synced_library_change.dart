@@ -66,6 +66,24 @@ final class RemovalsLearned extends SyncedLibraryChange {
   const RemovalsLearned(this.markers);
 }
 
+/// Removal Markers this Device stops keeping: those older than Removal
+/// Markers last, and at a First Sync all of its own, since a First Sync takes
+/// nothing out of any Device. Each as this Device held it when the merge was
+/// worked out; a later removal of the same thing, made since, is kept.
+final class RemovalsDropped extends SyncedLibraryChange {
+  final List<RemovalMarker> markers;
+  const RemovalsDropped(this.markers);
+}
+
+/// A playlist this Device has that another Device deleted, kept because this
+/// is this Device's First Sync: it counts as renamed at [kept], to its own
+/// name, later than the deletion, so it comes back on the other Devices.
+final class PlaylistKept extends SyncedLibraryChange {
+  final String playlistId;
+  final ChangeStamp kept;
+  const PlaylistKept(this.playlistId, this.kept);
+}
+
 /// Pairs of playlists this Device learned became one, from the other Devices
 /// or because their names met here. Removal Markers recorded under [PlaylistAlias.from]
 /// are the playlist [PlaylistAlias.into]'s from then on.

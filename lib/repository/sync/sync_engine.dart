@@ -34,6 +34,10 @@ class SyncEngine {
   /// How far ahead of this Device's clock a change may be dated.
   static const clockTolerance = Duration(days: 1);
 
+  /// How long a Removal Marker is kept: six months. A Device whose last
+  /// sync is older performs a First Sync, as one that never synced does.
+  static const removalMarkerLifetime = Duration(days: 183);
+
   final Future<Isar> _database;
   final SyncLocation _location;
   final BackupRepository _backups;
@@ -170,8 +174,14 @@ class SyncEngine {
     }
 
     final local = await dao.readSyncedLibrary(SyncDAO.newSyncId);
+    final expireBefore = inputs.now.subtract(removalMarkerLifetime);
+    final lastSync = inputs.me.lastSyncAt;
+    final isFirstSync = lastSync == null || lastSync.isBefore(expireBefore);
     final merge = mergeSyncedLibraries(local.library, states,
-        unsyncedNames: local.unsyncedNames);
+        unsyncedNames: local.unsyncedNames,
+        expireBefore: expireBefore,
+        firstSyncAt:
+            isFirstSync ? ChangeStamp(inputs.now, inputs.me.deviceId) : null);
     final removals = removalsOf(local.library, merge, {
       for (final state in states) state.deviceId: state.deviceName,
       inputs.me.deviceId: inputs.me.deviceName,
@@ -207,7 +217,12 @@ class SyncEngine {
 
   /// Whether [change] alters what the owner sees, beyond sync's bookkeeping.
   static bool _changesLibrary(SyncedLibraryChange change) => switch (change) {
-        RemovalsLearned() || AliasesLearned() || PlaylistRekeyed() => false,
+        RemovalsLearned() ||
+        RemovalsDropped() ||
+        AliasesLearned() ||
+        PlaylistRekeyed() ||
+        PlaylistKept() =>
+          false,
         _ => true,
       };
 

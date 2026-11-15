@@ -81,7 +81,7 @@ class SyncDevice {
   final _DeviceClock _clock;
 
   /// This Device's permanent ID, which settles changes made at the same time.
-  late final String id;
+  late String id;
 
   SyncDevice._(this.name, this.isar, this.location, this.backups, this.engine,
       _DeviceClock clock)
@@ -129,6 +129,39 @@ class SyncDevice {
   /// Turns Library Sync on.
   Future<void> enable() async =>
       id = (await engine.enable(deviceName: name)).deviceId;
+
+  /// Runs the official Bloomee build on this database and comes back: the
+  /// library stays, every piece of sync bookkeeping is lost (this Device's
+  /// identity, its Removal Markers, sync IDs and change times), so sync must
+  /// be enabled again.
+  Future<void> returnFromOfficialBuild() async {
+    await isar.writeTxn(() async {
+      await isar.syncDeviceDBs.clear();
+      await isar.syncRemovalDBs.clear();
+      await isar.syncAliasDBs.clear();
+      final rows = await isar.playlistDBs.where().findAll();
+      for (final row in rows) {
+        row
+          ..syncId = null
+          ..savedBy = null
+          ..nameChangedAt = null
+          ..nameChangedBy = null
+          ..descriptionChangedAt = null
+          ..descriptionChangedBy = null
+          ..pinnedChangedAt = null
+          ..pinnedChangedBy = null
+          ..arrangedAt = null
+          ..arrangedBy = null
+          ..arrangement = null;
+      }
+      await isar.playlistDBs.putAll(rows);
+      final entries = await isar.playlistEntryDBs.where().findAll();
+      for (final entry in entries) {
+        entry.addedBy = null;
+      }
+      await isar.playlistEntryDBs.putAll(entries);
+    });
+  }
 
   /// Creates [playlist] if needed, then adds [songs] to it, as the screens do.
   Future<void> add(String playlist, List<Track> songs) async {

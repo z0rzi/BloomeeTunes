@@ -490,7 +490,11 @@ class SyncDAO {
       // a rename or an addition; orders last, once every song and playlist
       // is in place.
       int phase(SyncedLibraryChange change) => switch (change) {
-            AliasesLearned() || RemovalsLearned() || PlaylistRekeyed() => 0,
+            RemovalsDropped() ||
+            AliasesLearned() ||
+            RemovalsLearned() ||
+            PlaylistRekeyed() =>
+              0,
             PlaylistAbsorbed() ||
             PlaylistLost() ||
             SongsLost() ||
@@ -511,6 +515,15 @@ class SyncDAO {
       ];
       for (final change in ordered) {
         switch (change) {
+          case RemovalsDropped(:final markers):
+            for (final m in markers) {
+              final row = isar.syncRemovalDBs.getByKeySync(m.key);
+              if (row != null &&
+                  !ChangeStamp(row.removedAt, row.removedBy)
+                      .isAfter(m.removed)) {
+                isar.syncRemovalDBs.deleteSync(row.id);
+              }
+            }
           case AliasesLearned(:final aliases):
             for (final alias in aliases) {
               isar.syncAliasDBs.putSync(SyncAliasDB(
@@ -604,6 +617,14 @@ class SyncDAO {
           case CollectionsSaved(:final collections):
             for (final collection in collections) {
               _save(isar, collection, me);
+            }
+          case PlaylistKept(:final playlistId, :final kept):
+            final row = _bySyncId(isar, playlistId);
+            if (row != null && kept.isAfter(_nameStamp(row, me))) {
+              row
+                ..nameChangedAt = kept.at
+                ..nameChangedBy = kept.device;
+              isar.playlistDBs.putSync(row);
             }
           case SongsArranged(
               :final playlistId,

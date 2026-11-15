@@ -25,12 +25,210 @@ import 'package:flutter/foundation.dart';
 /// under the same rules as two copies of one playlist. [local] lists its
 /// playlists in the library's order. A name that belongs to something sync
 /// does not cover ([unsyncedNames], lower-cased) is never taken.
+///
+/// Removal Markers made before [expireBefore] are no longer kept, whichever
+/// Device holds them. A First Sync ([firstSyncAt], when it is made and by
+/// this Device) takes nothing out of any Device: this Device's own Removal
+/// Markers are dropped, and whatever it holds that the others' would take out
+/// counts as added again by it then (or just after the removal, if that is
+/// later), so it stays and reaches the others.
 SyncedLibraryMerge mergeSyncedLibraries(
   SyncedLibrary local,
   List<DeviceState> others, {
   Set<String> unsyncedNames = const {},
+  DateTime? expireBefore,
+  ChangeStamp? firstSyncAt,
 }) {
-  final states = [...others]..sort((a, b) => a.deviceId.compareTo(b.deviceId));
+  bool live(RemovalMarker m) =>
+      expireBefore == null || !m.removed.at.isBefore(expireBefore);
+  final kept = [
+    if (firstSyncAt == null)
+      for (final m in local.removals)
+        if (live(m)) m
+  ];
+  final dropped = [
+    for (final m in local.removals)
+      if (!kept.contains(m)) m
+  ]..sort((a, b) => a.key.compareTo(b.key));
+  final mine = _withRemovals(local, kept);
+  final states = [
+    for (final state in others)
+      DeviceState(
+          deviceId: state.deviceId,
+          deviceName: state.deviceName,
+          writtenAt: state.writtenAt,
+          library: _withRemovals(
+              state.library, state.library.removals.where(live).toList()))
+  ]..sort((a, b) => a.deviceId.compareTo(b.deviceId));
+
+  final readded =
+      firstSyncAt == null ? null : _AddedAgainAtFirstSync(firstSyncAt);
+  var merge = _mergeUnderAliases(mine, states, unsyncedNames);
+  while (readded != null && readded.takeIn(mine, merge.library)) {
+    merge = _mergeUnderAliases(readded.applyTo(mine), states, unsyncedNames);
+  }
+  return SyncedLibraryMerge(library: merge.library, changes: [
+    if (dropped.isNotEmpty) RemovalsDropped(dropped),
+    ...merge.changes,
+    ...?readded?.changes(),
+  ]);
+}
+
+SyncedLibrary _withRemovals(
+        SyncedLibrary library, List<RemovalMarker> removals) =>
+    SyncedLibrary(
+        playlists: library.playlists,
+        liked: library.liked,
+        saved: library.saved,
+        removals: removals,
+        tracks: library.tracks,
+        order: library.order,
+        aliases: library.aliases);
+
+/// The sync ID [id] is known by once every alias [into] gives is followed.
+String _followAliases(String id, String? Function(String) into) {
+  final seen = <String>{};
+  var current = id;
+  while (seen.add(current)) {
+    current = into(current) ?? current;
+  }
+  return current;
+}
+
+/// What a First Sync keeps of this Device's library against the removals
+/// the other Devices made: each thing counts as added again by this Device,
+/// at [at] or just after the removal when that is later.
+class _AddedAgainAtFirstSync {
+  final ChangeStamp at;
+
+  /// Songs, by the sync ID of their playlist, then by media ID.
+  final songs = <String, Map<String, SyncedSong>>{};
+  final liked = <String, SyncedSong>{};
+  final saved = <String, SavedCollection>{};
+
+  /// Playlists deleted elsewhere, by sync ID: each counts as renamed, to its
+  /// own name, at the time given.
+  final playlists = <String, ChangeStamp>{};
+
+  /// The aliases of the latest merge, larger sync ID to smaller.
+  Map<String, String> _aliases = const {};
+
+  _AddedAgainAtFirstSync(this.at);
+
+  String _canon(String id) => _followAliases(id, (from) => _aliases[from]);
+
+  /// Takes in what [local] holds and [merged] lacks. Returns whether there
+  /// was anything new, so the merge must be made again.
+  bool takeIn(SyncedLibrary local, SyncedLibrary merged) {
+    _aliases = {for (final a in merged.aliases) a.from: a.into};
+    final markers = {for (final m in merged.removals) m.key: m.removed};
+    ChangeStamp after(RemovalKind kind, String? playlistId, String? mediaId) {
+      final removed =
+          markers[RemovalMarker.removalKey(kind, playlistId, mediaId)];
+      return removed == null || at.isAfter(removed)
+          ? at
+          : ChangeStamp(
+              removed.at.add(const Duration(milliseconds: 1)), at.device);
+    }
+
+    var added = false;
+    final playlistsMerged = {for (final p in merged.playlists) p.id: p};
+    for (final playlist in local.playlists) {
+      final id = _canon(playlist.id);
+      final result = playlistsMerged[id];
+      if (result == null) {
+        if (playlists.containsKey(id)) continue;
+        playlists[id] = after(RemovalKind.playlist, id, null);
+        added = true;
+        continue;
+      }
+      final present = {for (final s in result.songs) s.mediaId};
+      final kept = songs.putIfAbsent(id, () => {});
+      for (final song in playlist.songs) {
+        if (present.contains(song.mediaId) || kept.containsKey(song.mediaId)) {
+          continue;
+        }
+        kept[song.mediaId] = SyncedSong(
+            mediaId: song.mediaId,
+            added: after(RemovalKind.song, id, song.mediaId));
+        added = true;
+      }
+      if (kept.isEmpty) songs.remove(id);
+    }
+    final likedMerged = {for (final s in merged.liked) s.mediaId};
+    for (final song in local.liked) {
+      if (likedMerged.contains(song.mediaId) ||
+          liked.containsKey(song.mediaId)) {
+        continue;
+      }
+      liked[song.mediaId] = SyncedSong(
+          mediaId: song.mediaId,
+          added: after(RemovalKind.like, null, song.mediaId));
+      added = true;
+    }
+    final savedMerged = {for (final c in merged.saved) c.key};
+    for (final collection in local.saved) {
+      if (savedMerged.contains(collection.key) ||
+          saved.containsKey(collection.key)) {
+        continue;
+      }
+      saved[collection.key] = SavedCollection(
+          kind: collection.kind,
+          mediaId: collection.mediaId,
+          saved: after(
+              RemovalKind.ofSaved(collection.kind), null, collection.mediaId),
+          details: collection.details);
+      added = true;
+    }
+    return added;
+  }
+
+  /// [local] with what was taken in counted as added again.
+  SyncedLibrary applyTo(SyncedLibrary local) {
+    SyncedPlaylist again(SyncedPlaylist p) {
+      final id = _canon(p.id);
+      final renamed = playlists[id];
+      final readded = songs[id] ?? const {};
+      if (renamed == null && readded.isEmpty) return p;
+      return SyncedPlaylist(
+        id: p.id,
+        name: p.name,
+        nameChanged: renamed ?? p.nameChanged,
+        description: p.description,
+        descriptionChanged: p.descriptionChanged,
+        pinned: p.pinned,
+        pinnedChanged: p.pinnedChanged,
+        createdAt: p.createdAt,
+        arrangement: p.arrangement,
+        songs: [for (final s in p.songs) readded[s.mediaId] ?? s],
+      );
+    }
+
+    return SyncedLibrary(
+      playlists: local.playlists.map(again).toList(),
+      liked: [for (final s in local.liked) liked[s.mediaId] ?? s],
+      saved: [for (final c in local.saved) saved[c.key] ?? c],
+      removals: local.removals,
+      tracks: local.tracks,
+      order: local.order,
+      aliases: local.aliases,
+    );
+  }
+
+  /// How the library this Device holds records being added again.
+  List<SyncedLibraryChange> changes() => [
+        for (final MapEntry(:key, :value) in playlists.entries)
+          PlaylistKept(key, value),
+        for (final MapEntry(:key, :value) in songs.entries)
+          SongsGained(key, value.values.toList()),
+        if (liked.isNotEmpty) LikesGained(liked.values.toList()),
+        if (saved.isNotEmpty) CollectionsSaved(saved.values.toList()),
+      ];
+}
+
+/// The merge, once every pair of playlists whose names meet is one.
+SyncedLibraryMerge _mergeUnderAliases(
+    SyncedLibrary local, List<DeviceState> states, Set<String> unsyncedNames) {
   final aliases = <String, PlaylistAlias>{};
   void addAlias(PlaylistAlias alias) {
     // Always into the smaller ID, so following aliases ends; any other
@@ -86,16 +284,7 @@ class _MergePass {
   _MergePass(this.local, this.states, this.aliases, this.unsyncedNames);
 
   /// The sync ID [id] is known by once every alias is followed.
-  String canon(String id) {
-    final seen = <String>{};
-    var current = id;
-    while (seen.add(current)) {
-      final alias = aliases[current];
-      if (alias == null) break;
-      current = alias.into;
-    }
-    return current;
-  }
+  String canon(String id) => _followAliases(id, (from) => aliases[from]?.into);
 
   RemovalMarker canonMarker(RemovalMarker m) => m.playlistId == null
       ? m
