@@ -32,10 +32,13 @@ class SyncLocationFixture {
 }
 
 /// The contract every Sync Location adapter passes (Seam 2). An adapter that
-/// [signsIn] also shows that a refused sign-in stops every operation.
+/// [signsIn] also shows that a refused sign-in stops every operation. An
+/// adapter that [mayBrieflyShowNoFile] keeps the weaker guarantee
+/// [SyncLocation.write] allows it: during a write, a reader may find no file,
+/// but still never part of one.
 void syncLocationContract(
     String adapter, Future<SyncLocationFixture> Function() open,
-    {bool signsIn = false}) {
+    {bool signsIn = false, bool mayBrieflyShowNoFile = false}) {
   group('$adapter Sync Location contract', () {
     late SyncLocationFixture fixture;
     late SyncLocation location;
@@ -118,7 +121,10 @@ void syncLocationContract(
       expect(await location.list('sync'), ['a.json']);
     });
 
-    test('a reader during a write sees the old or the new file, never part',
+    test(
+        mayBrieflyShowNoFile
+            ? 'a reader during a write sees the old file, the new one or none, never part'
+            : 'a reader during a write sees the old or the new file, never part',
         () async {
       final before = List<int>.filled(4 << 20, 0x61);
       final after = List<int>.filled(4 << 20, 0x62);
@@ -130,7 +136,12 @@ void syncLocationContract(
       while (!done) {
         final bytes = await location.read('sync/big.json');
         final names = await location.list('sync');
-        expect(names, ['big.json']);
+        if (mayBrieflyShowNoFile) {
+          expect(names, anyOf(isEmpty, ['big.json']));
+          if (bytes == null) continue;
+        } else {
+          expect(names, ['big.json']);
+        }
         expect(bytes!.length, before.length);
         expect(bytes.every((b) => b == bytes.first), isTrue,
             reason: 'a reader saw a mix of two versions');

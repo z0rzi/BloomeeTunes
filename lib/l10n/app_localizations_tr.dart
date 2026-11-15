@@ -2077,6 +2077,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Bu klasör bulunamıyor. Klasörün var olduğunu ve sürücüsünün bağlı olduğunu kontrol edin.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee bu klasöre erişemiyor: klasör taşındı veya silindi, hafıza kartı çıkarıldı ya da Bloomee\'nin artık klasöre erişimi yok. Klasörü yeniden seçin.';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee bu klasöre yazamıyor. Değiştirme izniniz olan bir klasör seçin.';
 

@@ -751,6 +751,7 @@
   "snackbarSyncFolderPickerFailed": "The folder picker could not open: {error}",
   "@snackbarSyncFolderPickerFailed": {"placeholders": {"error": {"type": "String"}}},
   "syncFolderNotFound": "This folder cannot be found. Check that it exists and that its drive is connected.",
+  "syncFolderNotFoundAndroid": "Bloomee cannot reach this folder: it was moved or deleted, its memory card was removed, or Bloomee no longer has access to it. Choose the folder again.",
   "syncFolderNotWritable": "Bloomee cannot write into this folder. Choose a folder you are allowed to change.",
   "syncDeviceHeader": "This device",
   "syncDeviceName": "Device name",

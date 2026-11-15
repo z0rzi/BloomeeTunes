@@ -2005,6 +2005,10 @@ class AppLocalizationsJa extends AppLocalizations {
       'このフォルダーが見つかりません。フォルダーが存在し、そのドライブが接続されていることを確認してください。';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee はこのフォルダーにアクセスできません。フォルダーが移動または削除されたか、メモリーカードが取り外されたか、Bloomee のアクセス権がなくなっています。フォルダーをもう一度選んでください。';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee はこのフォルダーに書き込めません。変更が許可されているフォルダーを選んでください。';
 

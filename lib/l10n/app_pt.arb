@@ -1062,6 +1062,7 @@
   "syncNoFolder": "Nenhuma pasta escolhida",
   "snackbarSyncFolderPickerFailed": "Não foi possível abrir o seletor de pastas: {error}",
   "syncFolderNotFound": "Esta pasta não foi encontrada. Verifique se ela existe e se a unidade dela está conectada.",
+  "syncFolderNotFoundAndroid": "O Bloomee não consegue acessar esta pasta: ela foi movida ou excluída, o cartão de memória dela foi removido ou o Bloomee não tem mais acesso a ela. Escolha a pasta novamente.",
   "syncFolderNotWritable": "O Bloomee não consegue gravar nesta pasta. Escolha uma pasta que você tenha permissão para alterar.",
   "syncDeviceHeader": "Este dispositivo",
   "syncDeviceName": "Nome do dispositivo",

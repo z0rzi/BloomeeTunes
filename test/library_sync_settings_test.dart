@@ -9,6 +9,7 @@ import 'package:Bloomee/services/db/global_db.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
+import 'support/document_tree_stand_in.dart';
 import 'support/isar_test_support.dart';
 import 'support/sync_test_support.dart';
 
@@ -154,6 +155,76 @@ void main() {
 
     expect(await app.testFolder(world.locationPath), isNull);
     expect(await locationFiles(), isEmpty);
+  });
+
+  group('on Android', () {
+    late DocumentTreeStandIn android;
+    setUp(() => android = DocumentTreeStandIn.install());
+
+    test(
+        'a folder chosen through the system picker is tested, then syncs with a computer sharing it',
+        () async {
+      final laptop = await world.device('laptop');
+      final phone = await world.device('phone', enabled: false);
+      final app = appOn(phone);
+      final folder = android.treeFor(world.locationPath);
+      await laptop.add('Road trip', [song('yt::1'), song('yt::2')]);
+      await laptop.sync();
+
+      final before = await locationFiles();
+      expect(await app.testFolder(folder), isNull);
+      expect(await locationFiles(), unorderedEquals(before),
+          reason: 'testing the folder leaves nothing in it');
+      expect(
+          await app.enable(SyncLocationChoice.folder(folder),
+              deviceName: 'phone'),
+          isNull);
+      await app.syncNow();
+
+      expect(await phone.songsOf('Road trip'), ['yt::1', 'yt::2']);
+      expect(await deviceStates(), hasLength(2));
+      world.clock.advance(const Duration(minutes: 1));
+      await phone.add('Gym', [song('yt::3')]);
+      await app.syncNow();
+      await laptop.sync();
+      expect(await laptop.songsOf('Gym'), ['yt::3']);
+    });
+
+    test('setup says plainly when the folder cannot be reached, and stays off',
+        () async {
+      final phone = await world.device('phone', enabled: false);
+      final app = appOn(phone);
+
+      expect(
+          await app.enable(
+              SyncLocationChoice.folder(
+                  android.treeFor(world.locationPath, grant: false)),
+              deviceName: 'phone'),
+          SyncLocationProblem.notFound);
+      expect((await app.setup()).enabled, isFalse);
+    });
+
+    test(
+        'a folder Bloomee lost access to is reported as unreachable, and syncs again once it is back',
+        () async {
+      final phone = await world.device('phone', enabled: false);
+      final app = appOn(phone);
+      final folder = android.treeFor(world.locationPath);
+      await app.enable(SyncLocationChoice.folder(folder), deviceName: 'phone');
+      await app.syncNow();
+      final syncedAt = phone.clock();
+
+      world.clock.advance(const Duration(minutes: 3));
+      android.granted.remove(folder);
+      await app.syncNow();
+      expect(app.status.lastError, isA<SyncLocationUnreachable>());
+      expect(app.status.lastSyncedAt, syncedAt);
+
+      world.clock.advance(const Duration(minutes: 3));
+      android.granted.add(folder);
+      await app.syncNow();
+      expect(app.status.lastSyncedAt, phone.clock());
+    });
   });
 
   test('a change to the Synced Library is published by itself, a moment later',

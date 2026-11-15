@@ -2146,6 +2146,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Esta pasta não foi encontrada. Verifique se ela existe e se a unidade dela está conectada.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'O Bloomee não consegue acessar esta pasta: ela foi movida ou excluída, o cartão de memória dela foi removido ou o Bloomee não tem mais acesso a ela. Escolha a pasta novamente.';
+
+  @override
   String get syncFolderNotWritable =>
       'O Bloomee não consegue gravar nesta pasta. Escolha uma pasta que você tenha permissão para alterar.';
 

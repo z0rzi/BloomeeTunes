@@ -13,7 +13,8 @@ enum SyncLocationKind {
   webDav,
 
   /// A folder on this machine that another tool carries between machines.
-  /// Offered on Linux only, as an advanced choice.
+  /// Offered on Linux and Android, as an advanced choice. On Android it is
+  /// the folder's tree URI the system folder picker gave, not a path.
   localFolder;
 
   /// The kinds offered on [operatingSystem] (as `Platform.operatingSystem`
@@ -25,7 +26,7 @@ enum SyncLocationKind {
     return [
       if (linuxOrAndroid) SyncLocationKind.dropbox,
       if (linuxOrAndroid) webDav,
-      if (operatingSystem == 'linux') localFolder,
+      if (linuxOrAndroid) localFolder,
     ];
   }
 }
@@ -35,7 +36,8 @@ enum SyncLocationKind {
 class SyncLocationChoice extends Equatable {
   final SyncLocationKind kind;
 
-  /// The folder, for [SyncLocationKind.localFolder]; null otherwise.
+  /// The folder, for [SyncLocationKind.localFolder]: a path, or on Android
+  /// a tree URI; null otherwise.
   final String? folder;
 
   const SyncLocationChoice.folder(String this.folder)

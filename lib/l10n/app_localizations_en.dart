@@ -2114,6 +2114,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This folder cannot be found. Check that it exists and that its drive is connected.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee cannot reach this folder: it was moved or deleted, its memory card was removed, or Bloomee no longer has access to it. Choose the folder again.';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee cannot write into this folder. Choose a folder you are allowed to change.';
 

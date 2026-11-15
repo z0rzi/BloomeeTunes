@@ -719,6 +719,7 @@
   "syncNoFolder": "Kein Ordner gewählt",
   "snackbarSyncFolderPickerFailed": "Die Ordnerauswahl konnte nicht geöffnet werden: {error}",
   "syncFolderNotFound": "Dieser Ordner wurde nicht gefunden. Prüfe, ob er existiert und sein Laufwerk verbunden ist.",
+  "syncFolderNotFoundAndroid": "Bloomee kann diesen Ordner nicht erreichen: Er wurde verschoben oder gelöscht, seine Speicherkarte wurde entfernt oder Bloomee hat keinen Zugriff mehr darauf. Wähle den Ordner erneut.",
   "syncFolderNotWritable": "Bloomee kann nicht in diesen Ordner schreiben. Wähle einen Ordner, den du ändern darfst.",
   "syncDeviceHeader": "Dieses Gerät",
   "syncDeviceName": "Gerätename",

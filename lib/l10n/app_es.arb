@@ -719,6 +719,7 @@
   "syncNoFolder": "No se ha elegido ninguna carpeta",
   "snackbarSyncFolderPickerFailed": "No se pudo abrir el selector de carpetas: {error}",
   "syncFolderNotFound": "No se encuentra esta carpeta. Comprueba que existe y que su unidad está conectada.",
+  "syncFolderNotFoundAndroid": "Bloomee no puede acceder a esta carpeta: se movió o se eliminó, se quitó su tarjeta de memoria o Bloomee ya no tiene acceso a ella. Vuelve a elegir la carpeta.",
   "syncFolderNotWritable": "Bloomee no puede escribir en esta carpeta. Elige una carpeta que tengas permiso para modificar.",
   "syncDeviceHeader": "Este dispositivo",
   "syncDeviceName": "Nombre del dispositivo",

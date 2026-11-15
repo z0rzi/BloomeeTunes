@@ -2005,6 +2005,10 @@ class AppLocalizationsKo extends AppLocalizations {
       '이 폴더를 찾을 수 없습니다. 폴더가 있는지, 해당 드라이브가 연결되어 있는지 확인하세요.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee가 이 폴더에 접근할 수 없습니다. 폴더가 이동 또는 삭제되었거나, 메모리 카드가 제거되었거나, Bloomee의 접근 권한이 없어졌습니다. 폴더를 다시 선택하세요.';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee가 이 폴더에 쓸 수 없습니다. 변경 권한이 있는 폴더를 선택하세요.';
 

@@ -98,8 +98,11 @@ void main() {
       SyncLocationKind.webDav,
       SyncLocationKind.localFolder
     ]);
-    expect(SyncLocationKind.offeredOn('android'),
-        [SyncLocationKind.dropbox, SyncLocationKind.webDav]);
+    expect(SyncLocationKind.offeredOn('android'), [
+      SyncLocationKind.dropbox,
+      SyncLocationKind.webDav,
+      SyncLocationKind.localFolder
+    ]);
   });
 
   test(

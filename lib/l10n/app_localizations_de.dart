@@ -2134,6 +2134,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieser Ordner wurde nicht gefunden. Prüfe, ob er existiert und sein Laufwerk verbunden ist.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee kann diesen Ordner nicht erreichen: Er wurde verschoben oder gelöscht, seine Speicherkarte wurde entfernt oder Bloomee hat keinen Zugriff mehr darauf. Wähle den Ordner erneut.';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee kann nicht in diesen Ordner schreiben. Wähle einen Ordner, den du ändern darfst.';
 

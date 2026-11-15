@@ -2157,6 +2157,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ce dossier est introuvable. Vérifiez qu\'il existe et que son disque est connecté.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee ne peut pas accéder à ce dossier : il a été déplacé ou supprimé, sa carte mémoire a été retirée, ou Bloomee n\'y a plus accès. Choisissez à nouveau le dossier.';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee ne peut pas écrire dans ce dossier. Choisissez un dossier que vous avez le droit de modifier.';
 

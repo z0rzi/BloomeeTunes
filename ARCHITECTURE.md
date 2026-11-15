@@ -143,7 +143,12 @@ time; quiet retries with backoff). `SyncCubit` turns its status and outcomes int
 settings screen's state and the alerts `SyncAlertListener` shows app-wide. The Sync
 Location adapters live in `lib/services/sync/`, beside the `SyncLocation` interface
 (`sync_location.dart`, which also names the hidden temporary files writes go through,
-`SyncTemporaryFiles`): `LocalFolderSyncLocation` (Linux only), `DropboxSyncLocation`,
+`SyncTemporaryFiles`): `LocalFolderSyncLocation` (a path, on Linux),
+`DocumentTreeSyncLocation` (the local folder on Android: the tree URI the system folder
+picker gave, reached through the Storage Access Framework by the app's own
+`SyncDocumentTree.kt` over the `ls.bloomee/sync_document_tree` channel, with no storage permission;
+it cannot replace a file in one step, so a reader may briefly find no file, never part
+of one), `DropboxSyncLocation`,
 which calls the Dropbox HTTP API directly in the app's own folder, and
 `WebDavSyncLocation`, which uses basic authentication, refuses an address other than
 `https` unless it is `localhost` (so the password is never sent unprotected), creates

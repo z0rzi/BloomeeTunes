@@ -719,6 +719,7 @@
   "syncNoFolder": "フォルダーが選択されていません",
   "snackbarSyncFolderPickerFailed": "フォルダー選択画面を開けませんでした: {error}",
   "syncFolderNotFound": "このフォルダーが見つかりません。フォルダーが存在し、そのドライブが接続されていることを確認してください。",
+  "syncFolderNotFoundAndroid": "Bloomee はこのフォルダーにアクセスできません。フォルダーが移動または削除されたか、メモリーカードが取り外されたか、Bloomee のアクセス権がなくなっています。フォルダーをもう一度選んでください。",
   "syncFolderNotWritable": "Bloomee はこのフォルダーに書き込めません。変更が許可されているフォルダーを選んでください。",
   "syncDeviceHeader": "このデバイス",
   "syncDeviceName": "デバイス名",

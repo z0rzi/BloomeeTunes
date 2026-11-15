@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 /** Consume document URIs while their grants are valid; Flutter receives private files. */
 class MainActivity : AudioServiceActivity() {
     private val downloadStorage by lazy { DownloadStorage(this) }
+    private val syncDocumentTree by lazy { SyncDocumentTree(this) }
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var channel: MethodChannel? = null
@@ -25,6 +26,8 @@ class MainActivity : AudioServiceActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ls.bloomee/download_storage")
             .setMethodCallHandler(downloadStorage::handle)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ls.bloomee/sync_document_tree")
+            .setMethodCallHandler(syncDocumentTree::handle)
         channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ls.bloomee/imports")
         channel!!.setMethodCallHandler { call, result ->
             when (call.method) {

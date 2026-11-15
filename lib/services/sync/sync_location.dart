@@ -6,7 +6,10 @@ import 'dart:typed_data';
 /// Paths are relative and `/`-separated, such as `sync/<device id>.json`.
 /// Every adapter makes [write] all-or-nothing from a reader's point of view:
 /// a reader sees either the previous content or the new content, never part
-/// of it.
+/// of it. One adapter keeps a weaker form, the local folder on Android
+/// (`DocumentTreeSyncLocation`), whose storage cannot replace a file in one
+/// step: a reader there never sees part of a file either, but may briefly
+/// find no file at all, rather than Bloomee asking for access to all files.
 abstract interface class SyncLocation {
   /// Names of the files directly inside [directory]; empty when it is missing.
   Future<List<String>> list(String directory);
@@ -14,7 +17,8 @@ abstract interface class SyncLocation {
   /// The whole content of [path], or null when there is no such file.
   Future<Uint8List?> read(String path);
 
-  /// Replaces [path] with [bytes] in one step, creating its directory.
+  /// Replaces [path] with [bytes] in one step, creating its directory (on
+  /// Android's local folder, in two: see above).
   Future<void> write(String path, List<int> bytes);
 
   /// Removes [path]; a missing file is not an error.

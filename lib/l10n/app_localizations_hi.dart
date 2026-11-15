@@ -2129,6 +2129,10 @@ class AppLocalizationsHi extends AppLocalizations {
       'यह फ़ोल्डर नहीं मिल रहा है। जाँचें कि यह मौजूद है और इसकी ड्राइव जुड़ी हुई है।';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee इस फ़ोल्डर तक नहीं पहुँच सकता: इसे हटाया या कहीं और ले जाया गया है, इसका मेमोरी कार्ड निकाल दिया गया है, या Bloomee के पास अब इसकी पहुँच नहीं है। फ़ोल्डर फिर से चुनें।';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee इस फ़ोल्डर में नहीं लिख सकता। ऐसा फ़ोल्डर चुनें जिसे बदलने की आपको अनुमति है।';
 

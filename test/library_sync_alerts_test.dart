@@ -97,11 +97,12 @@ void main() {
     expect((await repository.setup()).deviceName, 'Bloomee');
   });
 
-  test('the local folder is offered on Linux and not on Android', () {
-    expect(SyncLocationKind.offeredOn('linux'),
-        contains(SyncLocationKind.localFolder));
-    expect(SyncLocationKind.offeredOn('android'),
-        isNot(contains(SyncLocationKind.localFolder)));
+  test('the local folder is offered on Linux and Android, last', () {
+    expect(
+        SyncLocationKind.offeredOn('linux').last, SyncLocationKind.localFolder);
+    expect(SyncLocationKind.offeredOn('android').last,
+        SyncLocationKind.localFolder);
+    expect(SyncLocationKind.offeredOn('windows'), isEmpty);
   });
 
   test('choosing a folder that cannot be used says why and stays off',

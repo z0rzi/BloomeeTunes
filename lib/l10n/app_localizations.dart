@@ -3824,6 +3824,12 @@ abstract class AppLocalizations {
   /// **'This folder cannot be found. Check that it exists and that its drive is connected.'**
   String get syncFolderNotFound;
 
+  /// No description provided for @syncFolderNotFoundAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee cannot reach this folder: it was moved or deleted, its memory card was removed, or Bloomee no longer has access to it. Choose the folder again.'**
+  String get syncFolderNotFoundAndroid;
+
   /// No description provided for @syncFolderNotWritable.
   ///
   /// In en, this message translates to:

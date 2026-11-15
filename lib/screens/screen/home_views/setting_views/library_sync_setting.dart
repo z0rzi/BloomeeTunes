@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/sync/known_device.dart';
@@ -10,6 +11,8 @@ import 'package:Bloomee/screens/screen/home_views/setting_views/setting_shared_w
 import 'package:Bloomee/screens/widgets/bloomee_ui_kit/bloomee_dialog.dart';
 import 'package:Bloomee/screens/widgets/snackbar.dart';
 import 'package:Bloomee/screens/widgets/sync_alert_listener.dart';
+import 'package:Bloomee/services/download/download_storage.dart';
+import 'package:Bloomee/services/sync/document_tree_sync_location.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -70,11 +73,15 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   }
 
   /// The folder the owner picks, or null if they picked none or the system
-  /// folder picker failed (which is shown).
+  /// folder picker failed (which is shown). On Android, the picker gives
+  /// Bloomee lasting access to the folder and answers its tree URI, as for
+  /// the download folder.
   Future<String?> _pickFolder() async {
     final l10n = AppLocalizations.of(context)!;
     try {
-      return await FilePicker.platform.getDirectoryPath();
+      return Platform.isAndroid
+          ? await DownloadStorage.pickFolder()
+          : await FilePicker.platform.getDirectoryPath();
     } catch (error) {
       SnackbarService.showMessage(
           l10n.snackbarSyncFolderPickerFailed('$error'));
@@ -434,7 +441,10 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           SettingNavTile(
             icon: Icons.folder_outlined,
             title: l10n.syncLocalFolder,
-            subtitle: state.setup.folder ?? l10n.syncNoFolder,
+            subtitle: switch (state.setup.folder) {
+              final folder? => DocumentTreeSyncLocation.describe(folder),
+              null => l10n.syncNoFolder,
+            },
             badge: inUse,
             onTap: () => _choose(kind, again: true),
           ),
@@ -486,6 +496,8 @@ String problemText(AppLocalizations l10n, SyncLocationProblem problem,
         l10n.syncDropboxNotReachable,
       (SyncLocationProblem.notFound, SyncLocationKind.webDav) =>
         l10n.syncWebDavNotReachable,
+      (SyncLocationProblem.notFound, _) when Platform.isAndroid =>
+        l10n.syncFolderNotFoundAndroid,
       (SyncLocationProblem.notFound, _) => l10n.syncFolderNotFound,
       (SyncLocationProblem.notWritable, SyncLocationKind.dropbox) =>
         l10n.syncDropboxNotWritable,

@@ -2140,6 +2140,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se encuentra esta carpeta. Comprueba que existe y que su unidad está conectada.';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee no puede acceder a esta carpeta: se movió o se eliminó, se quitó su tarjeta de memoria o Bloomee ya no tiene acceso a ella. Vuelve a elegir la carpeta.';
+
+  @override
   String get syncFolderNotWritable =>
       'Bloomee no puede escribir en esta carpeta. Elige una carpeta que tengas permiso para modificar.';
 

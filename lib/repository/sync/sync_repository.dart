@@ -14,6 +14,7 @@ import 'package:Bloomee/services/backup/serial_executor.dart';
 import 'package:Bloomee/services/db/dao/settings_dao.dart';
 import 'package:Bloomee/services/db/dao/sync_dao.dart';
 import 'package:Bloomee/services/sync/credential_store.dart';
+import 'package:Bloomee/services/sync/document_tree_sync_location.dart';
 import 'package:Bloomee/services/sync/dropbox_sync_location.dart';
 import 'package:Bloomee/services/sync/local_folder_sync_location.dart';
 import 'package:Bloomee/services/sync/machine_name.dart';
@@ -180,7 +181,7 @@ class SyncRepository {
   /// Tests [folder] as a Sync Location: that it is there and that Bloomee
   /// can write into it. Leaves nothing behind.
   Future<SyncLocationProblem?> testFolder(String folder) =>
-      _test(LocalFolderSyncLocation(folder));
+      _test(_folderAt(folder));
 
   /// Turns sync on with [choice] as the Sync Location and [deviceName] as
   /// this Device's name, once the Sync Location passes its test (a folder
@@ -536,7 +537,7 @@ class SyncRepository {
   Future<SyncLocation> _locationAt(SyncLocationChoice chosen) async {
     switch (chosen.kind) {
       case SyncLocationKind.localFolder:
-        return LocalFolderSyncLocation(chosen.folder!);
+        return _folderAt(chosen.folder!);
       case SyncLocationKind.dropbox:
         final app = await _dropboxApp() ??
             (throw const SyncLocationAppRefused(
@@ -565,6 +566,13 @@ class SyncRepository {
             address: address, user: user, password: password);
     }
   }
+
+  /// The local folder [folder]: a path, or on Android the tree URI the
+  /// system folder picker gave.
+  static SyncLocation _folderAt(String folder) =>
+      DocumentTreeSyncLocation.isDocumentTree(folder)
+          ? DocumentTreeSyncLocation(folder)
+          : LocalFolderSyncLocation(folder);
 
   SyncEngine _engineWith(SyncLocation location) => SyncEngine(
       database: _database,

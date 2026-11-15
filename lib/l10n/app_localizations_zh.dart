@@ -1995,6 +1995,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get syncFolderNotFound => '找不到此文件夹。请检查它是否存在，以及所在的磁盘是否已连接。';
 
   @override
+  String get syncFolderNotFoundAndroid =>
+      'Bloomee 无法访问此文件夹：它已被移动或删除、所在的存储卡已被取出，或 Bloomee 已无权访问它。请重新选择该文件夹。';
+
+  @override
   String get syncFolderNotWritable => 'Bloomee 无法写入此文件夹。请选择您有权修改的文件夹。';
 
   @override
