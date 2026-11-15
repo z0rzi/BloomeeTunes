@@ -1958,223 +1958,213 @@ class AppLocalizationsZh extends AppLocalizations {
   String get eqPresetCustom => '自定义';
 
   @override
-  String get settingsLibrarySync => 'Library Sync';
+  String get settingsLibrarySync => '音乐库同步';
 
   @override
-  String get settingsLibrarySyncSubtitle =>
-      'Keep your playlists the same on all your devices.';
+  String get settingsLibrarySyncSubtitle => '让您所有设备上的歌单保持一致。';
 
   @override
-  String get syncTitle => 'Library Sync';
+  String get syncTitle => '音乐库同步';
 
   @override
-  String get syncEnableTitle => 'Sync this device';
+  String get syncEnableTitle => '同步此设备';
 
   @override
   String get syncEnableSubtitle =>
-      'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.';
+      '在与同一位置同步的每台设备上，您的歌单、喜欢的音乐以及已保存的专辑和艺人都保持一致。在您开启此选项或选择同步位置之前，不会有任何数据离开此设备。';
 
   @override
-  String get syncLocationHeader => 'Sync location';
+  String get syncLocationHeader => '同步位置';
 
   @override
-  String get syncLocalFolder => 'Local folder (advanced)';
+  String get syncLocalFolder => '本地文件夹（高级）';
 
   @override
   String get syncLocalFolderNote =>
-      'Bloomee only reads and writes files in this folder. Another tool, such as Syncthing, must carry it between your machines.';
+      'Bloomee 只在此文件夹中读写文件。需要由 Syncthing 等其他工具在您的各台电脑之间传输它。';
 
   @override
-  String get syncNoFolder => 'No folder chosen';
+  String get syncNoFolder => '未选择文件夹';
 
   @override
   String snackbarSyncFolderPickerFailed(String error) {
-    return 'The folder picker could not open: $error';
+    return '无法打开文件夹选择器：$error';
   }
 
   @override
-  String get syncFolderNotFound =>
-      'This folder cannot be found. Check that it exists and that its drive is connected.';
+  String get syncFolderNotFound => '找不到此文件夹。请检查它是否存在，以及所在的磁盘是否已连接。';
 
   @override
-  String get syncFolderNotWritable =>
-      'Bloomee cannot write into this folder. Choose a folder you are allowed to change.';
+  String get syncFolderNotWritable => 'Bloomee 无法写入此文件夹。请选择您有权修改的文件夹。';
 
   @override
-  String get syncDeviceHeader => 'This device';
+  String get syncDeviceHeader => '此设备';
 
   @override
-  String get syncDeviceName => 'Device name';
+  String get syncDeviceName => '设备名称';
 
   @override
-  String get syncDeviceNameSubtitle =>
-      'How your other devices name this one. Renaming changes nothing about what syncs.';
+  String get syncDeviceNameSubtitle => '您的其他设备显示此设备时使用的名称。重命名不会改变同步的内容。';
 
   @override
-  String get syncDevicesHeader => 'Devices';
+  String get syncDevicesHeader => '设备';
 
   @override
-  String get syncDevicesNote =>
-      'Every device that syncs through this sync location. A device you no longer use stays here until you forget it.';
+  String get syncDevicesNote => '通过此同步位置同步的所有设备。您不再使用的设备会一直留在这里，直到您忘记它。';
 
   @override
-  String get syncThisDevice => 'This device';
+  String get syncThisDevice => '此设备';
 
   @override
-  String get syncDeviceLastSyncUnknown => 'Last sync unknown';
+  String get syncDeviceLastSyncUnknown => '上次同步时间未知';
 
   @override
-  String get syncForgetDevice => 'Forget';
+  String get syncForgetDevice => '忘记';
 
   @override
   String dialogSyncForgetTitle(String device) {
-    return 'Forget $device?';
+    return '忘记 $device？';
   }
 
   @override
   String dialogSyncForgetBody(String device) {
-    return 'What $device published is deleted from the sync location. Nothing is removed from your libraries, on this device or any other. If $device syncs again, it comes back in this list.';
+    return '$device 发布的内容将从同步位置删除。您的音乐库不会有任何内容被移除，无论是在此设备还是其他设备上。如果 $device 再次同步，它会重新出现在此列表中。';
   }
 
   @override
-  String get buttonSyncForget => 'Forget device';
+  String get buttonSyncForget => '忘记设备';
 
   @override
   String snackbarSyncForgetFailed(String device) {
-    return '$device could not be forgotten: the sync location cannot be reached.';
+    return '无法忘记 $device：无法访问同步位置。';
   }
 
   @override
-  String get syncStatusHeader => 'Status';
+  String get syncStatusHeader => '状态';
 
   @override
-  String get syncNow => 'Sync now';
+  String get syncNow => '立即同步';
 
   @override
-  String get syncSyncing => 'Syncing…';
+  String get syncSyncing => '正在同步…';
 
   @override
-  String get syncNeverSynced => 'Not synced yet';
+  String get syncNeverSynced => '尚未同步';
 
   @override
   String syncLastSynced(String time) {
-    return 'Last synced: $time';
+    return '上次同步：$time';
   }
 
   @override
   String syncLastError(String time, String error) {
-    return 'Last error ($time): $error';
+    return '上次错误（$time）：$error';
   }
 
   @override
-  String get syncErrorUnreachable =>
-      'the sync location cannot be reached. Sync tries again by itself.';
+  String get syncErrorUnreachable => '无法访问同步位置。同步会自动重试。';
 
   @override
   String syncErrorFailed(String detail) {
-    return 'sync failed ($detail). Sync tries again by itself.';
+    return '同步失败（$detail）。同步会自动重试。';
   }
 
   @override
-  String get syncErrorHeld =>
-      'removals from another device are waiting for your decision.';
+  String get syncErrorHeld => '来自另一台设备的移除正在等待您的决定。';
 
   @override
-  String get syncErrorPaused =>
-      'sync is paused because you declined removals from another device.';
+  String get syncErrorPaused => '同步已暂停，因为您拒绝了来自另一台设备的移除。';
 
   @override
-  String get syncErrorUpdateNeeded => 'update Bloomee to keep syncing.';
+  String get syncErrorUpdateNeeded => '请更新 Bloomee 以继续同步。';
 
   @override
   String syncErrorSkipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'the changes of $count devices were left out.',
-      one: 'the changes of $count device were left out.',
+      other: '已忽略 $count 台设备的更改。',
+      one: '已忽略 $count 台设备的更改。',
     );
     return '$_temp0';
   }
 
   @override
-  String get syncReviewRemovals => 'Review removals';
+  String get syncReviewRemovals => '查看移除内容';
 
   @override
-  String get dialogSyncGuardTitle => 'Confirm these removals?';
+  String get dialogSyncGuardTitle => '确认这些移除？';
 
   @override
   String dialogSyncGuardSummary(int removed, int total) {
     String _temp0 = intl.Intl.pluralLogic(
       removed,
       locale: localeName,
-      other: 'This sync would remove $removed of your $total songs.',
-      one: 'This sync would remove $removed of your $total songs.',
+      other: '此次同步将移除您 $total 首歌曲中的 $removed 首。',
+      one: '此次同步将移除您 $total 首歌曲中的 $removed 首。',
     );
     return '$_temp0';
   }
 
   @override
   String dialogSyncGuardFrom(String devices) {
-    return 'Made on: $devices';
+    return '操作设备：$devices';
   }
 
   @override
   String dialogSyncGuardPlaylistDeleted(String name) {
-    return 'Playlist “$name” deleted, with its songs';
+    return '歌单“$name”已连同其中的歌曲一起删除';
   }
 
   @override
   String dialogSyncGuardSongRemoved(String title, String playlist) {
-    return '“$title” taken out of “$playlist”';
+    return '“$title”已从“$playlist”中移出';
   }
 
   @override
   String dialogSyncGuardUnliked(String title) {
-    return '“$title” unliked';
+    return '已取消喜欢“$title”';
   }
 
   @override
   String dialogSyncGuardOnDevice(String device) {
-    return 'on $device';
+    return '在 $device 上';
   }
 
   @override
-  String get buttonSyncRemove => 'Remove them';
+  String get buttonSyncRemove => '移除';
 
   @override
-  String get buttonSyncKeepLibrary => 'Keep my library';
+  String get buttonSyncKeepLibrary => '保留我的音乐库';
 
   @override
-  String get dialogSyncGuardDeclineNote =>
-      'If you keep your library, sync pauses until you confirm these removals from the Library Sync settings.';
+  String get dialogSyncGuardDeclineNote => '如果保留音乐库，同步将暂停，直到您在音乐库同步设置中确认这些移除。';
 
   @override
-  String get dialogSyncAnotherDevice => 'another device';
+  String get dialogSyncAnotherDevice => '另一台设备';
 
   @override
-  String get dialogSyncClockTitle => 'A device\'s clock is wrong';
+  String get dialogSyncClockTitle => '某台设备的时钟不正确';
 
   @override
   String dialogSyncClockBody(String device, String time) {
-    return '$device dates a change $time, more than a day ahead of this device. Its changes are refused until its clock is set right.';
+    return '$device 将一项更改的时间标为 $time，比此设备快了一天以上。在其时钟校正之前，它的更改将被拒绝。';
   }
 
   @override
-  String get dialogSyncUnreadableTitle =>
-      'What a device published cannot be read';
+  String get dialogSyncUnreadableTitle => '无法读取某台设备发布的内容';
 
   @override
   String dialogSyncUnreadableBody(String device) {
-    return 'What $device published for your other devices is damaged or unreadable, so its changes are left out. Your other devices still sync. The next time $device syncs, it publishes again.';
+    return '$device 为您的其他设备发布的内容已损坏或无法读取，因此其更改已被忽略。您的其他设备仍会继续同步。$device 下次同步时会重新发布。';
   }
 
   @override
-  String get dialogSyncUpdateTitle => 'Update Bloomee to keep syncing';
+  String get dialogSyncUpdateTitle => '请更新 Bloomee 以继续同步';
 
   @override
   String dialogSyncUpdateBody(String device) {
-    return '$device uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.';
+    return '$device 使用的同步格式比此版本的 Bloomee 能读取的更新。在您更新 Bloomee 之前，此设备上的同步已停止。';
   }
 
   @override
@@ -2182,179 +2172,167 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncDropboxNote =>
-      'Bloomee only uses its own app folder in your Dropbox and cannot see your other files. Sign in once on each device.';
+      'Bloomee 只使用您 Dropbox 中它自己的应用文件夹，无法看到您的其他文件。每台设备只需登录一次。';
 
   @override
-  String get syncDropboxSignedIn => 'Signed in';
+  String get syncDropboxSignedIn => '已登录';
 
   @override
-  String get syncDropboxSignedOut => 'Not signed in';
+  String get syncDropboxSignedOut => '未登录';
 
   @override
-  String get syncLocationInUse => 'In use';
+  String get syncLocationInUse => '使用中';
 
   @override
-  String get syncLocationMoveNote =>
-      'Choosing another sync location moves sync there. Nothing in the old one is changed or deleted.';
+  String get syncLocationMoveNote => '选择另一个同步位置会将同步移到那里。旧位置中的内容不会被更改或删除。';
 
   @override
-  String get buttonDropboxSignOut => 'Sign out of Dropbox';
+  String get buttonDropboxSignOut => '退出 Dropbox 登录';
 
   @override
-  String get dialogDropboxSignInTitle => 'Sign in to Dropbox';
+  String get dialogDropboxSignInTitle => '登录 Dropbox';
 
   @override
   String get dialogDropboxSignInBody =>
-      '1. Open the Dropbox page and allow Bloomee.\n2. Dropbox then shows a code: copy it and paste it here.';
+      '1. 打开 Dropbox 页面并允许 Bloomee。\n2. Dropbox 随后会显示一个代码：复制它并粘贴到这里。';
 
   @override
-  String get buttonDropboxOpenPage => 'Open the Dropbox page';
+  String get buttonDropboxOpenPage => '打开 Dropbox 页面';
 
   @override
-  String get dialogDropboxPageNotOpened =>
-      'The browser could not be opened. Open this address yourself:';
+  String get dialogDropboxPageNotOpened => '无法打开浏览器。请自行打开此地址：';
 
   @override
-  String get dialogDropboxCode => 'Code from Dropbox';
+  String get dialogDropboxCode => 'Dropbox 提供的代码';
 
   @override
-  String get buttonDropboxSignIn => 'Sign in';
+  String get buttonDropboxSignIn => '登录';
 
   @override
-  String get syncDropboxNotReachable =>
-      'Dropbox cannot be reached. Check your connection and try again.';
+  String get syncDropboxNotReachable => '无法连接 Dropbox。请检查网络连接后重试。';
 
   @override
-  String get syncDropboxNotWritable =>
-      'Bloomee cannot write into its Dropbox folder.';
+  String get syncDropboxNotWritable => 'Bloomee 无法写入它的 Dropbox 文件夹。';
 
   @override
-  String get syncSignInRefused =>
-      'Dropbox did not accept this sign-in. Open the Dropbox page again and paste the new code.';
+  String get syncSignInRefused => 'Dropbox 未接受此次登录。请重新打开 Dropbox 页面并粘贴新代码。';
 
   @override
   String get syncKeyringUnavailable =>
-      'The sign-in could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.';
+      '无法将登录信息保存到系统密钥环。在 Linux 上，请检查 GNOME Keyring 或 KWallet 等密钥环是否正在运行且已解锁。';
 
   @override
-  String get syncErrorSignInNeeded =>
-      'Dropbox no longer accepts this device\'s sign-in. Sign in again to keep syncing.';
+  String get syncErrorSignInNeeded => 'Dropbox 不再接受此设备的登录。请重新登录以继续同步。';
 
   @override
-  String get dialogSyncSignInTitle => 'Sign in to Dropbox again';
+  String get dialogSyncSignInTitle => '重新登录 Dropbox';
 
   @override
   String get dialogSyncSignInBody =>
-      'Dropbox no longer accepts this device\'s sign-in: it expired or was revoked. Sync is stopped on this device until you sign in again in the Library Sync settings.';
+      'Dropbox 不再接受此设备的登录：登录已过期或被撤销。在您于音乐库同步设置中重新登录之前，此设备上的同步已停止。';
 
   @override
-  String get snackbarSyncSignOutFailed =>
-      'Could not sign out: the system keyring cannot be changed.';
+  String get snackbarSyncSignOutFailed => '无法退出登录：无法更改系统密钥环。';
 
   @override
-  String get dialogSyncChooseLocationTitle => 'Where should this device sync?';
+  String get dialogSyncChooseLocationTitle => '此设备应同步到哪里？';
 
   @override
   String get backupReplaceSyncWarning =>
-      'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+      '音乐库同步已开启：此次替换也会同步到您的其他设备。此备份中没有的歌单、歌曲、喜欢的音乐以及已保存的专辑和艺人也会从这些设备上移除。';
 
   @override
   String get backupReplaceSyncOffWarning =>
-      'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+      '此设备已设置音乐库同步，但目前已关闭：重新开启后，此次替换会同步到您的其他设备。此备份中没有的歌单、歌曲、喜欢的音乐以及已保存的专辑和艺人也会从这些设备上移除。';
 
   @override
-  String get syncWebDav => 'WebDAV server';
+  String get syncWebDav => 'WebDAV 服务器';
 
   @override
   String get syncWebDavNote =>
-      'Your own server, such as Nextcloud. Bloomee syncs in the folder you give, and creates it if needed. The password is kept in the system keyring.';
+      '您自己的服务器，例如 Nextcloud。Bloomee 会在您指定的文件夹中同步，并在需要时创建该文件夹。密码保存在系统密钥环中。';
 
   @override
-  String get syncWebDavNotSetUp => 'Not set up';
+  String get syncWebDavNotSetUp => '未设置';
 
   @override
   String syncWebDavAccount(String user, String address) {
-    return '$user on $address';
+    return '$address 上的 $user';
   }
 
   @override
-  String get buttonWebDavSignOut => 'Sign out of the WebDAV server';
+  String get buttonWebDavSignOut => '退出 WebDAV 服务器登录';
 
   @override
-  String get dialogWebDavTitle => 'Connect to a WebDAV server';
+  String get dialogWebDavTitle => '连接到 WebDAV 服务器';
 
   @override
   String get dialogWebDavBody =>
-      'Enter the address of the folder to sync in, such as https://cloud.example.com/remote.php/dav/files/you/Bloomee, and your user name and password on that server.';
+      '请输入用于同步的文件夹地址，例如 https://cloud.example.com/remote.php/dav/files/user/Bloomee，以及您在该服务器上的用户名和密码。';
 
   @override
-  String get dialogWebDavAddress => 'Folder address';
+  String get dialogWebDavAddress => '文件夹地址';
 
   @override
-  String get dialogWebDavUser => 'User name';
+  String get dialogWebDavUser => '用户名';
 
   @override
-  String get dialogWebDavPassword => 'Password';
+  String get dialogWebDavPassword => '密码';
 
   @override
-  String get buttonWebDavConnect => 'Connect';
+  String get buttonWebDavConnect => '连接';
 
   @override
   String get syncWebDavInvalidAddress =>
-      'This is not a server address. Enter one such as https://cloud.example.com/dav/Bloomee.';
+      '这不是服务器地址。请输入类似 https://cloud.example.com/dav/Bloomee 的地址。';
 
   @override
   String get syncWebDavInsecureAddress =>
-      'Bloomee does not send your password unprotected: use an https:// address. Plain http:// is only accepted for localhost.';
+      'Bloomee 不会在无保护的情况下发送您的密码：请使用 https:// 地址。普通 http:// 仅允许用于 localhost。';
 
   @override
   String get syncDropboxRefused =>
-      'Dropbox refused what Bloomee asked. Try again later; if it keeps refusing, sign out of Dropbox and sign in again.';
+      'Dropbox 拒绝了 Bloomee 的请求。请稍后重试；如果仍被拒绝，请退出 Dropbox 登录后重新登录。';
 
   @override
   String get syncWebDavRefused =>
-      'The WebDAV server refused what Bloomee asked. Check that this user may write into that folder, and that the server\'s certificate is valid: a self-signed certificate is not accepted.';
+      'WebDAV 服务器拒绝了 Bloomee 的请求。请检查此用户是否可以写入该文件夹，以及服务器证书是否有效：不接受自签名证书。';
 
   @override
-  String get syncLocationRefused =>
-      'The sync location refused what Bloomee asked.';
+  String get syncLocationRefused => '同步位置拒绝了 Bloomee 的请求。';
 
   @override
-  String get syncWebDavNotReachable =>
-      'The WebDAV server cannot be reached. Check the address and your connection and try again.';
+  String get syncWebDavNotReachable => '无法连接 WebDAV 服务器。请检查地址和网络连接后重试。';
 
   @override
-  String get syncWebDavNotWritable =>
-      'Bloomee cannot write into this folder on the WebDAV server.';
+  String get syncWebDavNotWritable => 'Bloomee 无法写入 WebDAV 服务器上的此文件夹。';
 
   @override
-  String get syncWebDavSignInRefused =>
-      'The WebDAV server did not accept this user name and password.';
+  String get syncWebDavSignInRefused => 'WebDAV 服务器未接受此用户名和密码。';
 
   @override
   String get syncWebDavKeyringUnavailable =>
-      'The password could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.';
+      '无法将密码保存到系统密钥环。在 Linux 上，请检查 GNOME Keyring 或 KWallet 等密钥环是否正在运行且已解锁。';
 
   @override
   String get syncErrorWebDavSignInNeeded =>
-      'The WebDAV server no longer accepts this device\'s user name and password. Enter them again to keep syncing.';
+      'WebDAV 服务器不再接受此设备的用户名和密码。请重新输入以继续同步。';
 
   @override
-  String get dialogSyncWebDavSignInTitle =>
-      'The WebDAV server refused the password';
+  String get dialogSyncWebDavSignInTitle => 'WebDAV 服务器拒绝了密码';
 
   @override
   String get dialogSyncWebDavSignInBody =>
-      'The WebDAV server no longer accepts this device\'s user name and password. Sync is stopped on this device until you enter them again in the Library Sync settings.';
+      'WebDAV 服务器不再接受此设备的用户名和密码。在您于音乐库同步设置中重新输入之前，此设备上的同步已停止。';
 
   @override
   String get syncErrorKeyringUnavailable =>
-      'the system keyring, which holds this device\'s sign-in, cannot be read. Unlock it, then restart Bloomee.';
+      '无法读取保存此设备登录信息的系统密钥环。请解锁后重启 Bloomee。';
 
   @override
-  String get dialogSyncKeyringTitle => 'The system keyring cannot be read';
+  String get dialogSyncKeyringTitle => '无法读取系统密钥环';
 
   @override
   String get dialogSyncKeyringBody =>
-      'Bloomee keeps this device\'s sign-in to its sync location in the system keyring, which cannot be read now, so this device does not sync. Unlock the keyring (on Linux, GNOME Keyring or KWallet), then restart Bloomee.';
+      'Bloomee 将此设备登录同步位置所用的信息保存在系统密钥环中，但目前无法读取该密钥环，因此此设备不会同步。请解锁密钥环（在 Linux 上为 GNOME Keyring 或 KWallet），然后重启 Bloomee。';
 }

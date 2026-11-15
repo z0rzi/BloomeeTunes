@@ -1967,223 +1967,218 @@ class AppLocalizationsKo extends AppLocalizations {
   String get eqPresetCustom => '사용자 지정';
 
   @override
-  String get settingsLibrarySync => 'Library Sync';
+  String get settingsLibrarySync => '보관함 동기화';
 
   @override
-  String get settingsLibrarySyncSubtitle =>
-      'Keep your playlists the same on all your devices.';
+  String get settingsLibrarySyncSubtitle => '모든 기기에서 플레이리스트를 똑같이 유지합니다.';
 
   @override
-  String get syncTitle => 'Library Sync';
+  String get syncTitle => '보관함 동기화';
 
   @override
-  String get syncEnableTitle => 'Sync this device';
+  String get syncEnableTitle => '이 기기 동기화';
 
   @override
   String get syncEnableSubtitle =>
-      'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.';
+      '같은 장소와 동기화하는 모든 기기에서 플레이리스트, 좋아요 표시한 곡, 저장한 앨범과 아티스트가 똑같이 유지됩니다. 이 옵션을 켜거나 동기화 위치를 선택하기 전에는 이 기기에서 아무것도 내보내지 않습니다.';
 
   @override
-  String get syncLocationHeader => 'Sync location';
+  String get syncLocationHeader => '동기화 위치';
 
   @override
-  String get syncLocalFolder => 'Local folder (advanced)';
+  String get syncLocalFolder => '로컬 폴더 (고급)';
 
   @override
   String get syncLocalFolderNote =>
-      'Bloomee only reads and writes files in this folder. Another tool, such as Syncthing, must carry it between your machines.';
+      'Bloomee는 이 폴더의 파일을 읽고 쓰기만 합니다. 컴퓨터 간에 이 폴더를 옮기려면 Syncthing 같은 다른 도구가 필요합니다.';
 
   @override
-  String get syncNoFolder => 'No folder chosen';
+  String get syncNoFolder => '선택한 폴더 없음';
 
   @override
   String snackbarSyncFolderPickerFailed(String error) {
-    return 'The folder picker could not open: $error';
+    return '폴더 선택 창을 열 수 없습니다: $error';
   }
 
   @override
   String get syncFolderNotFound =>
-      'This folder cannot be found. Check that it exists and that its drive is connected.';
+      '이 폴더를 찾을 수 없습니다. 폴더가 있는지, 해당 드라이브가 연결되어 있는지 확인하세요.';
 
   @override
   String get syncFolderNotWritable =>
-      'Bloomee cannot write into this folder. Choose a folder you are allowed to change.';
+      'Bloomee가 이 폴더에 쓸 수 없습니다. 변경 권한이 있는 폴더를 선택하세요.';
 
   @override
-  String get syncDeviceHeader => 'This device';
+  String get syncDeviceHeader => '이 기기';
 
   @override
-  String get syncDeviceName => 'Device name';
+  String get syncDeviceName => '기기 이름';
 
   @override
   String get syncDeviceNameSubtitle =>
-      'How your other devices name this one. Renaming changes nothing about what syncs.';
+      '다른 기기에서 이 기기를 부르는 이름입니다. 이름을 바꿔도 동기화되는 내용은 달라지지 않습니다.';
 
   @override
-  String get syncDevicesHeader => 'Devices';
+  String get syncDevicesHeader => '기기';
 
   @override
   String get syncDevicesNote =>
-      'Every device that syncs through this sync location. A device you no longer use stays here until you forget it.';
+      '이 동기화 위치를 통해 동기화하는 모든 기기입니다. 더 이상 사용하지 않는 기기는 지울 때까지 여기에 남습니다.';
 
   @override
-  String get syncThisDevice => 'This device';
+  String get syncThisDevice => '이 기기';
 
   @override
-  String get syncDeviceLastSyncUnknown => 'Last sync unknown';
+  String get syncDeviceLastSyncUnknown => '마지막 동기화 시각 알 수 없음';
 
   @override
-  String get syncForgetDevice => 'Forget';
+  String get syncForgetDevice => '지우기';
 
   @override
   String dialogSyncForgetTitle(String device) {
-    return 'Forget $device?';
+    return '$device을(를) 지울까요?';
   }
 
   @override
   String dialogSyncForgetBody(String device) {
-    return 'What $device published is deleted from the sync location. Nothing is removed from your libraries, on this device or any other. If $device syncs again, it comes back in this list.';
+    return '$device이(가) 게시한 내용이 동기화 위치에서 삭제됩니다. 이 기기든 다른 기기든 보관함에서는 아무것도 삭제되지 않습니다. $device이(가) 다시 동기화하면 이 목록에 다시 나타납니다.';
   }
 
   @override
-  String get buttonSyncForget => 'Forget device';
+  String get buttonSyncForget => '기기 지우기';
 
   @override
   String snackbarSyncForgetFailed(String device) {
-    return '$device could not be forgotten: the sync location cannot be reached.';
+    return '$device을(를) 지우지 못했습니다: 동기화 위치에 연결할 수 없습니다.';
   }
 
   @override
-  String get syncStatusHeader => 'Status';
+  String get syncStatusHeader => '상태';
 
   @override
-  String get syncNow => 'Sync now';
+  String get syncNow => '지금 동기화';
 
   @override
-  String get syncSyncing => 'Syncing…';
+  String get syncSyncing => '동기화 중…';
 
   @override
-  String get syncNeverSynced => 'Not synced yet';
+  String get syncNeverSynced => '아직 동기화되지 않음';
 
   @override
   String syncLastSynced(String time) {
-    return 'Last synced: $time';
+    return '마지막 동기화: $time';
   }
 
   @override
   String syncLastError(String time, String error) {
-    return 'Last error ($time): $error';
+    return '마지막 오류 ($time): $error';
   }
 
   @override
-  String get syncErrorUnreachable =>
-      'the sync location cannot be reached. Sync tries again by itself.';
+  String get syncErrorUnreachable => '동기화 위치에 연결할 수 없습니다. 동기화가 자동으로 다시 시도합니다.';
 
   @override
   String syncErrorFailed(String detail) {
-    return 'sync failed ($detail). Sync tries again by itself.';
+    return '동기화에 실패했습니다 ($detail). 동기화가 자동으로 다시 시도합니다.';
   }
 
   @override
-  String get syncErrorHeld =>
-      'removals from another device are waiting for your decision.';
+  String get syncErrorHeld => '다른 기기에서 한 삭제가 결정을 기다리고 있습니다.';
 
   @override
-  String get syncErrorPaused =>
-      'sync is paused because you declined removals from another device.';
+  String get syncErrorPaused => '다른 기기에서 한 삭제를 거부해서 동기화가 일시 중지되었습니다.';
 
   @override
-  String get syncErrorUpdateNeeded => 'update Bloomee to keep syncing.';
+  String get syncErrorUpdateNeeded => '동기화를 계속하려면 Bloomee를 업데이트하세요.';
 
   @override
   String syncErrorSkipped(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'the changes of $count devices were left out.',
-      one: 'the changes of $count device were left out.',
+      other: '기기 $count대의 변경 사항이 제외되었습니다.',
+      one: '기기 $count대의 변경 사항이 제외되었습니다.',
     );
     return '$_temp0';
   }
 
   @override
-  String get syncReviewRemovals => 'Review removals';
+  String get syncReviewRemovals => '삭제 검토';
 
   @override
-  String get dialogSyncGuardTitle => 'Confirm these removals?';
+  String get dialogSyncGuardTitle => '이 삭제를 확인할까요?';
 
   @override
   String dialogSyncGuardSummary(int removed, int total) {
     String _temp0 = intl.Intl.pluralLogic(
       removed,
       locale: localeName,
-      other: 'This sync would remove $removed of your $total songs.',
-      one: 'This sync would remove $removed of your $total songs.',
+      other: '이 동기화로 곡 $total개 중 $removed개가 삭제됩니다.',
+      one: '이 동기화로 곡 $total개 중 $removed개가 삭제됩니다.',
     );
     return '$_temp0';
   }
 
   @override
   String dialogSyncGuardFrom(String devices) {
-    return 'Made on: $devices';
+    return '변경한 기기: $devices';
   }
 
   @override
   String dialogSyncGuardPlaylistDeleted(String name) {
-    return 'Playlist “$name” deleted, with its songs';
+    return '플레이리스트 “$name”이(가) 곡과 함께 삭제됨';
   }
 
   @override
   String dialogSyncGuardSongRemoved(String title, String playlist) {
-    return '“$title” taken out of “$playlist”';
+    return '“$playlist”에서 “$title” 삭제됨';
   }
 
   @override
   String dialogSyncGuardUnliked(String title) {
-    return '“$title” unliked';
+    return '“$title” 좋아요 취소됨';
   }
 
   @override
   String dialogSyncGuardOnDevice(String device) {
-    return 'on $device';
+    return '$device에서';
   }
 
   @override
-  String get buttonSyncRemove => 'Remove them';
+  String get buttonSyncRemove => '삭제하기';
 
   @override
-  String get buttonSyncKeepLibrary => 'Keep my library';
+  String get buttonSyncKeepLibrary => '내 보관함 유지';
 
   @override
   String get dialogSyncGuardDeclineNote =>
-      'If you keep your library, sync pauses until you confirm these removals from the Library Sync settings.';
+      '보관함을 유지하면 보관함 동기화 설정에서 이 삭제를 확인할 때까지 동기화가 일시 중지됩니다.';
 
   @override
-  String get dialogSyncAnotherDevice => 'another device';
+  String get dialogSyncAnotherDevice => '다른 기기';
 
   @override
-  String get dialogSyncClockTitle => 'A device\'s clock is wrong';
+  String get dialogSyncClockTitle => '기기의 시계가 잘못되었습니다';
 
   @override
   String dialogSyncClockBody(String device, String time) {
-    return '$device dates a change $time, more than a day ahead of this device. Its changes are refused until its clock is set right.';
+    return '$device이(가) 변경 날짜를 $time(으)로 기록했으며, 이는 이 기기보다 하루 넘게 앞서 있습니다. 시계를 올바르게 맞출 때까지 해당 기기의 변경 사항은 거부됩니다.';
   }
 
   @override
-  String get dialogSyncUnreadableTitle =>
-      'What a device published cannot be read';
+  String get dialogSyncUnreadableTitle => '기기가 게시한 내용을 읽을 수 없습니다';
 
   @override
   String dialogSyncUnreadableBody(String device) {
-    return 'What $device published for your other devices is damaged or unreadable, so its changes are left out. Your other devices still sync. The next time $device syncs, it publishes again.';
+    return '$device이(가) 다른 기기를 위해 게시한 내용이 손상되었거나 읽을 수 없어서 해당 변경 사항이 제외됩니다. 다른 기기는 계속 동기화됩니다. $device은(는) 다음에 동기화할 때 다시 게시합니다.';
   }
 
   @override
-  String get dialogSyncUpdateTitle => 'Update Bloomee to keep syncing';
+  String get dialogSyncUpdateTitle => '동기화를 계속하려면 Bloomee를 업데이트하세요';
 
   @override
   String dialogSyncUpdateBody(String device) {
-    return '$device uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.';
+    return '$device은(는) 이 버전의 Bloomee가 읽을 수 없는 최신 동기화 형식을 사용합니다. Bloomee를 업데이트할 때까지 이 기기의 동기화가 중지됩니다.';
   }
 
   @override
@@ -2191,179 +2186,173 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get syncDropboxNote =>
-      'Bloomee only uses its own app folder in your Dropbox and cannot see your other files. Sign in once on each device.';
+      'Bloomee는 Dropbox에서 자체 앱 폴더만 사용하며 다른 파일은 볼 수 없습니다. 기기마다 한 번씩 로그인하세요.';
 
   @override
-  String get syncDropboxSignedIn => 'Signed in';
+  String get syncDropboxSignedIn => '로그인됨';
 
   @override
-  String get syncDropboxSignedOut => 'Not signed in';
+  String get syncDropboxSignedOut => '로그인 안 됨';
 
   @override
-  String get syncLocationInUse => 'In use';
+  String get syncLocationInUse => '사용 중';
 
   @override
   String get syncLocationMoveNote =>
-      'Choosing another sync location moves sync there. Nothing in the old one is changed or deleted.';
+      '다른 동기화 위치를 선택하면 동기화가 그곳으로 옮겨집니다. 이전 위치의 내용은 변경되거나 삭제되지 않습니다.';
 
   @override
-  String get buttonDropboxSignOut => 'Sign out of Dropbox';
+  String get buttonDropboxSignOut => 'Dropbox에서 로그아웃';
 
   @override
-  String get dialogDropboxSignInTitle => 'Sign in to Dropbox';
+  String get dialogDropboxSignInTitle => 'Dropbox에 로그인';
 
   @override
   String get dialogDropboxSignInBody =>
-      '1. Open the Dropbox page and allow Bloomee.\n2. Dropbox then shows a code: copy it and paste it here.';
+      '1. Dropbox 페이지를 열고 Bloomee를 허용하세요.\n2. Dropbox에 코드가 표시되면 복사해서 여기에 붙여 넣으세요.';
 
   @override
-  String get buttonDropboxOpenPage => 'Open the Dropbox page';
+  String get buttonDropboxOpenPage => 'Dropbox 페이지 열기';
 
   @override
-  String get dialogDropboxPageNotOpened =>
-      'The browser could not be opened. Open this address yourself:';
+  String get dialogDropboxPageNotOpened => '브라우저를 열 수 없습니다. 다음 주소를 직접 여세요:';
 
   @override
-  String get dialogDropboxCode => 'Code from Dropbox';
+  String get dialogDropboxCode => 'Dropbox 코드';
 
   @override
-  String get buttonDropboxSignIn => 'Sign in';
+  String get buttonDropboxSignIn => '로그인';
 
   @override
   String get syncDropboxNotReachable =>
-      'Dropbox cannot be reached. Check your connection and try again.';
+      'Dropbox에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도하세요.';
 
   @override
-  String get syncDropboxNotWritable =>
-      'Bloomee cannot write into its Dropbox folder.';
+  String get syncDropboxNotWritable => 'Bloomee가 Dropbox 폴더에 쓸 수 없습니다.';
 
   @override
   String get syncSignInRefused =>
-      'Dropbox did not accept this sign-in. Open the Dropbox page again and paste the new code.';
+      'Dropbox에서 이 로그인을 수락하지 않았습니다. Dropbox 페이지를 다시 열고 새 코드를 붙여 넣으세요.';
 
   @override
   String get syncKeyringUnavailable =>
-      'The sign-in could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.';
+      '로그인 정보를 시스템 키링에 보관할 수 없습니다. Linux에서는 GNOME Keyring이나 KWallet 같은 키링이 실행 중이고 잠금 해제되어 있는지 확인하세요.';
 
   @override
   String get syncErrorSignInNeeded =>
-      'Dropbox no longer accepts this device\'s sign-in. Sign in again to keep syncing.';
+      'Dropbox에서 더 이상 이 기기의 로그인을 수락하지 않습니다. 동기화를 계속하려면 다시 로그인하세요.';
 
   @override
-  String get dialogSyncSignInTitle => 'Sign in to Dropbox again';
+  String get dialogSyncSignInTitle => 'Dropbox에 다시 로그인하세요';
 
   @override
   String get dialogSyncSignInBody =>
-      'Dropbox no longer accepts this device\'s sign-in: it expired or was revoked. Sync is stopped on this device until you sign in again in the Library Sync settings.';
+      'Dropbox에서 더 이상 이 기기의 로그인을 수락하지 않습니다. 로그인이 만료되었거나 취소되었습니다. 보관함 동기화 설정에서 다시 로그인할 때까지 이 기기의 동기화가 중지됩니다.';
 
   @override
-  String get snackbarSyncSignOutFailed =>
-      'Could not sign out: the system keyring cannot be changed.';
+  String get snackbarSyncSignOutFailed => '로그아웃할 수 없습니다: 시스템 키링을 변경할 수 없습니다.';
 
   @override
-  String get dialogSyncChooseLocationTitle => 'Where should this device sync?';
+  String get dialogSyncChooseLocationTitle => '이 기기를 어디와 동기화할까요?';
 
   @override
   String get backupReplaceSyncWarning =>
-      'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+      '보관함 동기화가 켜져 있습니다: 이 바꾸기는 다른 기기에도 적용됩니다. 이 백업에 없는 플레이리스트, 곡, 좋아요, 저장한 앨범과 아티스트는 다른 기기에서도 삭제됩니다.';
 
   @override
   String get backupReplaceSyncOffWarning =>
-      'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+      '이 기기에 보관함 동기화가 설정되어 있지만 꺼져 있습니다: 다시 켜면 이 바꾸기가 다른 기기에 적용됩니다. 이 백업에 없는 플레이리스트, 곡, 좋아요, 저장한 앨범과 아티스트는 다른 기기에서도 삭제됩니다.';
 
   @override
-  String get syncWebDav => 'WebDAV server';
+  String get syncWebDav => 'WebDAV 서버';
 
   @override
   String get syncWebDavNote =>
-      'Your own server, such as Nextcloud. Bloomee syncs in the folder you give, and creates it if needed. The password is kept in the system keyring.';
+      'Nextcloud 같은 직접 운영하는 서버입니다. Bloomee는 지정한 폴더에서 동기화하며, 필요하면 폴더를 만듭니다. 비밀번호는 시스템 키링에 보관됩니다.';
 
   @override
-  String get syncWebDavNotSetUp => 'Not set up';
+  String get syncWebDavNotSetUp => '설정 안 됨';
 
   @override
   String syncWebDavAccount(String user, String address) {
-    return '$user on $address';
+    return '$address의 $user';
   }
 
   @override
-  String get buttonWebDavSignOut => 'Sign out of the WebDAV server';
+  String get buttonWebDavSignOut => 'WebDAV 서버에서 로그아웃';
 
   @override
-  String get dialogWebDavTitle => 'Connect to a WebDAV server';
+  String get dialogWebDavTitle => 'WebDAV 서버에 연결';
 
   @override
   String get dialogWebDavBody =>
-      'Enter the address of the folder to sync in, such as https://cloud.example.com/remote.php/dav/files/you/Bloomee, and your user name and password on that server.';
+      '동기화할 폴더의 주소(예: https://cloud.example.com/remote.php/dav/files/user/Bloomee)와 해당 서버의 사용자 이름 및 비밀번호를 입력하세요.';
 
   @override
-  String get dialogWebDavAddress => 'Folder address';
+  String get dialogWebDavAddress => '폴더 주소';
 
   @override
-  String get dialogWebDavUser => 'User name';
+  String get dialogWebDavUser => '사용자 이름';
 
   @override
-  String get dialogWebDavPassword => 'Password';
+  String get dialogWebDavPassword => '비밀번호';
 
   @override
-  String get buttonWebDavConnect => 'Connect';
+  String get buttonWebDavConnect => '연결';
 
   @override
   String get syncWebDavInvalidAddress =>
-      'This is not a server address. Enter one such as https://cloud.example.com/dav/Bloomee.';
+      '서버 주소가 아닙니다. https://cloud.example.com/dav/Bloomee 같은 주소를 입력하세요.';
 
   @override
   String get syncWebDavInsecureAddress =>
-      'Bloomee does not send your password unprotected: use an https:// address. Plain http:// is only accepted for localhost.';
+      'Bloomee는 비밀번호를 보호되지 않은 상태로 보내지 않습니다: https:// 주소를 사용하세요. 일반 http://는 localhost에만 허용됩니다.';
 
   @override
   String get syncDropboxRefused =>
-      'Dropbox refused what Bloomee asked. Try again later; if it keeps refusing, sign out of Dropbox and sign in again.';
+      'Dropbox가 Bloomee의 요청을 거부했습니다. 나중에 다시 시도하세요. 계속 거부되면 Dropbox에서 로그아웃한 뒤 다시 로그인하세요.';
 
   @override
   String get syncWebDavRefused =>
-      'The WebDAV server refused what Bloomee asked. Check that this user may write into that folder, and that the server\'s certificate is valid: a self-signed certificate is not accepted.';
+      'WebDAV 서버가 Bloomee의 요청을 거부했습니다. 이 사용자가 해당 폴더에 쓸 수 있는지, 서버 인증서가 유효한지 확인하세요: 자체 서명 인증서는 허용되지 않습니다.';
 
   @override
-  String get syncLocationRefused =>
-      'The sync location refused what Bloomee asked.';
+  String get syncLocationRefused => '동기화 위치가 Bloomee의 요청을 거부했습니다.';
 
   @override
   String get syncWebDavNotReachable =>
-      'The WebDAV server cannot be reached. Check the address and your connection and try again.';
+      'WebDAV 서버에 연결할 수 없습니다. 주소와 연결 상태를 확인하고 다시 시도하세요.';
 
   @override
-  String get syncWebDavNotWritable =>
-      'Bloomee cannot write into this folder on the WebDAV server.';
+  String get syncWebDavNotWritable => 'Bloomee가 WebDAV 서버의 이 폴더에 쓸 수 없습니다.';
 
   @override
   String get syncWebDavSignInRefused =>
-      'The WebDAV server did not accept this user name and password.';
+      'WebDAV 서버가 이 사용자 이름과 비밀번호를 수락하지 않았습니다.';
 
   @override
   String get syncWebDavKeyringUnavailable =>
-      'The password could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.';
+      '비밀번호를 시스템 키링에 보관할 수 없습니다. Linux에서는 GNOME Keyring이나 KWallet 같은 키링이 실행 중이고 잠금 해제되어 있는지 확인하세요.';
 
   @override
   String get syncErrorWebDavSignInNeeded =>
-      'The WebDAV server no longer accepts this device\'s user name and password. Enter them again to keep syncing.';
+      'WebDAV 서버가 더 이상 이 기기의 사용자 이름과 비밀번호를 수락하지 않습니다. 동기화를 계속하려면 다시 입력하세요.';
 
   @override
-  String get dialogSyncWebDavSignInTitle =>
-      'The WebDAV server refused the password';
+  String get dialogSyncWebDavSignInTitle => 'WebDAV 서버가 비밀번호를 거부했습니다';
 
   @override
   String get dialogSyncWebDavSignInBody =>
-      'The WebDAV server no longer accepts this device\'s user name and password. Sync is stopped on this device until you enter them again in the Library Sync settings.';
+      'WebDAV 서버가 더 이상 이 기기의 사용자 이름과 비밀번호를 수락하지 않습니다. 보관함 동기화 설정에서 다시 입력할 때까지 이 기기의 동기화가 중지됩니다.';
 
   @override
   String get syncErrorKeyringUnavailable =>
-      'the system keyring, which holds this device\'s sign-in, cannot be read. Unlock it, then restart Bloomee.';
+      '이 기기의 로그인 정보를 보관하는 시스템 키링을 읽을 수 없습니다. 잠금을 해제한 뒤 Bloomee를 다시 시작하세요.';
 
   @override
-  String get dialogSyncKeyringTitle => 'The system keyring cannot be read';
+  String get dialogSyncKeyringTitle => '시스템 키링을 읽을 수 없습니다';
 
   @override
   String get dialogSyncKeyringBody =>
-      'Bloomee keeps this device\'s sign-in to its sync location in the system keyring, which cannot be read now, so this device does not sync. Unlock the keyring (on Linux, GNOME Keyring or KWallet), then restart Bloomee.';
+      'Bloomee는 이 기기의 동기화 위치 로그인 정보를 시스템 키링에 보관하는데, 지금 키링을 읽을 수 없어서 이 기기가 동기화되지 않습니다. 키링 잠금을 해제한 뒤(Linux에서는 GNOME Keyring 또는 KWallet) Bloomee를 다시 시작하세요.';
 }
