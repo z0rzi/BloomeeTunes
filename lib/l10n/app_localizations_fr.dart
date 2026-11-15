@@ -2132,7 +2132,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get syncEnableSubtitle =>
-      'Vos playlists, titres aimés, albums et artistes enregistrés restent les mêmes sur chaque appareil synchronisé avec le même emplacement. Rien ne quitte cet appareil tant que vous n\'activez pas cette option.';
+      'Vos playlists, titres aimés, albums et artistes enregistrés restent les mêmes sur chaque appareil synchronisé avec le même emplacement. Rien ne quitte cet appareil tant que vous n\'activez pas cette option ou ne choisissez pas d\'emplacement de synchronisation.';
 
   @override
   String get syncLocationHeader => 'Emplacement de synchronisation';

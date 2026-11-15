@@ -254,6 +254,42 @@ void main() {
   });
 
   test(
+      'with sync off, signing in to Dropbox from its choice turns sync on with Dropbox',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final cubit = screenOn(appOn(laptop, MemoryKeyring()));
+    await laptop.add('Road trip', [song('yt::1')]);
+    await cubit.load();
+
+    expect(await signIn(cubit), isNull);
+    await cubit.chooseDropbox(deviceName: 'Kitchen laptop');
+    await cubit.syncNow();
+
+    expect(cubit.state.setupProblem, isNull);
+    expect(cubit.state.enabled, isTrue);
+    expect(cubit.state.locationKind, SyncLocationKind.dropbox);
+    expect(cubit.state.deviceName, 'Kitchen laptop');
+    final state = dropbox.paths.singleWhere((p) => p.startsWith('/sync/'));
+    expect(utf8.decode(dropbox.file(state)!), contains('yt::1'));
+  });
+
+  test(
+      'with sync off, a Dropbox that cannot be used once signed in says why and leaves sync off',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final cubit = screenOn(appOn(laptop, MemoryKeyring()));
+    await cubit.load();
+
+    expect(await signIn(cubit), isNull);
+    dropbox.revokeAll();
+    await cubit.chooseDropbox();
+
+    expect(cubit.state.setupProblem, SyncLocationProblem.signInRefused);
+    expect(cubit.state.enabled, isFalse);
+    expect(dropbox.paths, isEmpty);
+  });
+
+  test(
       'moving from a local folder to Dropbox publishes there and leaves the folder untouched',
       () async {
     final laptop = await world.device('laptop', enabled: false);

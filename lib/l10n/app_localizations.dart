@@ -3785,7 +3785,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncEnableSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on.'**
+  /// **'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.'**
   String get syncEnableSubtitle;
 
   /// No description provided for @syncLocationHeader.

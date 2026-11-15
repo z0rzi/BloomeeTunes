@@ -2052,7 +2052,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get syncEnableSubtitle =>
-      'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on.';
+      'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.';
 
   @override
   String get syncLocationHeader => 'Sync location';

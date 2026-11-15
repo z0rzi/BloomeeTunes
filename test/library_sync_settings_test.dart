@@ -454,6 +454,63 @@ void main() {
       expect(Directory(p.join(server, 'sync')).listSync(), isNotEmpty);
     });
 
+    test('with sync off, choosing a folder turns sync on with it', () async {
+      final laptop = await world.device('laptop', enabled: false);
+      await laptop.add('Road trip', [song('yt::1')]);
+      final screen = await screenOn(laptop);
+      expect(screen.state.enabled, isFalse);
+
+      await screen.changeFolder(world.locationPath,
+          deviceName: 'Kitchen laptop');
+      await screen.syncNow();
+
+      expect(screen.state.setupProblem, isNull);
+      expect(screen.state.enabled, isTrue);
+      expect(screen.state.locationKind, SyncLocationKind.localFolder);
+      expect(screen.state.folder, world.locationPath);
+      expect(screen.state.deviceName, 'Kitchen laptop');
+      final phone = await world.device('phone');
+      await phone.sync();
+      expect(await phone.songsOf('Road trip'), ['yt::1']);
+      expect((await appOn(laptop).setup()).enabled, isTrue,
+          reason: 'sync stays on at the next start');
+    });
+
+    test(
+        'with sync off, choosing a folder that cannot be used says why and leaves sync off',
+        () async {
+      final laptop = await world.device('laptop', enabled: false);
+      final screen = await screenOn(laptop);
+
+      await screen.changeFolder(p.join(world.root.path, 'unmounted drive'));
+
+      expect(screen.state.setupProblem, SyncLocationProblem.notFound);
+      expect(screen.state.enabled, isFalse);
+      expect((await appOn(laptop).setup()).enabled, isFalse);
+    });
+
+    test(
+        'turned off, sync stays off at the next start, until a Sync Location is set up again',
+        () async {
+      final laptop = await world.device('laptop', enabled: false);
+      final screen = await screenOn(laptop);
+      await screen.changeFolder(world.locationPath);
+      await screen.disable();
+      expect(screen.state.enabled, isFalse);
+
+      final restarted = appOn(laptop);
+      await restarted.start();
+      final again = SyncCubit(restarted);
+      addTearDown(again.close);
+      await again.load();
+      expect(again.state.enabled, isFalse);
+
+      final server = await world.otherLocation('server');
+      await again.changeFolder(server);
+      expect(again.state.enabled, isTrue);
+      expect(again.state.folder, server);
+    });
+
     test('changing to a folder that cannot be used says why', () async {
       final laptop = await world.device('laptop', enabled: false);
       final screen = await screenOn(laptop);

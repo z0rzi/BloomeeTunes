@@ -258,6 +258,42 @@ void main() {
   });
 
   test(
+      'with sync off, setting up a WebDAV server from its choice turns sync on with it',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final cubit = screenOn(appOn(laptop, MemoryKeyring()));
+    await laptop.add('Road trip', [song('yt::1')]);
+    await cubit.load();
+
+    expect(await signIn(cubit), isNull);
+    await cubit.chooseWebDav(deviceName: 'Kitchen laptop');
+    await cubit.syncNow();
+
+    expect(cubit.state.setupProblem, isNull);
+    expect(cubit.state.enabled, isTrue);
+    expect(cubit.state.locationKind, SyncLocationKind.webDav);
+    expect(cubit.state.deviceName, 'Kitchen laptop');
+    final state =
+        server.paths.singleWhere((p) => p.startsWith('/dav/bloomee/sync/'));
+    expect(utf8.decode(server.file(state)!), contains('yt::1'));
+  });
+
+  test(
+      'with sync off, a WebDAV server that cannot be used once signed in says why and leaves sync off',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final cubit = screenOn(appOn(laptop, MemoryKeyring()));
+    await cubit.load();
+
+    expect(await signIn(cubit), isNull);
+    server.answerEverythingWith = 503;
+    await cubit.chooseWebDav();
+
+    expect(cubit.state.setupProblem, SyncLocationProblem.notFound);
+    expect(cubit.state.enabled, isFalse);
+  });
+
+  test(
       'moving from a local folder to WebDAV publishes there and leaves the folder untouched',
       () async {
     final laptop = await world.device('laptop', enabled: false);

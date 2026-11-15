@@ -1055,7 +1055,7 @@
   "settingsLibrarySyncSubtitle": "Keep your playlists the same on all your devices.",
   "syncTitle": "Library Sync",
   "syncEnableTitle": "Sync this device",
-  "syncEnableSubtitle": "Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on.",
+  "syncEnableSubtitle": "Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.",
   "syncLocationHeader": "Sync location",
   "syncLocalFolder": "Local folder (advanced)",
   "syncLocalFolderNote": "Bloomee only reads and writes files in this folder. Another tool, such as Syncthing, must carry it between your machines.",

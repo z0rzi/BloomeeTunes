@@ -231,13 +231,14 @@ class SyncCubit extends Cubit<SyncState> {
       folder: folder,
       setupProblem: () => null));
 
-  /// Makes Dropbox the Sync Location: while sync is on, moves sync there
-  /// (see [changeFolder]); while it is off, notes it for when sync is turned
-  /// on. This Device must be signed in ([finishDropboxSignIn]).
-  Future<void> chooseDropbox() async {
+  /// Makes Dropbox the Sync Location, as [changeFolder] does a folder:
+  /// while sync is on, moves sync there; while it is off, turns it on with
+  /// Dropbox, under [deviceName] if given. This Device must be signed in
+  /// ([finishDropboxSignIn]).
+  Future<void> chooseDropbox({String? deviceName}) async {
     if (!state.enabled) {
-      return emit(state.copyWith(
-          locationKind: SyncLocationKind.dropbox, setupProblem: () => null));
+      emit(state.copyWith(locationKind: SyncLocationKind.dropbox));
+      return enableDropbox(deviceName: deviceName);
     }
     await _settingUp(_repository.moveToDropbox);
   }
@@ -267,11 +268,12 @@ class SyncCubit extends Cubit<SyncState> {
   }
 
   /// Makes the WebDAV server the Sync Location, as [chooseDropbox] does
-  /// Dropbox. This Device must be signed in ([signInToWebDav]).
-  Future<void> chooseWebDav() async {
+  /// Dropbox: while sync is off, turns it on under [deviceName] if given.
+  /// This Device must be signed in ([signInToWebDav]).
+  Future<void> chooseWebDav({String? deviceName}) async {
     if (!state.enabled) {
-      return emit(state.copyWith(
-          locationKind: SyncLocationKind.webDav, setupProblem: () => null));
+      emit(state.copyWith(locationKind: SyncLocationKind.webDav));
+      return enableWebDav(deviceName: deviceName);
     }
     await _settingUp(_repository.moveToWebDav);
   }
@@ -332,12 +334,17 @@ class SyncCubit extends Cubit<SyncState> {
     await load();
   }
 
-  /// Makes [folder] the Sync Location: while sync is on, moves sync there
-  /// once the folder passes its test (otherwise [SyncState.setupProblem]
-  /// says why it cannot be used and sync stays where it was); while it is
-  /// off, notes it as [chooseFolder] does.
-  Future<void> changeFolder(String folder) async {
-    if (!state.enabled) return chooseFolder(folder);
+  /// Makes [folder] the Sync Location, once it passes its test: while sync
+  /// is on, moves sync there; while it is off, turns it on with [folder],
+  /// under [deviceName] if given, as [enable] does. Otherwise
+  /// [SyncState.setupProblem] says why it cannot be used, and sync stays as
+  /// it was; while it is off, [folder] stays noted, as [chooseFolder] does,
+  /// for when sync is turned on.
+  Future<void> changeFolder(String folder, {String? deviceName}) async {
+    if (!state.enabled) {
+      chooseFolder(folder);
+      return enable(folder, deviceName: deviceName);
+    }
     await _settingUp(() => _repository.moveTo(folder));
   }
 

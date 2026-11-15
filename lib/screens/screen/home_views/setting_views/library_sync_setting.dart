@@ -97,19 +97,18 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
         case SyncLocationKind.dropbox:
           _attempted = SyncLocationKind.dropbox;
           if (cubit.state.dropboxSignedIn || await _signInToDropbox()) {
-            await cubit.enableDropbox(deviceName: _deviceName.text);
+            await cubit.chooseDropbox(deviceName: _deviceName.text);
           }
         case SyncLocationKind.webDav:
           _attempted = SyncLocationKind.webDav;
           if (cubit.state.webDavSignedIn || await _signInToWebDav()) {
-            await cubit.enableWebDav(deviceName: _deviceName.text);
+            await cubit.chooseWebDav(deviceName: _deviceName.text);
           }
         case SyncLocationKind.localFolder:
           final folder = cubit.state.folder ?? await _pickFolder();
           if (folder != null) {
             _attempted = SyncLocationKind.localFolder;
-            cubit.chooseFolder(folder);
-            await cubit.enable(folder, deviceName: _deviceName.text);
+            await cubit.changeFolder(folder, deviceName: _deviceName.text);
           }
         case null:
           break;
@@ -147,22 +146,23 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
         SyncLocationKind.localFolder => l10n.syncLocalFolder,
       };
 
-  /// While sync is on, choosing another folder moves sync there.
+  /// Makes the folder the owner picks the Sync Location: while sync is on,
+  /// this moves sync there; while it is off, it turns sync on.
   Future<void> _chooseFolder() async {
     final folder = await _pickFolder();
     if (folder != null && mounted) {
       _attempted = SyncLocationKind.localFolder;
-      await _cubit.changeFolder(folder);
+      await _cubit.changeFolder(folder, deviceName: _deviceName.text);
     }
   }
 
   /// Makes Dropbox the Sync Location, signing in first if needed; while
-  /// sync is on, this moves sync there.
+  /// sync is on, this moves sync there; while it is off, it turns sync on.
   Future<void> _chooseDropbox() async {
     if (!_cubit.state.dropboxSignedIn && !await _signInToDropbox()) return;
     if (!mounted) return;
     _attempted = SyncLocationKind.dropbox;
-    await _cubit.chooseDropbox();
+    await _cubit.chooseDropbox(deviceName: _deviceName.text);
   }
 
   /// Signs this Device in to Dropbox; completes with whether it is.
@@ -176,13 +176,14 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
 
   /// Signs in to a WebDAV server, or to another one, and makes it the Sync
   /// Location; while sync is on, this moves sync there (or, on the same
-  /// server, goes on with the password entered).
+  /// server, goes on with the password entered); while it is off, it turns
+  /// sync on.
   Future<void> _chooseWebDav() async {
     _attempted = SyncLocationKind.webDav;
     if (!await _signInToWebDav() || !mounted) return;
     final state = _cubit.state;
     if (state.enabled && state.locationKind == SyncLocationKind.webDav) return;
-    await _cubit.chooseWebDav();
+    await _cubit.chooseWebDav(deviceName: _deviceName.text);
   }
 
   /// Asks for the WebDAV server's address, user name and password, and
