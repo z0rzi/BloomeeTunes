@@ -45,6 +45,9 @@ waits for every platform, checks all seven release files, and creates the
 prerelease with the existing filenames and version/build-number scheme.
 `SECRET_KEY` remains supported for publishing; when absent, the workflow uses
 the built-in GitHub token with `contents: write`. APK builds remain manual.
+When the `BLOOMEE_DROPBOX_APP_KEY` secret is set, each build passes it as
+`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`; without it the builds succeed and
+Bloomee offers no Dropbox Sync Location.
 
 ## 1. Fork the repository
 
