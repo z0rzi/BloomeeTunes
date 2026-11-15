@@ -2089,7 +2089,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncEnableSubtitle =>
-      'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.';
+      'Your playlists, favorites and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.';
 
   @override
   String get syncLocationHeader => 'Sync location';
@@ -2248,7 +2248,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String dialogSyncGuardUnliked(String title) {
-    return '“$title” unliked';
+    return '“$title” removed from favorites';
   }
 
   @override
@@ -2373,11 +2373,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupReplaceSyncWarning =>
-      'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+      'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, favorites and saved albums and artists this backup lacks will be removed from them too.';
 
   @override
   String get backupReplaceSyncOffWarning =>
-      'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+      'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, favorites and saved albums and artists this backup lacks will be removed from them too.';
 
   @override
   String get syncWebDav => 'WebDAV server';

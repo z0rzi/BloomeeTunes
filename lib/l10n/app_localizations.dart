@@ -3785,7 +3785,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncEnableSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.'**
+  /// **'Your playlists, favorites and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on or choose a sync location.'**
   String get syncEnableSubtitle;
 
   /// No description provided for @syncLocationHeader.
@@ -4013,7 +4013,7 @@ abstract class AppLocalizations {
   /// No description provided for @dialogSyncGuardUnliked.
   ///
   /// In en, this message translates to:
-  /// **'“{title}” unliked'**
+  /// **'“{title}” removed from favorites'**
   String dialogSyncGuardUnliked(String title);
 
   /// No description provided for @dialogSyncGuardOnDevice.
@@ -4217,13 +4217,13 @@ abstract class AppLocalizations {
   /// No description provided for @backupReplaceSyncWarning.
   ///
   /// In en, this message translates to:
-  /// **'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.'**
+  /// **'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, favorites and saved albums and artists this backup lacks will be removed from them too.'**
   String get backupReplaceSyncWarning;
 
   /// No description provided for @backupReplaceSyncOffWarning.
   ///
   /// In en, this message translates to:
-  /// **'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.'**
+  /// **'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, favorites and saved albums and artists this backup lacks will be removed from them too.'**
   String get backupReplaceSyncOffWarning;
 
   /// No description provided for @syncWebDav.

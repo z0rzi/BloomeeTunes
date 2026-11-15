@@ -2308,7 +2308,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dialogSyncGuardDeclineNote =>
-      'Si vous gardez votre bibliothèque, la synchronisation se met en pause jusqu\'à ce que vous confirmiez ces suppressions dans les réglages de synchronisation.';
+      'Si vous gardez votre bibliothèque, la synchronisation se met en pause jusqu\'à ce que vous confirmiez ces suppressions dans les paramètres de Synchronisation de la bibliothèque.';
 
   @override
   String get dialogSyncAnotherDevice => 'un autre appareil';
@@ -2407,7 +2407,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dialogSyncSignInBody =>
-      'Dropbox n\'accepte plus la connexion de cet appareil : elle a expiré ou a été révoquée. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous vous reconnectiez dans les réglages de synchronisation.';
+      'Dropbox n\'accepte plus la connexion de cet appareil : elle a expiré ou a été révoquée. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous vous reconnectiez dans les paramètres de Synchronisation de la bibliothèque.';
 
   @override
   String get snackbarSyncSignOutFailed =>
@@ -2508,7 +2508,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dialogSyncWebDavSignInBody =>
-      'Le serveur WebDAV n\'accepte plus le nom d\'utilisateur et le mot de passe de cet appareil. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous les saisissiez de nouveau dans les réglages de synchronisation.';
+      'Le serveur WebDAV n\'accepte plus le nom d\'utilisateur et le mot de passe de cet appareil. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous les saisissiez de nouveau dans les paramètres de Synchronisation de la bibliothèque.';
 
   @override
   String get syncErrorKeyringUnavailable =>
