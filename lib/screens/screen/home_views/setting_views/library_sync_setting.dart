@@ -11,6 +11,7 @@ import 'package:Bloomee/screens/widgets/sync_alert_listener.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Library Sync settings: turning it on, the Sync Location, this Device's
 /// name and the status line.
@@ -29,6 +30,10 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   /// Changes after the switch was turned, so that it is rebuilt showing
   /// whether sync really is on (turning it on may be refused).
   int _switchKey = 0;
+
+  /// The kind of Sync Location the owner last tried to set up, which a
+  /// setup problem is about.
+  SyncLocationKind? _attempted;
 
   @override
   void initState() {
@@ -81,10 +86,28 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   Future<void> _turn(bool on) async {
     final cubit = _cubit;
     if (on) {
-      final folder = cubit.state.folder ?? await _pickFolder();
-      if (folder != null) {
-        cubit.chooseFolder(folder);
-        await cubit.enable(folder, deviceName: _deviceName.text);
+      final chosen = cubit.state.locationKind;
+      // A choice this build no longer offers (a build without the Dropbox
+      // app key, say) is asked again.
+      final kind = chosen != null && cubit.state.locationKinds.contains(chosen)
+          ? chosen
+          : await _askLocation();
+      if (!mounted) return;
+      switch (kind) {
+        case SyncLocationKind.dropbox:
+          _attempted = SyncLocationKind.dropbox;
+          if (cubit.state.dropboxSignedIn || await _signInToDropbox()) {
+            await cubit.enableDropbox(deviceName: _deviceName.text);
+          }
+        case SyncLocationKind.localFolder:
+          final folder = cubit.state.folder ?? await _pickFolder();
+          if (folder != null) {
+            _attempted = SyncLocationKind.localFolder;
+            cubit.chooseFolder(folder);
+            await cubit.enable(folder, deviceName: _deviceName.text);
+          }
+        case null:
+          break;
       }
     } else {
       await cubit.disable();
@@ -92,10 +115,65 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     if (mounted) setState(() => _switchKey++);
   }
 
+  /// The kind of Sync Location to turn sync on with, when none was chosen:
+  /// the only one offered, or the one the owner picks.
+  Future<SyncLocationKind?> _askLocation() async {
+    final kinds = _cubit.state.locationKinds;
+    if (kinds.length < 2) return kinds.firstOrNull;
+    final l10n = AppLocalizations.of(context)!;
+    SyncLocationKind? chosen;
+    await showBloomeeDialog<void>(
+      context: context,
+      title: l10n.dialogSyncChooseLocationTitle,
+      icon: Icons.sync_rounded,
+      actions: [
+        for (final kind in kinds)
+          BloomeeDialogAction.filled(_kindName(l10n, kind),
+              onPressed: () => chosen = kind),
+      ],
+    );
+    return chosen;
+  }
+
+  static String _kindName(AppLocalizations l10n, SyncLocationKind kind) =>
+      switch (kind) {
+        SyncLocationKind.dropbox => l10n.syncDropbox,
+        SyncLocationKind.localFolder => l10n.syncLocalFolder,
+      };
+
   /// While sync is on, choosing another folder moves sync there.
   Future<void> _chooseFolder() async {
     final folder = await _pickFolder();
-    if (folder != null && mounted) await _cubit.changeFolder(folder);
+    if (folder != null && mounted) {
+      _attempted = SyncLocationKind.localFolder;
+      await _cubit.changeFolder(folder);
+    }
+  }
+
+  /// Makes Dropbox the Sync Location, signing in first if needed; while
+  /// sync is on, this moves sync there.
+  Future<void> _chooseDropbox() async {
+    if (!_cubit.state.dropboxSignedIn && !await _signInToDropbox()) return;
+    if (!mounted) return;
+    _attempted = SyncLocationKind.dropbox;
+    await _cubit.chooseDropbox();
+  }
+
+  /// Signs this Device in to Dropbox; completes with whether it is.
+  Future<bool> _signInToDropbox() async =>
+      await showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (_) => _DropboxSignInDialog(cubit: _cubit),
+      ) ??
+      false;
+
+  Future<void> _signOutOfDropbox() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (!await _cubit.signOutOfDropbox()) {
+      SnackbarService.showMessage(l10n.snackbarDropboxSignOutFailed);
+    }
+    if (mounted) setState(() => _switchKey++);
   }
 
   Future<void> _forget(KnownDevice device) async {
@@ -160,12 +238,8 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                     if (state.setupProblem case final problem?) ...[
                       const SettingDivider(),
                       SettingInfoText(
-                        text: switch (problem) {
-                          SyncLocationProblem.notFound =>
-                            l10n.syncFolderNotFound,
-                          SyncLocationProblem.notWritable =>
-                            l10n.syncFolderNotWritable,
-                        },
+                        text: problemText(
+                            l10n, problem, _attempted ?? state.locationKind),
                         color: Colors.redAccent,
                       ),
                     ],
@@ -174,17 +248,50 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                   SettingSectionHeader(label: l10n.syncLocationHeader),
                   SettingCard(children: [
                     if (state.locationKinds
+                        .contains(SyncLocationKind.dropbox)) ...[
+                      SettingNavTile(
+                        icon: Icons.cloud_outlined,
+                        title: l10n.syncDropbox,
+                        subtitle: state.dropboxSignedIn
+                            ? l10n.syncDropboxSignedIn
+                            : l10n.syncDropboxSignedOut,
+                        badge: state.locationKind == SyncLocationKind.dropbox
+                            ? l10n.syncLocationInUse
+                            : null,
+                        onTap: _chooseDropbox,
+                      ),
+                      SettingInfoText(text: l10n.syncDropboxNote),
+                      if (state.dropboxSignedIn)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _signOutOfDropbox,
+                              icon: const Icon(Icons.logout_rounded),
+                              label: Text(l10n.buttonDropboxSignOut),
+                            ),
+                          ),
+                        ),
+                    ],
+                    if (state.locationKinds.length > 1) const SettingDivider(),
+                    if (state.locationKinds
                         .contains(SyncLocationKind.localFolder)) ...[
                       SettingNavTile(
                         icon: Icons.folder_outlined,
                         title: l10n.syncLocalFolder,
                         subtitle: state.folder ?? l10n.syncNoFolder,
+                        badge: state.locationKinds.length > 1 &&
+                                state.locationKind ==
+                                    SyncLocationKind.localFolder
+                            ? l10n.syncLocationInUse
+                            : null,
                         onTap: _chooseFolder,
                       ),
                       SettingInfoText(text: l10n.syncLocalFolderNote),
-                      if (state.enabled)
-                        SettingInfoText(text: l10n.syncFolderMoveNote),
                     ],
+                    if (state.enabled)
+                      SettingInfoText(text: l10n.syncLocationMoveNote),
                   ]),
                   const SizedBox(height: 28),
                   SettingSectionHeader(label: l10n.syncDeviceHeader),
@@ -283,6 +390,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   static String _describe(AppLocalizations l10n, SyncError error) =>
       switch (error) {
         SyncLocationUnreachable() => l10n.syncErrorUnreachable,
+        SyncSignInNeeded() => l10n.syncErrorSignInNeeded,
         SyncFailed(:final detail) => l10n.syncErrorFailed(detail),
         SyncNeedsOwner(:final outcome) => switch (outcome) {
             SyncHeld(declined: true) => l10n.syncErrorPaused,
@@ -292,6 +400,156 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
               l10n.syncErrorSkipped(skipped.length),
           },
       };
+}
+
+/// What [problem], met setting up a Sync Location of [kind], means for the
+/// owner.
+String problemText(AppLocalizations l10n, SyncLocationProblem problem,
+        SyncLocationKind? kind) =>
+    switch (problem) {
+      SyncLocationProblem.notFound => kind == SyncLocationKind.dropbox
+          ? l10n.syncDropboxNotReachable
+          : l10n.syncFolderNotFound,
+      SyncLocationProblem.notWritable => kind == SyncLocationKind.dropbox
+          ? l10n.syncDropboxNotWritable
+          : l10n.syncFolderNotWritable,
+      SyncLocationProblem.signInRefused => l10n.syncSignInRefused,
+      SyncLocationProblem.keyringUnavailable => l10n.syncKeyringUnavailable,
+    };
+
+/// Signing in to Dropbox: the owner opens the Dropbox page, allows Bloomee,
+/// and pastes back the code Dropbox shows. Pops with whether this Device is
+/// signed in.
+class _DropboxSignInDialog extends StatefulWidget {
+  final SyncCubit cubit;
+
+  const _DropboxSignInDialog({required this.cubit});
+
+  @override
+  State<_DropboxSignInDialog> createState() => _DropboxSignInDialogState();
+}
+
+class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
+  late final Uri _page = widget.cubit.beginDropboxSignIn();
+  final TextEditingController _code = TextEditingController();
+  bool _pageNotOpened = false;
+  bool _signingIn = false;
+  SyncLocationProblem? _problem;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openPage() async {
+    var opened = false;
+    try {
+      opened = await launchUrl(_page, mode: LaunchMode.externalApplication);
+    } catch (error) {
+      debugPrint('The Dropbox page could not be opened: $error');
+    }
+    if (mounted) setState(() => _pageNotOpened = !opened);
+  }
+
+  Future<void> _finish() async {
+    final code = _code.text.trim();
+    if (code.isEmpty || _signingIn) return;
+    setState(() {
+      _signingIn = true;
+      _problem = null;
+    });
+    SyncLocationProblem? problem;
+    try {
+      problem = await widget.cubit.finishDropboxSignIn(code);
+    } catch (error) {
+      debugPrint('Dropbox sign-in failed: $error');
+      problem = SyncLocationProblem.signInRefused;
+    }
+    if (!mounted) return;
+    if (problem == null) return Navigator.of(context).pop(true);
+    setState(() {
+      _signingIn = false;
+      _problem = problem;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final secondary = Default_Theme.primaryColor2.withValues(alpha: 0.7);
+    return BloomeeDialogSurface(
+      title: l10n.dialogDropboxSignInTitle,
+      icon: Icons.cloud_outlined,
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.dialogDropboxSignInBody,
+                style: TextStyle(color: secondary, fontSize: 14)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _openPage,
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: Text(l10n.buttonDropboxOpenPage),
+            ),
+            if (_pageNotOpened) ...[
+              Text(l10n.syncDropboxPageNotOpened,
+                  style: TextStyle(color: secondary, fontSize: 13)),
+              const SizedBox(height: 4),
+              SelectableText(_page.toString(),
+                  style: const TextStyle(
+                      color: Default_Theme.primaryColor2, fontSize: 12)),
+            ],
+            const SizedBox(height: 8),
+            TextField(
+              controller: _code,
+              enabled: !_signingIn,
+              autocorrect: false,
+              onSubmitted: (_) => _finish(),
+              style: const TextStyle(
+                  color: Default_Theme.primaryColor2, fontSize: 15),
+              decoration: InputDecoration(
+                labelText: l10n.syncDropboxCode,
+                labelStyle: TextStyle(color: secondary),
+              ),
+            ),
+            if (_problem case final problem?) ...[
+              const SizedBox(height: 8),
+              Text(problemText(l10n, problem, SyncLocationKind.dropbox),
+                  style:
+                      const TextStyle(color: Colors.redAccent, fontSize: 13)),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(l10n.buttonCancel),
+                ),
+                const SizedBox(width: 8),
+                ValueListenableBuilder(
+                  valueListenable: _code,
+                  builder: (context, value, _) => FilledButton(
+                    onPressed: _signingIn || value.text.trim().isEmpty
+                        ? null
+                        : _finish,
+                    child: _signingIn
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(l10n.buttonDropboxSignIn),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A known Device: its name, when it last synced, and the way to forget it

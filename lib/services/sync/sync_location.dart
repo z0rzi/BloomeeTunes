@@ -20,7 +20,8 @@ abstract interface class SyncLocation {
   Future<void> delete(String path);
 
   /// Completes when the Sync Location can be used, otherwise throws
-  /// [SyncLocationUnavailable].
+  /// [SyncLocationUnavailable] (or [SyncLocationSignInRefused] for one that
+  /// needs signing in).
   Future<void> checkReachable();
 }
 
@@ -36,6 +37,18 @@ sealed class SyncLocationException implements Exception {
 /// The Sync Location cannot be reached now; trying again later may succeed.
 final class SyncLocationUnavailable extends SyncLocationException {
   const SyncLocationUnavailable(super.message);
+}
+
+/// The Sync Location no longer accepts this Device's sign-in (it expired, was
+/// revoked, or there is none): only the owner signing in again helps.
+final class SyncLocationSignInRefused extends SyncLocationException {
+  const SyncLocationSignInRefused(super.message);
+}
+
+/// The Sync Location was reached but refused the operation for another
+/// reason, such as being full.
+final class SyncLocationFailed extends SyncLocationException {
+  const SyncLocationFailed(super.message);
 }
 
 /// Rejects paths that could leave the Sync Location.

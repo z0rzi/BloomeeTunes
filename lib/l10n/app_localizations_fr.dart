@@ -2171,10 +2171,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le nom sous lequel vos autres appareils voient celui-ci. Le changer ne modifie rien à ce qui est synchronisé.';
 
   @override
-  String get syncFolderMoveNote =>
-      'Choisir un autre dossier y déplace la synchronisation. Rien n\'est modifié ni supprimé dans l\'ancien dossier.';
-
-  @override
   String get syncDevicesHeader => 'Appareils';
 
   @override
@@ -2342,6 +2338,84 @@ class AppLocalizationsFr extends AppLocalizations {
   String dialogSyncUpdateBody(String device) {
     return '$device utilise un format de synchronisation plus récent que celui que cette version de Bloomee sait lire. La synchronisation est arrêtée sur cet appareil jusqu\'à la mise à jour de Bloomee.';
   }
+
+  @override
+  String get syncDropbox => 'Dropbox';
+
+  @override
+  String get syncDropboxNote =>
+      'Bloomee n\'utilise que son propre dossier d\'application dans votre Dropbox et ne voit pas vos autres fichiers. Connectez-vous une fois sur chaque appareil.';
+
+  @override
+  String get syncDropboxSignedIn => 'Connecté';
+
+  @override
+  String get syncDropboxSignedOut => 'Non connecté';
+
+  @override
+  String get syncLocationInUse => 'Utilisé';
+
+  @override
+  String get syncLocationMoveNote =>
+      'Choisir un autre emplacement de synchronisation y déplace la synchronisation. Rien n\'est modifié ni supprimé dans l\'ancien.';
+
+  @override
+  String get buttonDropboxSignOut => 'Se déconnecter de Dropbox';
+
+  @override
+  String get dialogDropboxSignInTitle => 'Se connecter à Dropbox';
+
+  @override
+  String get dialogDropboxSignInBody =>
+      '1. Ouvrez la page Dropbox et autorisez Bloomee.\n2. Dropbox affiche alors un code : copiez-le et collez-le ici.';
+
+  @override
+  String get buttonDropboxOpenPage => 'Ouvrir la page Dropbox';
+
+  @override
+  String get syncDropboxPageNotOpened =>
+      'Le navigateur n\'a pas pu s\'ouvrir. Ouvrez vous-même cette adresse :';
+
+  @override
+  String get syncDropboxCode => 'Code donné par Dropbox';
+
+  @override
+  String get buttonDropboxSignIn => 'Se connecter';
+
+  @override
+  String get syncDropboxNotReachable =>
+      'Dropbox est inaccessible. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get syncDropboxNotWritable =>
+      'Bloomee ne peut pas écrire dans son dossier Dropbox.';
+
+  @override
+  String get syncSignInRefused =>
+      'Dropbox n\'a pas accepté cette connexion. Rouvrez la page Dropbox et collez le nouveau code.';
+
+  @override
+  String get syncKeyringUnavailable =>
+      'La connexion n\'a pas pu être conservée dans le trousseau du système. Sous Linux, vérifiez qu\'un trousseau comme GNOME Keyring ou KWallet est lancé et déverrouillé.';
+
+  @override
+  String get syncErrorSignInNeeded =>
+      'Dropbox n\'accepte plus la connexion de cet appareil. Reconnectez-vous pour continuer à synchroniser.';
+
+  @override
+  String get dialogSyncSignInTitle => 'Reconnectez-vous à Dropbox';
+
+  @override
+  String get dialogSyncSignInBody =>
+      'Dropbox n\'accepte plus la connexion de cet appareil : elle a expiré ou a été révoquée. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous vous reconnectiez dans les réglages de synchronisation.';
+
+  @override
+  String get snackbarDropboxSignOutFailed =>
+      'Déconnexion impossible : le trousseau du système ne peut pas être modifié.';
+
+  @override
+  String get dialogSyncChooseLocationTitle =>
+      'Où cet appareil doit-il se synchroniser ?';
 
   @override
   String get backupReplaceSyncWarning =>

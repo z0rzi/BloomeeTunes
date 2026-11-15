@@ -3848,12 +3848,6 @@ abstract class AppLocalizations {
   /// **'How your other devices name this one. Renaming changes nothing about what syncs.'**
   String get syncDeviceNameSubtitle;
 
-  /// No description provided for @syncFolderMoveNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Choosing another folder moves sync there. Nothing in the old folder is changed or deleted.'**
-  String get syncFolderMoveNote;
-
   /// No description provided for @syncDevicesHeader.
   ///
   /// In en, this message translates to:
@@ -4087,6 +4081,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{device} uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.'**
   String dialogSyncUpdateBody(String device);
+
+  /// No description provided for @syncDropbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox'**
+  String get syncDropbox;
+
+  /// No description provided for @syncDropboxNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee only uses its own app folder in your Dropbox and cannot see your other files. Sign in once on each device.'**
+  String get syncDropboxNote;
+
+  /// No description provided for @syncDropboxSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get syncDropboxSignedIn;
+
+  /// No description provided for @syncDropboxSignedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Not signed in'**
+  String get syncDropboxSignedOut;
+
+  /// No description provided for @syncLocationInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get syncLocationInUse;
+
+  /// No description provided for @syncLocationMoveNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Choosing another sync location moves sync there. Nothing in the old one is changed or deleted.'**
+  String get syncLocationMoveNote;
+
+  /// No description provided for @buttonDropboxSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of Dropbox'**
+  String get buttonDropboxSignOut;
+
+  /// No description provided for @dialogDropboxSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Dropbox'**
+  String get dialogDropboxSignInTitle;
+
+  /// No description provided for @dialogDropboxSignInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Open the Dropbox page and allow Bloomee.\n2. Dropbox then shows a code: copy it and paste it here.'**
+  String get dialogDropboxSignInBody;
+
+  /// No description provided for @buttonDropboxOpenPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Dropbox page'**
+  String get buttonDropboxOpenPage;
+
+  /// No description provided for @syncDropboxPageNotOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser could not be opened. Open this address yourself:'**
+  String get syncDropboxPageNotOpened;
+
+  /// No description provided for @syncDropboxCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code from Dropbox'**
+  String get syncDropboxCode;
+
+  /// No description provided for @buttonDropboxSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get buttonDropboxSignIn;
+
+  /// No description provided for @syncDropboxNotReachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox cannot be reached. Check your connection and try again.'**
+  String get syncDropboxNotReachable;
+
+  /// No description provided for @syncDropboxNotWritable.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee cannot write into its Dropbox folder.'**
+  String get syncDropboxNotWritable;
+
+  /// No description provided for @syncSignInRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox did not accept this sign-in. Open the Dropbox page again and paste the new code.'**
+  String get syncSignInRefused;
+
+  /// No description provided for @syncKeyringUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.'**
+  String get syncKeyringUnavailable;
+
+  /// No description provided for @syncErrorSignInNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox no longer accepts this device\'s sign-in. Sign in again to keep syncing.'**
+  String get syncErrorSignInNeeded;
+
+  /// No description provided for @dialogSyncSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Dropbox again'**
+  String get dialogSyncSignInTitle;
+
+  /// No description provided for @dialogSyncSignInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox no longer accepts this device\'s sign-in: it expired or was revoked. Sync is stopped on this device until you sign in again in the Library Sync settings.'**
+  String get dialogSyncSignInBody;
+
+  /// No description provided for @snackbarDropboxSignOutFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign out: the system keyring cannot be changed.'**
+  String get snackbarDropboxSignOutFailed;
+
+  /// No description provided for @dialogSyncChooseLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where should this device sync?'**
+  String get dialogSyncChooseLocationTitle;
 
   /// No description provided for @backupReplaceSyncWarning.
   ///

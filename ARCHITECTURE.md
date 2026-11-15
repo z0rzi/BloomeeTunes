@@ -129,13 +129,24 @@ retried at the next sync. A replace-restore in `BackupDAO` records,
 through `SyncDAO`, Removal Markers for what the backup lacks and stamps what it
 restores as changed now, so it reaches the other Devices as the Latest Change.
 `SyncRepository` (`lib/repository/sync/`) is what the app uses: it keeps the Device's
-sync setup (on/off, the local folder, the Device name) in device-local settings that
+sync setup (on/off, the kind of Sync Location, the local folder, the Device name) in device-local settings that
 never travel in a backup, tests a Sync Location before enabling or moving sync, owns the engine for
 the chosen Sync Location, and runs syncs through `SyncScheduler` (startup, return to
 the foreground, a debounced change to the Synced Library seen through
 `SyncDAO.watchSyncedLibrary`, every two minutes in the foreground, sync now; one at a
 time; quiet retries with backoff). `SyncCubit` turns its status and outcomes into the
 settings screen's state and the alerts `SyncAlertListener` shows app-wide.
+The Sync Location adapters live in `lib/services/sync/`: `LocalFolderSyncLocation`
+(Linux only) and `DropboxSyncLocation`, which calls the Dropbox HTTP API directly through
+`package:http` in the app's own folder. Dropbox sign-in (`DropboxApp.beginSignIn`) is the
+authorisation-code flow with PKCE, no client secret, offline access and no redirect: the
+owner pastes back the code Dropbox shows. The refresh token is kept only in the system
+keyring through `CredentialStore` (`flutter_secure_storage`: Android Keystore, the
+desktop secret service on Linux), never in the database, a Device State or a backup. The
+app key comes from the build (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`); a build
+without it does not offer Dropbox. When Dropbox refuses the sign-in, sync stops
+(`SyncSignInNeeded`, alerted each time sync stops for it, including at a start without a
+sign-in) until the owner signs in again.
 
 ### DAOs
 

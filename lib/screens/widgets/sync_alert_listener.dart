@@ -10,7 +10,7 @@ import 'package:intl/intl.dart';
 
 /// Shows, wherever the owner is in the app, what Library Sync needs them to
 /// see: the Removal Guard's question and the alerts for a refused clock, an
-/// unreadable Device State or a needed update.
+/// unreadable Device State, a needed update or a refused sign-in.
 class SyncAlertListener extends StatefulWidget {
   final Widget child;
   final GlobalKey<NavigatorState> navigatorKey;
@@ -50,6 +50,10 @@ class _SyncAlertListenerState extends State<SyncAlertListener> {
       UpdateNeededAlert(:final deviceName) => (
           l10n.dialogSyncUpdateTitle,
           l10n.dialogSyncUpdateBody(deviceName ?? l10n.syncAnotherDevice)
+        ),
+      SignInNeededAlert() => (
+          l10n.dialogSyncSignInTitle,
+          l10n.dialogSyncSignInBody
         ),
     };
     await showBloomeeDialog<void>(

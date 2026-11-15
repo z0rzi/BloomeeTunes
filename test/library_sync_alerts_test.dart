@@ -64,7 +64,7 @@ void main() {
         database: Future.value(laptop.isar),
         backups: laptop.backups,
         machineName: () => 'workstation',
-        locationKinds: SyncLocationKind.offeredOn('linux'));
+        locationKinds: SyncLocationKind.offeredOn('linux', dropbox: false));
     repositories.add(repository);
     final cubit = SyncCubit(repository);
     cubits.add(cubit);
@@ -77,8 +77,12 @@ void main() {
   });
 
   test('the local folder is offered on Linux and not on Android', () {
-    expect(SyncLocationKind.offeredOn('linux'), [SyncLocationKind.localFolder]);
-    expect(SyncLocationKind.offeredOn('android'), isEmpty);
+    for (final dropbox in [false, true]) {
+      expect(SyncLocationKind.offeredOn('linux', dropbox: dropbox),
+          contains(SyncLocationKind.localFolder));
+      expect(SyncLocationKind.offeredOn('android', dropbox: dropbox),
+          isNot(contains(SyncLocationKind.localFolder)));
+    }
   });
 
   test('choosing a folder that cannot be used says why and stays off',

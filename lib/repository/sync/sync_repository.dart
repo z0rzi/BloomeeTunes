@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:Bloomee/core/constants/setting_keys.dart';
@@ -12,6 +13,8 @@ import 'package:Bloomee/repository/sync/sync_scheduler.dart';
 import 'package:Bloomee/services/backup/serial_executor.dart';
 import 'package:Bloomee/services/db/dao/settings_dao.dart';
 import 'package:Bloomee/services/db/dao/sync_dao.dart';
+import 'package:Bloomee/services/sync/credential_store.dart';
+import 'package:Bloomee/services/sync/dropbox_sync_location.dart';
 import 'package:Bloomee/services/sync/local_folder_sync_location.dart';
 import 'package:Bloomee/services/sync/sync_location.dart';
 import 'package:isar_community/isar.dart';
@@ -20,6 +23,19 @@ import 'package:isar_community/isar.dart';
 typedef SyncSchedulerFactory = SyncScheduler Function(
     Future<void> Function() run);
 
+/// The Sync Location sync is set up to use: its kind and, for a local
+/// folder, which one.
+class _ChosenLocation {
+  final SyncLocationKind kind;
+  final String? folder;
+
+  const _ChosenLocation.folder(String this.folder)
+      : kind = SyncLocationKind.localFolder;
+  const _ChosenLocation.dropbox()
+      : kind = SyncLocationKind.dropbox,
+        folder = null;
+}
+
 /// Library Sync as the app uses it: its setup on this Device, the sync
 /// engine and Sync Location it implies, and when syncs run.
 ///
@@ -27,10 +43,18 @@ typedef SyncSchedulerFactory = SyncScheduler Function(
 /// tested first; nothing is written to a Sync Location before that. Once on,
 /// syncs run by themselves while the app is open (see [SyncScheduler]), and
 /// what each did is reported through [status] and [outcomes].
+///
+/// Dropbox is signed in to once per Device; the sign-in is kept in the
+/// system keyring ([CredentialStore]), never in the database or anything
+/// published. When Dropbox stops accepting it, sync stops until the owner
+/// signs in again ([SyncSignInNeeded]).
 class SyncRepository {
   /// The file written and removed to test a Sync Location, in the area
   /// that holds Device States (which only reads `.json` files).
   static const probeFile = '${SyncEngine.stateDirectory}/.bloomee-write-test';
+
+  /// The keyring entry holding the Dropbox sign-in's refresh token.
+  static const dropboxCredential = 'library_sync.dropbox.refresh_token';
 
   final Future<Isar> _database;
   final BackupRepository _backups;
@@ -39,6 +63,8 @@ class SyncRepository {
   final SyncClock _clock;
   final String Function() _machineName;
   final SyncSchedulerFactory _schedulerFor;
+  final CredentialStore _credentials;
+  final DropboxApp? _dropbox;
 
   /// The kinds of Sync Location this Device offers.
   final List<SyncLocationKind> locationKinds;
@@ -49,6 +75,9 @@ class SyncRepository {
   final StreamController<SyncOutcome> _outcomes = StreamController.broadcast();
 
   SyncEngine? _engine;
+
+  /// The Dropbox sign-in under way, waiting for the owner's code.
+  DropboxSignIn? _pendingSignIn;
   SyncScheduler? _scheduler;
   StreamSubscription<void>? _libraryChanges;
   bool _inBackground = false;
@@ -63,6 +92,8 @@ class SyncRepository {
     String Function()? machineName,
     SyncSchedulerFactory? scheduler,
     List<SyncLocationKind>? locationKinds,
+    CredentialStore? credentials,
+    DropboxApp? dropbox,
   })  : _database = database,
         _backups = backups,
         _settings = SettingsDAO(database),
@@ -70,8 +101,11 @@ class SyncRepository {
         _clock = clock ?? DateTime.now,
         _machineName = machineName ?? (() => Platform.localHostname),
         _schedulerFor = scheduler ?? ((run) => SyncScheduler(run: run)),
+        _credentials = credentials ?? const KeyringCredentialStore(),
+        _dropbox = dropbox ?? DropboxApp.fromBuild(),
         locationKinds = locationKinds ??
-            SyncLocationKind.offeredOn(Platform.operatingSystem);
+            SyncLocationKind.offeredOn(Platform.operatingSystem,
+                dropbox: (dropbox ?? DropboxApp.fromBuild()) != null);
 
   SyncStatus get status => _status;
   Stream<SyncStatus> get statusChanges => _statusChanges.stream;
@@ -83,10 +117,15 @@ class SyncRepository {
   Future<SyncSetup> setup() async {
     final identity = await _dao.identity();
     final machine = _machineName().trim();
+    final folder = await _settings.getSettingStr(SettingKeys.librarySyncFolder);
+    final kind = SyncLocationKind.values.asNameMap()[
+        await _settings.getSettingStr(SettingKeys.librarySyncLocationKind)];
     return SyncSetup(
       enabled: await _settings.getSettingBool(SettingKeys.librarySyncEnabled) ??
           false,
-      folder: await _settings.getSettingStr(SettingKeys.librarySyncFolder),
+      locationKind:
+          kind ?? (folder != null ? SyncLocationKind.localFolder : null),
+      folder: folder,
       deviceName: identity?.deviceName ??
           await _settings.getSettingStr(SettingKeys.librarySyncDeviceName) ??
           (machine.isEmpty ? 'Bloomee' : machine),
@@ -105,8 +144,9 @@ class SyncRepository {
         if (!setup.enabled && (identity?.enabled ?? false)) {
           await _dao.disable();
         }
-        if (_closed || !setup.enabled || setup.folder == null) return null;
-        final engine = _engineFor(setup.folder!);
+        final chosen = _chosenLocationOf(setup);
+        if (_closed || !setup.enabled || chosen == null) return null;
+        final engine = _engineWith(await _locationAt(chosen));
         // Sync is on but this Device's bookkeeping is gone, as after running
         // the official build: enabling again makes it a new Device, whose
         // First Sync only adds.
@@ -117,7 +157,7 @@ class SyncRepository {
         }
         return _begin(engine);
       } catch (error) {
-        _publish(_status.copyWith(lastError: SyncFailed(_clock(), '$error')));
+        _publish(_status.copyWith(lastError: _errorFor(error)));
         return null;
       }
     });
@@ -134,15 +174,47 @@ class SyncRepository {
   /// says why it cannot be used and changes nothing. The first sync starts
   /// at once.
   Future<SyncLocationProblem?> enable(
-      {required String folder, required String deviceName}) async {
+          {required String folder, required String deviceName}) =>
+      _enableAt(_ChosenLocation.folder(folder), deviceName);
+
+  /// Turns sync on with Dropbox as the Sync Location, as [enable] does with
+  /// a folder. This Device must be signed in ([finishDropboxSignIn]).
+  Future<SyncLocationProblem?> enableDropbox({required String deviceName}) =>
+      _enableAt(const _ChosenLocation.dropbox(), deviceName);
+
+  /// Moves sync to [folder], once it passes [testFolder]: this Device's
+  /// Device State is published there with the sync that starts at once, and
+  /// nothing in the old Sync Location is touched. Otherwise says why
+  /// [folder] cannot be used, and sync goes on where it was.
+  Future<SyncLocationProblem?> moveTo(String folder) async =>
+      enable(folder: folder, deviceName: (await setup()).deviceName);
+
+  /// Moves sync to Dropbox, as [moveTo] does to a folder.
+  Future<SyncLocationProblem?> moveToDropbox() async =>
+      enableDropbox(deviceName: (await setup()).deviceName);
+
+  Future<SyncLocationProblem?> _enableAt(
+      _ChosenLocation chosen, String deviceName) async {
     final scheduler = await _setupChanges.run(() async {
-      final problem = await testFolder(folder);
+      final SyncLocation location;
+      try {
+        location = await _locationAt(chosen);
+      } on SyncLocationSignInRefused {
+        return SyncLocationProblem.signInRefused;
+      } on CredentialStoreUnavailable {
+        return SyncLocationProblem.keyringUnavailable;
+      }
+      final problem = await _test(location);
       if (problem != null) return problem;
-      final engine = _engineFor(folder);
+      final engine = _engineWith(location);
       final name = deviceName.trim();
       await engine.enable(deviceName: name);
       await _end();
-      await _settings.putSettingStr(SettingKeys.librarySyncFolder, folder);
+      await _settings.putSettingStr(
+          SettingKeys.librarySyncLocationKind, chosen.kind.name);
+      if (chosen.folder case final folder?) {
+        await _settings.putSettingStr(SettingKeys.librarySyncFolder, folder);
+      }
       await _settings.putSettingStr(SettingKeys.librarySyncDeviceName, name);
       await _settings.putSettingBool(SettingKeys.librarySyncEnabled, true);
       return _closed ? null : _begin(engine);
@@ -152,24 +224,107 @@ class SyncRepository {
     return null;
   }
 
-  /// Moves sync to [folder], once it passes [testFolder]: this Device's
-  /// Device State is published there with the sync that starts at once, and
-  /// nothing in the old Sync Location is touched. Otherwise says why
-  /// [folder] cannot be used, and sync goes on where it was.
-  Future<SyncLocationProblem?> moveTo(String folder) async =>
-      enable(folder: folder, deviceName: (await setup()).deviceName);
+  /// Whether this Device is signed in to Dropbox: its sign-in is in the
+  /// keyring. False when the keyring cannot be read.
+  Future<bool> dropboxSignedIn() async {
+    try {
+      return await _credentials.read(dropboxCredential) != null;
+    } on CredentialStoreUnavailable catch (error) {
+      log('$error', name: 'SyncRepository');
+      return false;
+    }
+  }
+
+  /// Starts signing in to Dropbox, returning the Dropbox page the owner
+  /// opens to allow Bloomee; they paste back the code it shows, for
+  /// [finishDropboxSignIn]. Only for a build that offers Dropbox.
+  Uri beginDropboxSignIn() => (_pendingSignIn = _dropboxApp.beginSignIn()).page;
+
+  /// Finishes the sign-in [beginDropboxSignIn] started with the [code] the
+  /// owner pasted, keeping it in the keyring; otherwise says why it failed.
+  /// Sync stopped for want of a sign-in resumes at once.
+  Future<SyncLocationProblem?> finishDropboxSignIn(String code) async {
+    final signIn = _pendingSignIn;
+    if (signIn == null) return SyncLocationProblem.signInRefused;
+    final String refreshToken;
+    try {
+      refreshToken = await signIn.finish(code);
+    } on SyncLocationUnavailable {
+      return SyncLocationProblem.notFound;
+    } on SyncLocationException {
+      return SyncLocationProblem.signInRefused;
+    }
+    if (identical(_pendingSignIn, signIn)) _pendingSignIn = null;
+    final resumed = await _setupChanges.run(() async {
+      try {
+        await _credentials.write(dropboxCredential, refreshToken);
+      } on CredentialStoreUnavailable {
+        return SyncLocationProblem.keyringUnavailable;
+      }
+      final setup = await this.setup();
+      if (_closed ||
+          !setup.enabled ||
+          setup.locationKind != SyncLocationKind.dropbox) {
+        return null;
+      }
+      // Sync goes on with the new sign-in.
+      try {
+        await _end();
+        final engine =
+            _engineWith(await _locationAt(const _ChosenLocation.dropbox()));
+        if ((await _dao.identity())?.enabled != true) {
+          await engine.enable(deviceName: setup.deviceName);
+        }
+        return _begin(engine);
+      } catch (error) {
+        // Signed in all the same; the status tells why sync did not resume.
+        _publish(_status.copyWith(lastError: _errorFor(error)));
+        return null;
+      }
+    });
+    if (resumed is SyncLocationProblem) return resumed;
+    if (resumed is SyncScheduler) unawaited(resumed.start());
+    return null;
+  }
+
+  /// Signs this Device out of Dropbox: the sign-in is ended on Dropbox when
+  /// it can be reached, and removed from the keyring in any case. Sync
+  /// through Dropbox is turned off, as [disable] does. Throws
+  /// [CredentialStoreUnavailable] when the keyring cannot be changed.
+  Future<void> signOutOfDropbox() => _setupChanges.run(() async {
+        final setup = await this.setup();
+        if (setup.enabled && setup.locationKind == SyncLocationKind.dropbox) {
+          await _stopSyncing();
+        }
+        try {
+          final refreshToken = await _credentials.read(dropboxCredential);
+          if (refreshToken != null && _dropbox != null) {
+            await DropboxSyncLocation(
+                    app: _dropbox, refreshToken: refreshToken, clock: _clock)
+                .signOut();
+          }
+        } catch (error) {
+          // Removing it from this Device is what matters; Dropbox lists
+          // the sign-in until the owner removes it there.
+          log('Dropbox sign-in not ended on Dropbox: $error',
+              name: 'SyncRepository');
+        }
+        await _credentials.delete(dropboxCredential);
+      });
 
   /// Stops syncing. The library and the Device State published stay as they
   /// are, and this Device keeps its identity and bookkeeping, so that turning
   /// sync back on resumes where it left off.
-  Future<void> disable() => _setupChanges.run(() async {
-        final engine = _engine;
-        await _end();
-        // Through the engine, so that answering the Removal Guard, if it is
-        // under way, finishes first.
-        await (engine?.disable() ?? _dao.disable());
-        await _settings.putSettingBool(SettingKeys.librarySyncEnabled, false);
-      });
+  Future<void> disable() => _setupChanges.run(_stopSyncing);
+
+  Future<void> _stopSyncing() async {
+    final engine = _engine;
+    await _end();
+    // Through the engine, so that answering the Removal Guard, if it is
+    // under way, finishes first.
+    await (engine?.disable() ?? _dao.disable());
+    await _settings.putSettingBool(SettingKeys.librarySyncEnabled, false);
+  }
 
   /// The Devices known in the Sync Location, this one included; none while
   /// sync is off. See [SyncEngine.knownDevices].
@@ -204,7 +359,8 @@ class SyncRepository {
     final engine = _engine;
     if (engine == null) return;
     try {
-      await _record(() => engine.answerRemovalGuard(hold, confirm: confirm));
+      await _record(
+          engine, () => engine.answerRemovalGuard(hold, confirm: confirm));
     } catch (_) {
       // Reported in the status; the next scheduled sync tries again.
     }
@@ -230,15 +386,42 @@ class SyncRepository {
     await _outcomes.close();
   }
 
-  SyncEngine _engineFor(String folder) => SyncEngine(
+  static _ChosenLocation? _chosenLocationOf(SyncSetup setup) =>
+      switch (setup.locationKind) {
+        SyncLocationKind.dropbox => const _ChosenLocation.dropbox(),
+        SyncLocationKind.localFolder when setup.folder != null =>
+          _ChosenLocation.folder(setup.folder!),
+        _ => null,
+      };
+
+  /// The Sync Location at [chosen]. Throws [SyncLocationSignInRefused] for
+  /// Dropbox when this Device is not signed in.
+  Future<SyncLocation> _locationAt(_ChosenLocation chosen) async {
+    switch (chosen.kind) {
+      case SyncLocationKind.localFolder:
+        return LocalFolderSyncLocation(chosen.folder!);
+      case SyncLocationKind.dropbox:
+        final app = _dropboxApp;
+        final refreshToken = await _credentials.read(dropboxCredential) ??
+            (throw const SyncLocationSignInRefused(
+                'This Device is not signed in to Dropbox.'));
+        return DropboxSyncLocation(
+            app: app, refreshToken: refreshToken, clock: _clock);
+    }
+  }
+
+  DropboxApp get _dropboxApp =>
+      _dropbox ?? (throw StateError('This build has no Dropbox app key.'));
+
+  SyncEngine _engineWith(SyncLocation location) => SyncEngine(
       database: _database,
-      location: LocalFolderSyncLocation(folder),
+      location: location,
       backups: _backups,
       clock: _clock);
 
   SyncScheduler _begin(SyncEngine engine) {
     _engine = engine;
-    final scheduler = _schedulerFor(() => _record(engine.syncNow));
+    final scheduler = _schedulerFor(() => _record(engine, engine.syncNow));
     if (_inBackground) scheduler.moveToBackground();
     _scheduler = scheduler;
     _libraryChanges =
@@ -255,9 +438,12 @@ class SyncRepository {
     await scheduler?.stop();
   }
 
-  /// Runs [sync], reporting what it did; a failure is reported, then
-  /// rethrown for the scheduler to retry.
-  Future<void> _record(Future<SyncOutcome> Function() sync) async {
+  /// Runs [sync] with [engine], reporting what it did; a failure is
+  /// reported, then rethrown for the scheduler to retry. A refused sign-in
+  /// stops sync instead, and forgets that sign-in, until the owner signs in
+  /// again.
+  Future<void> _record(
+      SyncEngine engine, Future<SyncOutcome> Function() sync) async {
     _running++;
     _publish(_status.copyWith(running: true));
     try {
@@ -277,12 +463,32 @@ class SyncRepository {
       _publish(SyncStatus(
           running: _running > 0,
           lastSyncedAt: _status.lastSyncedAt,
-          lastError: error is SyncLocationUnavailable
-              ? SyncLocationUnreachable(_clock(), error.message)
-              : SyncFailed(_clock(), '$error')));
+          lastError: _errorFor(error)));
+      if (error is SyncLocationSignInRefused) unawaited(_signInRefused(engine));
       rethrow;
     }
   }
+
+  /// [engine]'s Sync Location refused this Device's sign-in: its syncs stop,
+  /// and the sign-in is forgotten, unless the owner meanwhile set sync up
+  /// anew.
+  Future<void> _signInRefused(SyncEngine engine) => _setupChanges.run(() async {
+        if (!identical(_engine, engine)) return;
+        await _end();
+        try {
+          await _credentials.delete(dropboxCredential);
+        } on CredentialStoreUnavailable catch (error) {
+          log('$error', name: 'SyncRepository');
+        }
+      });
+
+  SyncError _errorFor(Object error) => switch (error) {
+        SyncLocationSignInRefused(:final message) =>
+          SyncSignInNeeded(_clock(), message),
+        SyncLocationUnavailable(:final message) =>
+          SyncLocationUnreachable(_clock(), message),
+        _ => SyncFailed(_clock(), '$error'),
+      };
 
   void _publish(SyncStatus status) {
     _status = status;
@@ -292,6 +498,8 @@ class SyncRepository {
   static Future<SyncLocationProblem?> _test(SyncLocation location) async {
     try {
       await location.checkReachable();
+    } on SyncLocationSignInRefused {
+      return SyncLocationProblem.signInRefused;
     } on SyncLocationException {
       return SyncLocationProblem.notFound;
     }
@@ -303,6 +511,8 @@ class SyncRepository {
         return SyncLocationProblem.notWritable;
       }
       return null;
+    } on SyncLocationSignInRefused {
+      return SyncLocationProblem.signInRefused;
     } on SyncLocationException {
       return SyncLocationProblem.notWritable;
     } finally {

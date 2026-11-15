@@ -57,6 +57,10 @@ class SettingKeys {
   /// Whether the owner turned Library Sync on for this Device. Stored as bool.
   static const String librarySyncEnabled = "librarySyncEnabled";
 
+  /// The kind of Sync Location chosen (a `SyncLocationKind` name); a setup
+  /// without it, from before Dropbox was offered, uses the local folder.
+  static const String librarySyncLocationKind = "librarySyncLocationKind";
+
   /// The local folder chosen as the Sync Location.
   static const String librarySyncFolder = "librarySyncFolder";
 

@@ -12,6 +12,11 @@ class SyncLocationFixture {
   /// A Sync Location of the same kind that cannot be reached.
   final SyncLocation unreachable;
 
+  /// A Sync Location of the same kind whose sign-in is refused (revoked or
+  /// expired), for the kinds that sign in (see `signsIn`); null for the
+  /// others.
+  final SyncLocation? signInRefused;
+
   /// Leaves [path] as a writer interrupted after sending [partial] would.
   final Future<void> Function(String path, List<int> partial) interruptWrite;
 
@@ -20,14 +25,17 @@ class SyncLocationFixture {
   const SyncLocationFixture({
     required this.location,
     required this.unreachable,
+    this.signInRefused,
     required this.interruptWrite,
     required this.dispose,
   });
 }
 
-/// The contract every Sync Location adapter passes (Seam 2).
+/// The contract every Sync Location adapter passes (Seam 2). An adapter that
+/// [signsIn] also shows that a refused sign-in stops every operation.
 void syncLocationContract(
-    String adapter, Future<SyncLocationFixture> Function() open) {
+    String adapter, Future<SyncLocationFixture> Function() open,
+    {bool signsIn = false}) {
   group('$adapter Sync Location contract', () {
     late SyncLocationFixture fixture;
     late SyncLocation location;
@@ -86,6 +94,19 @@ void syncLocationContract(
       await expectLater(away.write('sync/a.json', text('a')), unavailable);
       await expectLater(away.delete('sync/a.json'), unavailable);
     });
+
+    if (signsIn) {
+      test('a refused sign-in refuses every operation', () async {
+        final refused = fixture.signInRefused!;
+        final signInNeeded = throwsA(isA<SyncLocationSignInRefused>());
+        await expectLater(refused.checkReachable(), signInNeeded);
+        await expectLater(refused.list('sync'), signInNeeded);
+        await expectLater(refused.read('sync/a.json'), signInNeeded);
+        await expectLater(
+            refused.write('sync/a.json', text('a')), signInNeeded);
+        await expectLater(refused.delete('sync/a.json'), signInNeeded);
+      });
+    }
 
     test('an interrupted write leaves the previous file for readers', () async {
       await location.write('sync/a.json', text('complete'));
