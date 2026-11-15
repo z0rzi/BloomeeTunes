@@ -31,7 +31,7 @@ Run everything from the repository root, inside the shell:
 - Run the whole suite: `flutter test --no-pub` (as in `CONTRIBUTING.md`). It takes under 2 minutes; the database tests occasionally time out and then hang the run (see the baseline in `.scratch/library-sync/issues/01-build-from-source-on-nixos.md`), so an agent should wrap it: `timeout 900 flutter test --no-pub`
 - Static analysis, as upstream CI runs it: `flutter analyze --no-fatal-infos`
 - Rust check, as upstream CI runs it: `cargo check --manifest-path rust/Cargo.toml`
-- Linux build: `flutter build linux --release` (about 8 minutes from cold)
+- Linux build: `flutter build linux --release` (about 8 minutes from cold). A build offers Dropbox as a Sync Location only when given the Dropbox app key: add `--dart-define=BLOOMEE_DROPBOX_APP_KEY=<key>` (the key is never committed). The Dropbox sign-in is kept in the desktop secret service (GNOME Keyring, KWallet), which must be running and unlocked.
 - Run the build, from inside the shell (the app needs the shell's libmpv and `xdg-user-dir`): `build/linux/x64/release/bundle/bloomee`
 
 The app keeps its library in `~/.local/share/ls.bloomee.musicplayer`, the same place as the official Bloomee installed on this machine. When an agent launches a build, it must point it at throwaway directories so the owner's real library is never opened:

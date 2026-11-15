@@ -35,8 +35,12 @@
           "universal"
           "linux"
         ];
-        # media_kit_libs_linux builds against libmpv.
-        extraPkgConfigPackages = [ libmpv ];
+        # media_kit_libs_linux builds against libmpv; flutter_secure_storage
+        # (Library Sync's credentials) against libsecret.
+        extraPkgConfigPackages = [
+          libmpv
+          pkgs.libsecret
+        ];
       };
 
       # Cargokit (rust_builder/) drives cargo through `rustup run stable cargo`,
