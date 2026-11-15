@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
@@ -149,13 +150,21 @@ class SyncDAO {
 
   /// Leaves the Removal Marker for [row] about to be deleted: a synced
   /// playlist, an unsaved album or artist, or (for the liked songs playlist)
-  /// every song it holds. Call inside the write transaction that deletes it.
+  /// every song it holds. Call inside the write transaction that deletes it,
+  /// before its songs go: a synced playlist's marker keeps it as it was
+  /// ([RemovalMarker.deletedPlaylist]).
   ///
   /// Nothing is recorded while sync has never been enabled, nor for a
   /// playlist never published (it has no sync ID), since no other Device can
   /// hold it.
   static void recordDeletionInTransaction(
-      Isar isar, PlaylistDB row, DateTime at) {
+          Isar isar, PlaylistDB row, DateTime at) =>
+      _recordDeletion(isar, row, at, null);
+
+  /// [recordDeletionInTransaction], the playlist kept as [deletedPlaylist]
+  /// (from [_deletedPlaylistJsonOf]) when its songs are gone already.
+  static void _recordDeletion(
+      Isar isar, PlaylistDB row, DateTime at, String? deletedPlaylist) {
     final me = _ownId(isar);
     if (me == null) return;
     if (_isLiked(row)) {
@@ -179,9 +188,54 @@ class SyncDAO {
       return;
     }
     if (_isSynced(row) && row.syncId != null) {
-      _record(
-          isar, RemovalKind.playlist, row.syncId, null, ChangeStamp(at, me));
+      _record(isar, RemovalKind.playlist, row.syncId, null, ChangeStamp(at, me),
+          deletedPlaylist:
+              deletedPlaylist ?? _deletedPlaylistJsonOf(isar, row, me));
     }
+  }
+
+  /// A deleted playlist as its Removal Marker keeps it in the database: the
+  /// playlist (without its sync ID, which the marker holds) and the details
+  /// of its songs, which may leave the database with it.
+  static String _deletedPlaylistJson(SyncedPlaylist playlist,
+          Map<String, dynamic>? Function(String mediaId) trackOf) =>
+      jsonEncode({
+        'playlist': playlist.toJson()..remove('id'),
+        'tracks': [
+          for (final song in playlist.songs)
+            if (trackOf(song.mediaId) case final track?) track
+        ],
+      });
+
+  /// [row], a synced playlist, as [_deletedPlaylistJson] keeps it; [me] is this Device.
+  static String _deletedPlaylistJsonOf(Isar isar, PlaylistDB row, String me) {
+    final tracks = <String, Map<String, dynamic>>{};
+    final songs = <SyncedSong>[];
+    for (final entry in isar.playlistEntryDBs
+        .where()
+        .playlistIdEqualToAnyPosition(row.id)
+        .findAllSync()) {
+      final track = (entry..track.loadSync()).track.value;
+      if (track == null || tracks.containsKey(track.mediaId)) continue;
+      tracks[track.mediaId] = trackDBToJson(track);
+      songs.add(
+          SyncedSong(mediaId: track.mediaId, added: _addedStamp(entry, me)));
+    }
+    return _deletedPlaylistJson(
+        _playlistOf(row, row.syncId!, songs, me), (id) => tracks[id]);
+  }
+
+  /// The deleted playlist [json] (from [_deletedPlaylistJson]) keeps, under
+  /// [syncId], with its songs' details put in [tracks] where they lack.
+  static SyncedPlaylist _readDeletedPlaylist(
+      String json, String syncId, Map<String, Map<String, dynamic>> tracks) {
+    final kept = jsonDecode(json) as Map<String, dynamic>;
+    for (final track in kept['tracks'] as List<dynamic>) {
+      final details = track as Map<String, dynamic>;
+      tracks.putIfAbsent(details['mediaId'] as String, () => details);
+    }
+    return SyncedPlaylist.fromJson(
+        {...kept['playlist'] as Map<String, dynamic>, 'id': syncId});
   }
 
   /// Leaves the Removal Marker for the song [mediaId] about to be taken out of
@@ -209,7 +263,13 @@ class SyncDAO {
     return ReplacedSyncedLibrary._({
       for (final row in isar.playlistDBs.where().findAllSync())
         if (_replaceKey(row) case final key?)
-          key: (row: row, songs: _songsInOrder(isar, row))
+          key: (
+            row: row,
+            songs: _songsInOrder(isar, row),
+            deletedPlaylist: _isSynced(row) && row.syncId != null
+                ? _deletedPlaylistJsonOf(isar, row, me)
+                : null,
+          )
     });
   }
 
@@ -251,7 +311,7 @@ class SyncDAO {
         }
       }
     }
-    for (final (:row, :songs) in replaced.values) {
+    for (final (:row, :songs, :deletedPlaylist) in replaced.values) {
       if (_isLiked(row)) {
         // Its songs went with it: each is unliked.
         for (final mediaId in songs) {
@@ -259,7 +319,7 @@ class SyncDAO {
               ChangeStamp(at, _ownId(isar)!));
         }
       } else {
-        recordDeletionInTransaction(isar, row, at);
+        _recordDeletion(isar, row, at, deletedPlaylist);
       }
     }
     _recordLibraryArrangementSync(isar, at);
@@ -300,9 +360,11 @@ class SyncDAO {
       isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId)?.deviceId;
 
   /// Stores a Removal Marker, keeping the later one when there is already one
-  /// for the same thing.
+  /// for the same thing; a deleted playlist's keeps it as [deletedPlaylist]
+  /// (see [_deletedPlaylistJson]).
   static void _record(Isar isar, RemovalKind kind, String? playlistId,
-      String? mediaId, ChangeStamp removed) {
+      String? mediaId, ChangeStamp removed,
+      {String? deletedPlaylist}) {
     final key = RemovalMarker.removalKey(kind, playlistId, mediaId);
     final known = isar.syncRemovalDBs.filter().keyEqualTo(key).findFirstSync();
     if (known != null &&
@@ -315,7 +377,8 @@ class SyncDAO {
         playlistId: playlistId,
         mediaId: mediaId,
         removedAt: removed.at,
-        removedBy: removed.device)
+        removedBy: removed.device,
+        deletedPlaylist: deletedPlaylist)
       ..id = known?.id ?? Isar.autoIncrement);
   }
 
@@ -397,6 +460,23 @@ class SyncDAO {
     final bySortOrder = a.sortOrder.compareTo(b.sortOrder);
     return bySortOrder != 0 ? bySortOrder : a.id.compareTo(b.id);
   }
+
+  /// The synced playlist [row] under the sync ID [id], holding [songs];
+  /// [me] is this Device.
+  static SyncedPlaylist _playlistOf(
+          PlaylistDB row, String id, List<SyncedSong> songs, String me,
+          {Arrangement? arrangement}) =>
+      SyncedPlaylist(
+          id: id,
+          name: row.name,
+          nameChanged: _nameStamp(row, me),
+          description: row.description,
+          descriptionChanged: _descriptionStamp(row, me),
+          pinned: row.isPinned,
+          pinnedChanged: _pinnedStamp(row, me),
+          createdAt: row.createdAt.toUtc(),
+          arrangement: arrangement ?? _arrangementOf(row, me),
+          songs: songs);
 
   static ChangeStamp _nameStamp(PlaylistDB row, String me) =>
       ChangeStamp(row.nameChangedAt ?? row.createdAt, row.nameChangedBy ?? me);
@@ -544,17 +624,8 @@ class SyncDAO {
                   .reduce((a, b) => ChangeStamp.latest(a, b)),
               [for (final s in songs) s.mediaId]);
         }
-        playlists.add(SyncedPlaylist(
-            id: id,
-            name: row.name,
-            nameChanged: _nameStamp(row, me),
-            description: row.description,
-            descriptionChanged: _descriptionStamp(row, me),
-            pinned: row.isPinned,
-            pinnedChanged: _pinnedStamp(row, me),
-            createdAt: row.createdAt.toUtc(),
-            arrangement: arrangement,
-            songs: songs));
+        playlists
+            .add(_playlistOf(row, id, songs, me, arrangement: arrangement));
       }
       var order = _libraryArrangementOf(device, me);
       Arrangement? newOrder;
@@ -579,7 +650,12 @@ class SyncDAO {
               kind: RemovalKind.values.byName(row.kind.name),
               playlistId: row.playlistId,
               mediaId: row.mediaId,
-              removed: ChangeStamp(row.removedAt, row.removedBy))
+              removed: ChangeStamp(row.removedAt, row.removedBy),
+              deletedPlaylist:
+                  row.deletedPlaylist != null && row.playlistId != null
+                      ? _readDeletedPlaylist(
+                          row.deletedPlaylist!, row.playlistId!, tracks)
+                      : null)
       ];
       final aliases = [
         for (final row in isar.syncAliasDBs.where().findAllSync())
@@ -639,12 +715,14 @@ class SyncDAO {
       // a rename or an addition; orders last, once every song and playlist
       // is in place.
       int phase(SyncedLibraryChange change) => switch (change) {
+            AliasesDropped() ||
             RemovalsDropped() ||
             AliasesLearned() ||
             RemovalsLearned() ||
             PlaylistRekeyed() =>
               0,
             PlaylistAbsorbed() ||
+            DeletedPlaylistsKept() ||
             PlaylistLost() ||
             SongsLost() ||
             LikesLost() ||
@@ -673,6 +751,15 @@ class SyncDAO {
                 isar.syncRemovalDBs.deleteSync(row.id);
               }
             }
+          case AliasesDropped(:final aliases):
+            for (final alias in aliases) {
+              final row = isar.syncAliasDBs.getByFromIdSync(alias.from);
+              if (row != null &&
+                  row.intoId == alias.into &&
+                  ChangeStamp(row.mergedAt, row.mergedBy) == alias.merged) {
+                isar.syncAliasDBs.deleteSync(row.id);
+              }
+            }
           case AliasesLearned(:final aliases):
             for (final alias in aliases) {
               isar.syncAliasDBs.putSync(SyncAliasDB(
@@ -685,6 +772,25 @@ class SyncDAO {
           case RemovalsLearned(:final markers):
             for (final m in markers) {
               _record(isar, m.kind, m.playlistId, m.mediaId, m.removed);
+            }
+          case DeletedPlaylistsKept(:final markers):
+            for (final m in markers) {
+              final row = isar.syncRemovalDBs.getByKeySync(m.key);
+              if (row == null ||
+                  ChangeStamp(row.removedAt, row.removedBy) != m.removed) {
+                continue; // Deleted again here since the library was read.
+              }
+              row.deletedPlaylist = m.deletedPlaylist == null
+                  ? null
+                  : _deletedPlaylistJson(
+                      m.deletedPlaylist!,
+                      (mediaId) =>
+                          tracks[mediaId] ??
+                          switch (_storedTrack(isar, mediaId)) {
+                            final track? => trackDBToJson(track),
+                            null => null,
+                          });
+              isar.syncRemovalDBs.putSync(row);
             }
           case PlaylistRekeyed(:final from, :final to):
             final row = _bySyncId(isar, from);
@@ -836,7 +942,8 @@ class SyncDAO {
       isar.syncRemovalDBs.deleteSync(marker.id);
       final kind = RemovalKind.values.byName(marker.kind.name);
       _record(isar, kind, to, marker.mediaId,
-          ChangeStamp(marker.removedAt, marker.removedBy));
+          ChangeStamp(marker.removedAt, marker.removedBy),
+          deletedPlaylist: marker.deletedPlaylist);
     }
   }
 
@@ -956,6 +1063,9 @@ class SyncDAO {
     }
     if (moved.isNotEmpty) isar.playlistDBs.putAllSync(moved);
   }
+
+  static TrackDB? _storedTrack(Isar isar, String mediaId) =>
+      isar.trackDBs.filter().mediaIdEqualTo(mediaId).findFirstSync();
 
   static PlaylistDB? _bySyncId(Isar isar, String syncId) =>
       isar.playlistDBs.filter().syncIdEqualTo(syncId).findFirstSync();
@@ -1181,8 +1291,7 @@ class SyncDAO {
         continue;
       }
       // A song this Device already knows keeps its local details.
-      var track =
-          isar.trackDBs.filter().mediaIdEqualTo(song.mediaId).findFirstSync();
+      var track = _storedTrack(isar, song.mediaId);
       if (track == null) {
         track = trackDBFromJson(tracks[song.mediaId]!);
         track.id = isar.trackDBs.putSync(track);
@@ -1212,8 +1321,10 @@ class SyncDAO {
 /// [SyncDAO.readBeforeReplaceInTransaction]).
 class ReplacedSyncedLibrary {
   /// Each row sync covers, by what identifies it across the restore, with
-  /// the media IDs of its songs.
-  final Map<String, ({PlaylistDB row, List<String> songs})> _rows;
+  /// the media IDs of its songs and, for a synced playlist, the playlist as
+  /// a Removal Marker keeps it should the restore delete it.
+  final Map<String,
+      ({PlaylistDB row, List<String> songs, String? deletedPlaylist})> _rows;
 
   const ReplacedSyncedLibrary._(this._rows);
 }

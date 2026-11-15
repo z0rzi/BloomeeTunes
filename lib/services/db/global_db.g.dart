@@ -8601,34 +8601,39 @@ const SyncRemovalDBSchema = CollectionSchema(
   name: r'SyncRemovalDB',
   id: -4900034752132703220,
   properties: {
-    r'key': PropertySchema(
+    r'deletedPlaylist': PropertySchema(
       id: 0,
+      name: r'deletedPlaylist',
+      type: IsarType.string,
+    ),
+    r'key': PropertySchema(
+      id: 1,
       name: r'key',
       type: IsarType.string,
     ),
     r'kind': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'kind',
       type: IsarType.byte,
       enumMap: _SyncRemovalDBkindEnumValueMap,
     ),
     r'mediaId': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'mediaId',
       type: IsarType.string,
     ),
     r'playlistId': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'playlistId',
       type: IsarType.string,
     ),
     r'removedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'removedAt',
       type: IsarType.dateTime,
     ),
     r'removedBy': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'removedBy',
       type: IsarType.string,
     )
@@ -8667,6 +8672,12 @@ int _syncRemovalDBEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.deletedPlaylist;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.key.length * 3;
   {
     final value = object.mediaId;
@@ -8690,12 +8701,13 @@ void _syncRemovalDBSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.key);
-  writer.writeByte(offsets[1], object.kind.index);
-  writer.writeString(offsets[2], object.mediaId);
-  writer.writeString(offsets[3], object.playlistId);
-  writer.writeDateTime(offsets[4], object.removedAt);
-  writer.writeString(offsets[5], object.removedBy);
+  writer.writeString(offsets[0], object.deletedPlaylist);
+  writer.writeString(offsets[1], object.key);
+  writer.writeByte(offsets[2], object.kind.index);
+  writer.writeString(offsets[3], object.mediaId);
+  writer.writeString(offsets[4], object.playlistId);
+  writer.writeDateTime(offsets[5], object.removedAt);
+  writer.writeString(offsets[6], object.removedBy);
 }
 
 SyncRemovalDB _syncRemovalDBDeserialize(
@@ -8705,13 +8717,14 @@ SyncRemovalDB _syncRemovalDBDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = SyncRemovalDB(
-    key: reader.readString(offsets[0]),
-    kind: _SyncRemovalDBkindValueEnumMap[reader.readByteOrNull(offsets[1])] ??
+    deletedPlaylist: reader.readStringOrNull(offsets[0]),
+    key: reader.readString(offsets[1]),
+    kind: _SyncRemovalDBkindValueEnumMap[reader.readByteOrNull(offsets[2])] ??
         SyncRemovalKindDB.playlist,
-    mediaId: reader.readStringOrNull(offsets[2]),
-    playlistId: reader.readStringOrNull(offsets[3]),
-    removedAt: reader.readDateTime(offsets[4]),
-    removedBy: reader.readString(offsets[5]),
+    mediaId: reader.readStringOrNull(offsets[3]),
+    playlistId: reader.readStringOrNull(offsets[4]),
+    removedAt: reader.readDateTime(offsets[5]),
+    removedBy: reader.readString(offsets[6]),
   );
   object.id = id;
   return object;
@@ -8725,17 +8738,19 @@ P _syncRemovalDBDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
+      return (reader.readString(offset)) as P;
+    case 2:
       return (_SyncRemovalDBkindValueEnumMap[reader.readByteOrNull(offset)] ??
           SyncRemovalKindDB.playlist) as P;
-    case 2:
-      return (reader.readStringOrNull(offset)) as P;
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
+      return (reader.readDateTime(offset)) as P;
+    case 6:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -8953,6 +8968,160 @@ extension SyncRemovalDBQueryWhere
 
 extension SyncRemovalDBQueryFilter
     on QueryBuilder<SyncRemovalDB, SyncRemovalDB, QFilterCondition> {
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'deletedPlaylist',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'deletedPlaylist',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'deletedPlaylist',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'deletedPlaylist',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'deletedPlaylist',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'deletedPlaylist',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'deletedPlaylist',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'deletedPlaylist',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'deletedPlaylist',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'deletedPlaylist',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'deletedPlaylist',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition>
+      deletedPlaylistIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'deletedPlaylist',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterFilterCondition> idEqualTo(
       Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -9705,6 +9874,20 @@ extension SyncRemovalDBQueryLinks
 
 extension SyncRemovalDBQuerySortBy
     on QueryBuilder<SyncRemovalDB, SyncRemovalDB, QSortBy> {
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterSortBy>
+      sortByDeletedPlaylist() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedPlaylist', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterSortBy>
+      sortByDeletedPlaylistDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedPlaylist', Sort.desc);
+    });
+  }
+
   QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterSortBy> sortByKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'key', Sort.asc);
@@ -9783,6 +9966,20 @@ extension SyncRemovalDBQuerySortBy
 
 extension SyncRemovalDBQuerySortThenBy
     on QueryBuilder<SyncRemovalDB, SyncRemovalDB, QSortThenBy> {
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterSortBy>
+      thenByDeletedPlaylist() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedPlaylist', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterSortBy>
+      thenByDeletedPlaylistDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'deletedPlaylist', Sort.desc);
+    });
+  }
+
   QueryBuilder<SyncRemovalDB, SyncRemovalDB, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -9873,6 +10070,14 @@ extension SyncRemovalDBQuerySortThenBy
 
 extension SyncRemovalDBQueryWhereDistinct
     on QueryBuilder<SyncRemovalDB, SyncRemovalDB, QDistinct> {
+  QueryBuilder<SyncRemovalDB, SyncRemovalDB, QDistinct>
+      distinctByDeletedPlaylist({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'deletedPlaylist',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<SyncRemovalDB, SyncRemovalDB, QDistinct> distinctByKey(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -9919,6 +10124,13 @@ extension SyncRemovalDBQueryProperty
   QueryBuilder<SyncRemovalDB, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<SyncRemovalDB, String?, QQueryOperations>
+      deletedPlaylistProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'deletedPlaylist');
     });
   }
 

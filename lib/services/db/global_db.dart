@@ -276,6 +276,10 @@ class SyncRemovalDB {
   /// The Device that made the removal.
   String removedBy;
 
+  /// For a deleted playlist, the playlist as it was deleted, with its songs'
+  /// details (JSON, see `SyncDAO`), so that it comes back whole.
+  String? deletedPlaylist;
+
   SyncRemovalDB({
     required this.key,
     required this.kind,
@@ -283,6 +287,7 @@ class SyncRemovalDB {
     this.mediaId,
     required this.removedAt,
     required this.removedBy,
+    this.deletedPlaylist,
   });
 }
 

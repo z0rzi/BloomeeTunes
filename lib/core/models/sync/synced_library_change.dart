@@ -75,6 +75,14 @@ final class RemovalsDropped extends SyncedLibraryChange {
   const RemovalsDropped(this.markers);
 }
 
+/// Deleted playlists as their Removal Markers keep them from now on (see
+/// [RemovalMarker.deletedPlaylist]): each set on this Device's marker for the same
+/// deletion, once it holds it, and cleared when the playlist came back.
+final class DeletedPlaylistsKept extends SyncedLibraryChange {
+  final List<RemovalMarker> markers;
+  const DeletedPlaylistsKept(this.markers);
+}
+
 /// A playlist this Device has that another Device deleted, kept because this
 /// is this Device's First Sync: it counts as renamed at [kept], to its own
 /// name, later than the deletion, so it comes back on the other Devices.
@@ -90,6 +98,15 @@ final class PlaylistKept extends SyncedLibraryChange {
 final class AliasesLearned extends SyncedLibraryChange {
   final List<PlaylistAlias> aliases;
   const AliasesLearned(this.aliases);
+}
+
+/// Pairs of playlists this Device stops recording as one: they met longer ago
+/// than a Removal Marker is kept, and no Device still knows the playlist by
+/// the sync ID it replaced. Each as this Device held it when the merge was
+/// worked out.
+final class AliasesDropped extends SyncedLibraryChange {
+  final List<PlaylistAlias> aliases;
+  const AliasesDropped(this.aliases);
 }
 
 /// A playlist this Device has is known by another sync ID from now on, the

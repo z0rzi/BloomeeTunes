@@ -480,6 +480,54 @@ void main() {
         }
       });
     }
+
+    for (final order in orders) {
+      test(
+          'a playlist deleted on one, then brought back by a later change on another, keeps what a third had done to it, syncing in the order ${order.join(', ')}',
+          () async {
+        final a = await world.device('laptop');
+        final b = await world.device('phone');
+        final c = await world.device('desktop');
+        await a.add('Road trip', [song('yt::1'), song('yt::2')]);
+        for (final device in [a, b, c, a, b]) {
+          await device.sync();
+        }
+
+        world.clock.advance(const Duration(minutes: 1));
+        await a.add('Road trip', [song('yt::50')]);
+        await a.arrange('Road trip', ['yt::50', 'yt::1', 'yt::2']);
+        await a.playlists.updatePlaylistMeta(await a.rowId('Road trip'),
+            description: 'Summer');
+        world.clock.advance(const Duration(minutes: 1));
+        await b.playlists.deletePlaylistByName('Road trip');
+        world.clock.advance(const Duration(minutes: 1));
+        await c.add('Road trip', [song('yt::51')]);
+
+        final devices = {
+          for (final d in [a, b, c]) d.name: d
+        };
+        for (var round = 0; round < 2; round++) {
+          for (final name in order) {
+            world.clock.advance(const Duration(seconds: 10));
+            await devices[name]!.sync();
+          }
+        }
+
+        for (final device in [a, b, c]) {
+          expect(
+              (await device.syncedLibrary())['playlists'],
+              [
+                [
+                  'Road trip',
+                  'Summer',
+                  false,
+                  ['yt::50', 'yt::1', 'yt::2', 'yt::51']
+                ]
+              ],
+              reason: device.name);
+        }
+      });
+    }
   });
 
   test(

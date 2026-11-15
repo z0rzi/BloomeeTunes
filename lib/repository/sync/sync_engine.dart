@@ -44,6 +44,12 @@ class SyncEngine {
 
   /// How long a Removal Marker is kept: six months. A Device whose last
   /// sync is older performs a First Sync, as one that never synced does.
+  ///
+  /// It is also how long a Device State is merged after it was last
+  /// written: one older belongs to a Device that stopped syncing, and could
+  /// only bring back what was removed since its markers expired. It stays in
+  /// the Sync Location, and its Device is still known, until the owner
+  /// Forgets it; should that Device sync again, it performs a First Sync.
   static const removalMarkerLifetime = Duration(days: 183);
 
   /// How old this Device's published Device State may grow before a sync
@@ -171,14 +177,25 @@ class SyncEngine {
       for (final (deviceId, bytes) in others)
         deviceId: DeviceState.summaryOf(bytes)
     };
+    final expireBefore = now.subtract(removalMarkerLifetime);
+    bool stale(DeviceStateSummary summary) =>
+        summary.writtenAt?.isBefore(expireBefore) ?? false;
+    final mergeable = [
+      for (final (deviceId, bytes) in others)
+        if (!stale(_othersSeen![deviceId]!)) (deviceId, bytes)
+    ];
+    // The others stopped merging this Device's Device State: it comes back
+    // as a Device away too long, even if its last sync is a little later.
+    final ignored = own != null && stale(DeviceState.summaryOf(own));
 
     var protected = false;
     while (true) {
       final pass = await _passInBackground(
           _database,
           _Inputs(
-              others: others,
+              others: mergeable,
               own: own,
+              ownIgnored: ignored,
               me: me,
               now: now,
               confirmed: confirmed,
@@ -293,7 +310,9 @@ class SyncEngine {
     final local = await dao.readSyncedLibrary(SyncDAO.newSyncId);
     final expireBefore = inputs.now.subtract(removalMarkerLifetime);
     final lastSync = inputs.me.lastSyncAt;
-    final isFirstSync = lastSync == null || lastSync.isBefore(expireBefore);
+    final isFirstSync = lastSync == null ||
+        lastSync.isBefore(expireBefore) ||
+        inputs.ownIgnored;
     final merge = mergeSyncedLibraries(local.library, states,
         unsyncedNames: local.unsyncedNames,
         expireBefore: expireBefore,
@@ -337,6 +356,8 @@ class SyncEngine {
         RemovalsLearned() ||
         RemovalsDropped() ||
         AliasesLearned() ||
+        AliasesDropped() ||
+        DeletedPlaylistsKept() ||
         PlaylistRekeyed() ||
         PlaylistKept() =>
           false,
@@ -406,11 +427,15 @@ class SyncEngine {
 
 /// What a sync pass is given; sent to the worker isolate.
 class _Inputs {
-  /// Other Devices' Device States, each with the ID its name gives.
+  /// Other Devices' Device States to merge, each with the ID its name
+  /// gives: those written within [SyncEngine.removalMarkerLifetime].
   final List<(String, Uint8List)> others;
 
   /// This Device's Device State as published, if it is.
   final Uint8List? own;
+
+  /// Whether [own] is old enough that the other Devices no longer merge it.
+  final bool ownIgnored;
   final SyncIdentity me;
   final DateTime now;
 
@@ -423,6 +448,7 @@ class _Inputs {
   const _Inputs({
     required this.others,
     required this.own,
+    required this.ownIgnored,
     required this.me,
     required this.now,
     required this.confirmed,

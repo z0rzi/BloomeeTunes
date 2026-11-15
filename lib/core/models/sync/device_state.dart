@@ -296,6 +296,10 @@ enum RemovalKind {
 
 /// The record that something was taken out of the Synced Library, kept so the
 /// removal reaches the other Devices. It holds the latest removal.
+///
+/// A deleted playlist's marker also keeps the playlist as it was deleted
+/// ([deletedPlaylist]): should a later change bring the playlist back, it comes back
+/// whole, whichever Devices applied the deletion first.
 class RemovalMarker {
   final RemovalKind kind;
 
@@ -308,12 +312,28 @@ class RemovalMarker {
 
   final ChangeStamp removed;
 
+  /// For a deleted playlist, the playlist as every copy of it known when it
+  /// was deleted made it, under [playlistId]; null when none was known, and
+  /// for other removals. Each of its songs has its details in the library's
+  /// tracks.
+  final SyncedPlaylist? deletedPlaylist;
+
   const RemovalMarker({
     required this.kind,
     this.playlistId,
     this.mediaId,
     required this.removed,
+    this.deletedPlaylist,
   });
+
+  /// This marker keeping [deletedPlaylist].
+  RemovalMarker withDeletedPlaylist(SyncedPlaylist? deletedPlaylist) =>
+      RemovalMarker(
+          kind: kind,
+          playlistId: playlistId,
+          mediaId: mediaId,
+          removed: removed,
+          deletedPlaylist: deletedPlaylist);
 
   /// Identifies what was removed; one marker per key.
   String get key => removalKey(kind, playlistId, mediaId);
@@ -327,16 +347,28 @@ class RemovalMarker {
         if (playlistId != null) 'playlistId': playlistId,
         if (mediaId != null) 'mediaId': mediaId,
         ...removed.toJson('removed'),
+        // Optional: Device States without it remain readable, and builds
+        // that do not know it read the marker without it.
+        if (deletedPlaylist != null) 'playlist': deletedPlaylist!.toJson(),
       };
 
   factory RemovalMarker.fromJson(Map<String, dynamic> json) {
     final kind = _enum(RemovalKind.values, json);
     final inPlaylist = kind == RemovalKind.playlist || kind == RemovalKind.song;
+    final deleted = json['playlist'];
+    if (deleted != null && deleted is! Map<String, dynamic>) {
+      throw const FormatException(
+          'Device State deleted playlist is malformed.');
+    }
     return RemovalMarker(
         kind: kind,
         playlistId: inPlaylist ? _string(json, 'playlistId') : null,
         mediaId: kind == RemovalKind.playlist ? null : _string(json, 'mediaId'),
-        removed: ChangeStamp.fromJson(json, 'removed'));
+        removed: ChangeStamp.fromJson(json, 'removed'),
+        deletedPlaylist:
+            kind == RemovalKind.playlist && deleted is Map<String, dynamic>
+                ? SyncedPlaylist.fromJson(deleted)
+                : null);
   }
 }
 
@@ -437,7 +469,11 @@ class DeviceState {
       if (at.isAfter(latest)) latest = at;
     }
 
-    for (final p in library.playlists) {
+    for (final p in [
+      ...library.playlists,
+      for (final r in library.removals)
+        if (r.deletedPlaylist case final deleted?) deleted
+    ]) {
       consider(p.createdAt);
       consider(p.nameChanged.at);
       consider(p.descriptionChanged.at);
@@ -497,7 +533,12 @@ class DeviceState {
         ];
     final playlists = items('playlists', SyncedPlaylist.fromJson);
     final liked = items('liked', SyncedSong.fromJson);
-    for (final song in [for (final p in playlists) ...p.songs, ...liked]) {
+    final removals = items('removals', RemovalMarker.fromJson);
+    for (final song in [
+      for (final p in playlists) ...p.songs,
+      ...liked,
+      for (final r in removals) ...?r.deletedPlaylist?.songs,
+    ]) {
       if (!tracks.containsKey(song.mediaId)) {
         throw FormatException(
             'Device State lacks details for ${song.mediaId}.');
@@ -511,7 +552,7 @@ class DeviceState {
         playlists: playlists,
         liked: liked,
         saved: items('saved', SavedCollection.fromJson),
-        removals: items('removals', RemovalMarker.fromJson),
+        removals: removals,
         tracks: tracks,
         order: Arrangement.fromJson(json['order'], 'playlists'),
         aliases: items('aliases', PlaylistAlias.fromJson),

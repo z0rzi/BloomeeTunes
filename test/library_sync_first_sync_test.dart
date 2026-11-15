@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:Bloomee/repository/sync/sync_engine.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/src/rust/api/plugin/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -329,5 +332,167 @@ void main() {
           reason: device.name);
       expect(await device.songsOf('Road trip'), ['yt::1'], reason: device.name);
     }
+  });
+
+  group('a Device that stopped syncing more than six months ago', () {
+    late SyncDevice a;
+    late SyncDevice b;
+    late SyncDevice drawer;
+
+    setUp(() async {
+      a = await world.device('laptop');
+      b = await world.device('phone');
+      drawer = await world.device('phone in a drawer');
+      await a.add('Road trip', [song('yt::1'), song('yt::2')]);
+      await a.add('Old', [song('yt::3')]);
+      await settle([a, b, drawer]);
+    });
+
+    test(
+        'is not merged, yet stays listed among the known Devices and its Device State stays',
+        () async {
+      await later();
+      await drawer.add('Party', [song('yt::5')]);
+      await drawer.sync();
+      final drawerSynced = drawer.clock();
+
+      await monthsLater(7);
+      await settle([a, b]);
+      for (final device in [a, b]) {
+        expect(await device.songsOf('Party'), isNull, reason: device.name);
+        expect(device.location.statesDeleted, isEmpty, reason: device.name);
+        expect([
+          for (final known in await device.engine.knownDevices())
+            if (known.deviceName == 'phone in a drawer') known.lastSyncedAt
+        ], [
+          drawerSynced
+        ], reason: device.name);
+      }
+      expect(world.stateOf(drawer).existsSync(), isTrue);
+    });
+
+    test(
+        'does not bring back a song or a playlist removed after it stopped, once the removal is six months old',
+        () async {
+      await later();
+      await a.remove('Road trip', 'yt::2');
+      await a.playlists.deletePlaylistByName('Old');
+      await settle([a, b]);
+
+      await monthsLater(7);
+      await settle([a, b]);
+      for (final device in [a, b]) {
+        expect(await device.songsOf('Road trip'), ['yt::1'],
+            reason: device.name);
+        expect(await device.songsOf('Old'), isNull, reason: device.name);
+      }
+    });
+
+    test(
+        'performs a First Sync when it syncs again: it only adds, to itself and to the others',
+        () async {
+      await later();
+      await a.remove('Road trip', 'yt::2');
+      await a.add('Road trip', [song('yt::9')]);
+      await a.playlists.deletePlaylistByName('Old');
+      await settle([a, b]);
+      await monthsLater(7);
+      await settle([a, b]);
+
+      await drawer.sync();
+      expect(await sortedSongsOf(drawer, 'Road trip'),
+          ['yt::1', 'yt::2', 'yt::9']);
+      expect(await drawer.songsOf('Old'), ['yt::3']);
+      await settle([a, b, drawer]);
+      for (final device in [a, b, drawer]) {
+        expect(await sortedSongsOf(device, 'Road trip'),
+            ['yt::1', 'yt::2', 'yt::9'],
+            reason: device.name);
+        expect(await device.songsOf('Old'), ['yt::3'], reason: device.name);
+      }
+    });
+
+    test(
+        'performs a First Sync even when its last sync is a little more recent than its Device State',
+        () async {
+      // Its unchanged Device State is not rewritten within the hour.
+      world.clock.advance(const Duration(minutes: 50));
+      await drawer.sync();
+      world.clock.advance(const Duration(minutes: 5));
+      await a.remove('Road trip', 'yt::2');
+      await settle([a, b]);
+
+      world.clock.advance(
+          SyncEngine.removalMarkerLifetime - const Duration(minutes: 45));
+      await drawer.sync();
+      expect(await sortedSongsOf(drawer, 'Road trip'), ['yt::1', 'yt::2']);
+      await settle([a, b, drawer]);
+      for (final device in [a, b, drawer]) {
+        expect(await sortedSongsOf(device, 'Road trip'), ['yt::1', 'yt::2'],
+            reason: device.name);
+      }
+    });
+  });
+
+  group('two playlists that came to bear the same name', () {
+    late SyncDevice a;
+    late SyncDevice b;
+    late SyncDevice c;
+
+    /// The pairs of playlists that became one, as [device] publishes them.
+    List<dynamic> aliasesOf(SyncDevice device) =>
+        (jsonDecode(world.stateOf(device).readAsStringSync())
+            as Map<String, dynamic>)['aliases'] as List<dynamic>;
+
+    setUp(() async {
+      a = await world.device('laptop');
+      b = await world.device('phone');
+      c = await world.device('desktop');
+      await a.add('Mix', [song('yt::1')]);
+      await settle([a, b, c]);
+      await later();
+      await b.add('Party', [song('yt::2')]);
+      await a.rename('Mix', 'Party');
+    });
+
+    test(
+        'are no longer recorded as one six months later, and a Device that stopped syncing before does not part or join them again',
+        () async {
+      await settle([a, b]);
+      expect(aliasesOf(a), isNotEmpty);
+
+      for (var month = 0; month < 7; month++) {
+        await monthsLater(1);
+        await settle([a, b]);
+      }
+      for (final device in [a, b]) {
+        expect(await device.libraryOrder(), ['Party'], reason: device.name);
+        expect(await sortedSongsOf(device, 'Party'), ['yt::1', 'yt::2'],
+            reason: device.name);
+        expect(aliasesOf(device), isEmpty, reason: device.name);
+      }
+    });
+
+    test(
+        'stay one, past six months, until a Device that still holds them apart has synced',
+        () async {
+      // The laptop renamed its playlist, then stopped syncing for seven
+      // months; the desktop, which took in the phone's playlist apart, last
+      // synced two months before the laptop came back.
+      for (var month = 0; month < 5; month++) {
+        await monthsLater(1);
+        await settle([b, c]);
+      }
+      await monthsLater(2);
+      await settle([a, b]);
+      await settle([a, b]);
+      await later();
+      await settle([c, a, b]);
+      for (final device in [a, b, c]) {
+        expect(await device.libraryOrder(), ['Party'], reason: device.name);
+        expect(await sortedSongsOf(device, 'Party'), ['yt::1', 'yt::2'],
+            reason: device.name);
+      }
+    });
   });
 }

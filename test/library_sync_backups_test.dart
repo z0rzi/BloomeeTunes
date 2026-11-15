@@ -310,5 +310,33 @@ void main() {
       await b.engine.answerRemovalGuard(outcome.hold, confirm: true);
       expect(await b.libraryOrder(), ['Road trip']);
     });
+
+    test(
+        'a playlist a replace-restore deleted comes back whole when another Device changes it later',
+        () async {
+      final a = await world.device('laptop');
+      final b = await world.device('phone');
+      await a.add('Focus', [song('yt::8')]);
+      final backup = await a.backup();
+      await later();
+      await a.add('Road trip', [song('yt::1')]);
+      await a.sync();
+      await b.sync();
+
+      await later();
+      await a.add('Road trip', [song('yt::2')]);
+      await a.restore(backup, replace: true);
+      await a.sync();
+      await later();
+      await b.add('Road trip', [song('yt::3')]);
+      await b.sync();
+      await a.sync();
+      await b.sync();
+
+      for (final device in [a, b]) {
+        expect(await device.songsOf('Road trip'), ['yt::1', 'yt::2', 'yt::3'],
+            reason: device.name);
+      }
+    });
   });
 }
