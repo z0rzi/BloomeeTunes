@@ -2,6 +2,10 @@ name: "Build & Release"
 
 on:
   workflow_dispatch:
+  # Fork-only: pushing a sync-v* tag builds and publishes that release.
+  push:
+    tags:
+      - 'sync-v*'
 
 permissions:
   contents: read
@@ -286,14 +290,16 @@ jobs:
           test -s "dist/bloomee_tunes_linux_x64_v${VERSION}+${GITHUB_RUN_NUMBER}.tar.gz"
           test "$(cat dist/build-number.txt)" = "$GITHUB_RUN_NUMBER"
 
+      # Fork-only: a pushed sync-v* tag is published as a release of this
+      # repository, under that tag.
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
           artifacts: dist/*
           artifactErrorsFailBuild: true
-          tag: v${{ env.VERSION }}+${{ github.run_number }}
+          tag: ${{ startsWith(github.ref, 'refs/tags/sync-v') && github.ref_name || format('v{0}+{1}', env.VERSION, github.run_number) }}
           commit: ${{ github.sha }}
           token: ${{ secrets.SECRET_KEY || github.token }}
-          prerelease: true
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/sync-v') }}
           allowUpdates: true
           omitBodyDuringUpdate: true

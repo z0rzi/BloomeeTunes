@@ -49,6 +49,10 @@ When the `BLOOMEE_DROPBOX_APP_KEY` secret is set, each build passes it as
 `--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`; without it the builds succeed and
 Bloomee offers no Dropbox Sync Location.
 
+Fork-only: on this fork the Android app is `ls.bloomee.musicplayer.sync`, named
+"Bloomee Sync", so it installs beside the official app. Pushing a `sync-v*` tag
+runs the workflow too and publishes a release (not a prerelease) under that tag.
+
 ## 1. Fork the repository
 
 Click the "Fork" button in the top-right corner of the repository's page on GitHub, and clone your forked repository to your local machine.
