@@ -1733,77 +1733,122 @@ const PlaylistDBSchema = CollectionSchema(
       type: IsarType.object,
       target: r'AlbumSummaryDB',
     ),
-    r'artists': PropertySchema(
+    r'arrangedAt': PropertySchema(
       id: 1,
+      name: r'arrangedAt',
+      type: IsarType.dateTime,
+    ),
+    r'arrangedBy': PropertySchema(
+      id: 2,
+      name: r'arrangedBy',
+      type: IsarType.string,
+    ),
+    r'arrangement': PropertySchema(
+      id: 3,
+      name: r'arrangement',
+      type: IsarType.stringList,
+    ),
+    r'artists': PropertySchema(
+      id: 4,
       name: r'artists',
       type: IsarType.objectList,
       target: r'ArtistSummaryDB',
     ),
     r'createdAt': PropertySchema(
-      id: 2,
+      id: 5,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
     r'description': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'description',
       type: IsarType.string,
     ),
+    r'descriptionChangedAt': PropertySchema(
+      id: 7,
+      name: r'descriptionChangedAt',
+      type: IsarType.dateTime,
+    ),
+    r'descriptionChangedBy': PropertySchema(
+      id: 8,
+      name: r'descriptionChangedBy',
+      type: IsarType.string,
+    ),
     r'isPinned': PropertySchema(
-      id: 4,
+      id: 9,
       name: r'isPinned',
       type: IsarType.bool,
     ),
     r'name': PropertySchema(
-      id: 5,
+      id: 10,
       name: r'name',
       type: IsarType.string,
     ),
+    r'nameChangedAt': PropertySchema(
+      id: 11,
+      name: r'nameChangedAt',
+      type: IsarType.dateTime,
+    ),
+    r'nameChangedBy': PropertySchema(
+      id: 12,
+      name: r'nameChangedBy',
+      type: IsarType.string,
+    ),
+    r'pinnedChangedAt': PropertySchema(
+      id: 13,
+      name: r'pinnedChangedAt',
+      type: IsarType.dateTime,
+    ),
+    r'pinnedChangedBy': PropertySchema(
+      id: 14,
+      name: r'pinnedChangedBy',
+      type: IsarType.string,
+    ),
     r'remotePlaylist': PropertySchema(
-      id: 6,
+      id: 15,
       name: r'remotePlaylist',
       type: IsarType.object,
       target: r'RemotePlaylistSummaryDB',
     ),
     r'savedBy': PropertySchema(
-      id: 7,
+      id: 16,
       name: r'savedBy',
       type: IsarType.string,
     ),
     r'sortOrder': PropertySchema(
-      id: 8,
+      id: 17,
       name: r'sortOrder',
       type: IsarType.long,
     ),
     r'subtitle': PropertySchema(
-      id: 9,
+      id: 18,
       name: r'subtitle',
       type: IsarType.string,
     ),
     r'syncId': PropertySchema(
-      id: 10,
+      id: 19,
       name: r'syncId',
       type: IsarType.string,
     ),
     r'thumbnail': PropertySchema(
-      id: 11,
+      id: 20,
       name: r'thumbnail',
       type: IsarType.object,
       target: r'ArtworkDB',
     ),
     r'type': PropertySchema(
-      id: 12,
+      id: 21,
       name: r'type',
       type: IsarType.byte,
       enumMap: _PlaylistDBtypeEnumValueMap,
     ),
     r'typeIndex': PropertySchema(
-      id: 13,
+      id: 22,
       name: r'typeIndex',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 14,
+      id: 23,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -1903,6 +1948,24 @@ int _playlistDBEstimateSize(
     }
   }
   {
+    final value = object.arrangedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final list = object.arrangement;
+    if (list != null) {
+      bytesCount += 3 + list.length * 3;
+      {
+        for (var i = 0; i < list.length; i++) {
+          final value = list[i];
+          bytesCount += value.length * 3;
+        }
+      }
+    }
+  }
+  {
     final list = object.artists;
     if (list != null) {
       bytesCount += 3 + list.length * 3;
@@ -1922,7 +1985,25 @@ int _playlistDBEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.descriptionChangedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.name.length * 3;
+  {
+    final value = object.nameChangedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.pinnedChangedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   {
     final value = object.remotePlaylist;
     if (value != null) {
@@ -1972,35 +2053,44 @@ void _playlistDBSerialize(
     AlbumSummaryDBSchema.serialize,
     object.album,
   );
+  writer.writeDateTime(offsets[1], object.arrangedAt);
+  writer.writeString(offsets[2], object.arrangedBy);
+  writer.writeStringList(offsets[3], object.arrangement);
   writer.writeObjectList<ArtistSummaryDB>(
-    offsets[1],
+    offsets[4],
     allOffsets,
     ArtistSummaryDBSchema.serialize,
     object.artists,
   );
-  writer.writeDateTime(offsets[2], object.createdAt);
-  writer.writeString(offsets[3], object.description);
-  writer.writeBool(offsets[4], object.isPinned);
-  writer.writeString(offsets[5], object.name);
+  writer.writeDateTime(offsets[5], object.createdAt);
+  writer.writeString(offsets[6], object.description);
+  writer.writeDateTime(offsets[7], object.descriptionChangedAt);
+  writer.writeString(offsets[8], object.descriptionChangedBy);
+  writer.writeBool(offsets[9], object.isPinned);
+  writer.writeString(offsets[10], object.name);
+  writer.writeDateTime(offsets[11], object.nameChangedAt);
+  writer.writeString(offsets[12], object.nameChangedBy);
+  writer.writeDateTime(offsets[13], object.pinnedChangedAt);
+  writer.writeString(offsets[14], object.pinnedChangedBy);
   writer.writeObject<RemotePlaylistSummaryDB>(
-    offsets[6],
+    offsets[15],
     allOffsets,
     RemotePlaylistSummaryDBSchema.serialize,
     object.remotePlaylist,
   );
-  writer.writeString(offsets[7], object.savedBy);
-  writer.writeLong(offsets[8], object.sortOrder);
-  writer.writeString(offsets[9], object.subtitle);
-  writer.writeString(offsets[10], object.syncId);
+  writer.writeString(offsets[16], object.savedBy);
+  writer.writeLong(offsets[17], object.sortOrder);
+  writer.writeString(offsets[18], object.subtitle);
+  writer.writeString(offsets[19], object.syncId);
   writer.writeObject<ArtworkDB>(
-    offsets[11],
+    offsets[20],
     allOffsets,
     ArtworkDBSchema.serialize,
     object.thumbnail,
   );
-  writer.writeByte(offsets[12], object.type.index);
-  writer.writeLong(offsets[13], object.typeIndex);
-  writer.writeDateTime(offsets[14], object.updatedAt);
+  writer.writeByte(offsets[21], object.type.index);
+  writer.writeLong(offsets[22], object.typeIndex);
+  writer.writeDateTime(offsets[23], object.updatedAt);
 }
 
 PlaylistDB _playlistDBDeserialize(
@@ -2016,34 +2106,43 @@ PlaylistDB _playlistDBDeserialize(
       allOffsets,
     ),
     artists: reader.readObjectList<ArtistSummaryDB>(
-      offsets[1],
+      offsets[4],
       ArtistSummaryDBSchema.deserialize,
       allOffsets,
       ArtistSummaryDB(),
     ),
-    description: reader.readStringOrNull(offsets[3]),
-    isPinned: reader.readBoolOrNull(offsets[4]) ?? false,
-    name: reader.readString(offsets[5]),
+    description: reader.readStringOrNull(offsets[6]),
+    isPinned: reader.readBoolOrNull(offsets[9]) ?? false,
+    name: reader.readString(offsets[10]),
     remotePlaylist: reader.readObjectOrNull<RemotePlaylistSummaryDB>(
-      offsets[6],
+      offsets[15],
       RemotePlaylistSummaryDBSchema.deserialize,
       allOffsets,
     ),
-    sortOrder: reader.readLongOrNull(offsets[8]) ?? 0,
-    subtitle: reader.readStringOrNull(offsets[9]),
+    sortOrder: reader.readLongOrNull(offsets[17]) ?? 0,
+    subtitle: reader.readStringOrNull(offsets[18]),
     thumbnail: reader.readObjectOrNull<ArtworkDB>(
-      offsets[11],
+      offsets[20],
       ArtworkDBSchema.deserialize,
       allOffsets,
     ),
-    type: _PlaylistDBtypeValueEnumMap[reader.readByteOrNull(offsets[12])] ??
+    type: _PlaylistDBtypeValueEnumMap[reader.readByteOrNull(offsets[21])] ??
         PlaylistTypeDB.userPlaylist,
   );
-  object.createdAt = reader.readDateTime(offsets[2]);
+  object.arrangedAt = reader.readDateTimeOrNull(offsets[1]);
+  object.arrangedBy = reader.readStringOrNull(offsets[2]);
+  object.arrangement = reader.readStringList(offsets[3]);
+  object.createdAt = reader.readDateTime(offsets[5]);
+  object.descriptionChangedAt = reader.readDateTimeOrNull(offsets[7]);
+  object.descriptionChangedBy = reader.readStringOrNull(offsets[8]);
   object.id = id;
-  object.savedBy = reader.readStringOrNull(offsets[7]);
-  object.syncId = reader.readStringOrNull(offsets[10]);
-  object.updatedAt = reader.readDateTime(offsets[14]);
+  object.nameChangedAt = reader.readDateTimeOrNull(offsets[11]);
+  object.nameChangedBy = reader.readStringOrNull(offsets[12]);
+  object.pinnedChangedAt = reader.readDateTimeOrNull(offsets[13]);
+  object.pinnedChangedBy = reader.readStringOrNull(offsets[14]);
+  object.savedBy = reader.readStringOrNull(offsets[16]);
+  object.syncId = reader.readStringOrNull(offsets[19]);
+  object.updatedAt = reader.readDateTime(offsets[23]);
   return object;
 }
 
@@ -2061,46 +2160,64 @@ P _playlistDBDeserializeProp<P>(
         allOffsets,
       )) as P;
     case 1:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
+      return (reader.readStringList(offset)) as P;
+    case 4:
       return (reader.readObjectList<ArtistSummaryDB>(
         offset,
         ArtistSummaryDBSchema.deserialize,
         allOffsets,
         ArtistSummaryDB(),
       )) as P;
-    case 2:
-      return (reader.readDateTime(offset)) as P;
-    case 3:
-      return (reader.readStringOrNull(offset)) as P;
-    case 4:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
+      return (reader.readStringOrNull(offset)) as P;
+    case 9:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 10:
+      return (reader.readString(offset)) as P;
+    case 11:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 14:
+      return (reader.readStringOrNull(offset)) as P;
+    case 15:
       return (reader.readObjectOrNull<RemotePlaylistSummaryDB>(
         offset,
         RemotePlaylistSummaryDBSchema.deserialize,
         allOffsets,
       )) as P;
-    case 7:
+    case 16:
       return (reader.readStringOrNull(offset)) as P;
-    case 8:
+    case 17:
       return (reader.readLongOrNull(offset) ?? 0) as P;
-    case 9:
+    case 18:
       return (reader.readStringOrNull(offset)) as P;
-    case 10:
+    case 19:
       return (reader.readStringOrNull(offset)) as P;
-    case 11:
+    case 20:
       return (reader.readObjectOrNull<ArtworkDB>(
         offset,
         ArtworkDBSchema.deserialize,
         allOffsets,
       )) as P;
-    case 12:
+    case 21:
       return (_PlaylistDBtypeValueEnumMap[reader.readByteOrNull(offset)] ??
           PlaylistTypeDB.userPlaylist) as P;
-    case 13:
+    case 22:
       return (reader.readLong(offset)) as P;
-    case 14:
+    case 23:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2688,6 +2805,475 @@ extension PlaylistDBQueryFilter
     });
   }
 
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'arrangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'arrangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> arrangedAtEqualTo(
+      DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'arrangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'arrangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'arrangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> arrangedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'arrangedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'arrangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'arrangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> arrangedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'arrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'arrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'arrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> arrangedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'arrangedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'arrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'arrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'arrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> arrangedByMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'arrangedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'arrangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'arrangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'arrangement',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'arrangement',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'arrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'arrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'arrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'arrangement',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'arrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'arrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'arrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'arrangement',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'arrangement',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'arrangement',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'arrangement',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'arrangement',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'arrangement',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'arrangement',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'arrangement',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      arrangementLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'arrangement',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> artistsIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -3001,6 +3587,234 @@ extension PlaylistDBQueryFilter
     });
   }
 
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'descriptionChangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'descriptionChangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'descriptionChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'descriptionChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'descriptionChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'descriptionChangedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'descriptionChangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'descriptionChangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'descriptionChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'descriptionChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'descriptionChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'descriptionChangedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'descriptionChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'descriptionChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'descriptionChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'descriptionChangedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'descriptionChangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      descriptionChangedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'descriptionChangedBy',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition> idEqualTo(
       Id value) {
     return QueryBuilder.apply(this, (query) {
@@ -3189,6 +4003,462 @@ extension PlaylistDBQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'name',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'nameChangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'nameChangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'nameChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'nameChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'nameChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'nameChangedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'nameChangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'nameChangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'nameChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'nameChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'nameChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'nameChangedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'nameChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'nameChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'nameChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'nameChangedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'nameChangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      nameChangedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'nameChangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'pinnedChangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'pinnedChangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pinnedChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'pinnedChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'pinnedChangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'pinnedChangedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'pinnedChangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'pinnedChangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pinnedChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'pinnedChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'pinnedChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'pinnedChangedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'pinnedChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'pinnedChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'pinnedChangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'pinnedChangedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'pinnedChangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterFilterCondition>
+      pinnedChangedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'pinnedChangedBy',
         value: '',
       ));
     });
@@ -3990,6 +5260,30 @@ extension PlaylistDBQueryLinks
 
 extension PlaylistDBQuerySortBy
     on QueryBuilder<PlaylistDB, PlaylistDB, QSortBy> {
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByArrangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByArrangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByArrangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByArrangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedBy', Sort.desc);
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -4014,6 +5308,34 @@ extension PlaylistDBQuerySortBy
     });
   }
 
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      sortByDescriptionChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      sortByDescriptionChangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      sortByDescriptionChangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      sortByDescriptionChangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedBy', Sort.desc);
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByIsPinned() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isPinned', Sort.asc);
@@ -4035,6 +5357,56 @@ extension PlaylistDBQuerySortBy
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByNameChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByNameChangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByNameChangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByNameChangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedBy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByPinnedChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      sortByPinnedChangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> sortByPinnedChangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      sortByPinnedChangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedBy', Sort.desc);
     });
   }
 
@@ -4125,6 +5497,30 @@ extension PlaylistDBQuerySortBy
 
 extension PlaylistDBQuerySortThenBy
     on QueryBuilder<PlaylistDB, PlaylistDB, QSortThenBy> {
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByArrangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByArrangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByArrangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByArrangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'arrangedBy', Sort.desc);
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -4146,6 +5542,34 @@ extension PlaylistDBQuerySortThenBy
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByDescriptionDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'description', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      thenByDescriptionChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      thenByDescriptionChangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      thenByDescriptionChangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      thenByDescriptionChangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionChangedBy', Sort.desc);
     });
   }
 
@@ -4182,6 +5606,56 @@ extension PlaylistDBQuerySortThenBy
   QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByNameChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByNameChangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByNameChangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByNameChangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameChangedBy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByPinnedChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      thenByPinnedChangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy> thenByPinnedChangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QAfterSortBy>
+      thenByPinnedChangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pinnedChangedBy', Sort.desc);
     });
   }
 
@@ -4272,6 +5746,25 @@ extension PlaylistDBQuerySortThenBy
 
 extension PlaylistDBQueryWhereDistinct
     on QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> {
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByArrangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'arrangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByArrangedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'arrangedBy', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByArrangement() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'arrangement');
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -4285,6 +5778,21 @@ extension PlaylistDBQueryWhereDistinct
     });
   }
 
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct>
+      distinctByDescriptionChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'descriptionChangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct>
+      distinctByDescriptionChangedBy({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'descriptionChangedBy',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByIsPinned() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isPinned');
@@ -4295,6 +5803,34 @@ extension PlaylistDBQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByNameChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'nameChangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByNameChangedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'nameChangedBy',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByPinnedChangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pinnedChangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, PlaylistDB, QDistinct> distinctByPinnedChangedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pinnedChangedBy',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -4358,6 +5894,25 @@ extension PlaylistDBQueryProperty
     });
   }
 
+  QueryBuilder<PlaylistDB, DateTime?, QQueryOperations> arrangedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'arrangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, String?, QQueryOperations> arrangedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'arrangedBy');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, List<String>?, QQueryOperations>
+      arrangementProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'arrangement');
+    });
+  }
+
   QueryBuilder<PlaylistDB, List<ArtistSummaryDB>?, QQueryOperations>
       artistsProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -4377,6 +5932,20 @@ extension PlaylistDBQueryProperty
     });
   }
 
+  QueryBuilder<PlaylistDB, DateTime?, QQueryOperations>
+      descriptionChangedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'descriptionChangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, String?, QQueryOperations>
+      descriptionChangedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'descriptionChangedBy');
+    });
+  }
+
   QueryBuilder<PlaylistDB, bool, QQueryOperations> isPinnedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isPinned');
@@ -4386,6 +5955,33 @@ extension PlaylistDBQueryProperty
   QueryBuilder<PlaylistDB, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, DateTime?, QQueryOperations>
+      nameChangedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'nameChangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, String?, QQueryOperations> nameChangedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'nameChangedBy');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, DateTime?, QQueryOperations>
+      pinnedChangedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pinnedChangedAt');
+    });
+  }
+
+  QueryBuilder<PlaylistDB, String?, QQueryOperations>
+      pinnedChangedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pinnedChangedBy');
     });
   }
 
@@ -5550,6 +7146,21 @@ const SyncDeviceDBSchema = CollectionSchema(
       id: 2,
       name: r'lastSyncAt',
       type: IsarType.dateTime,
+    ),
+    r'libraryArrangedAt': PropertySchema(
+      id: 3,
+      name: r'libraryArrangedAt',
+      type: IsarType.dateTime,
+    ),
+    r'libraryArrangedBy': PropertySchema(
+      id: 4,
+      name: r'libraryArrangedBy',
+      type: IsarType.string,
+    ),
+    r'libraryArrangement': PropertySchema(
+      id: 5,
+      name: r'libraryArrangement',
+      type: IsarType.stringList,
     )
   },
   estimateSize: _syncDeviceDBEstimateSize,
@@ -5574,6 +7185,24 @@ int _syncDeviceDBEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.deviceId.length * 3;
   bytesCount += 3 + object.deviceName.length * 3;
+  {
+    final value = object.libraryArrangedBy;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final list = object.libraryArrangement;
+    if (list != null) {
+      bytesCount += 3 + list.length * 3;
+      {
+        for (var i = 0; i < list.length; i++) {
+          final value = list[i];
+          bytesCount += value.length * 3;
+        }
+      }
+    }
+  }
   return bytesCount;
 }
 
@@ -5586,6 +7215,9 @@ void _syncDeviceDBSerialize(
   writer.writeString(offsets[0], object.deviceId);
   writer.writeString(offsets[1], object.deviceName);
   writer.writeDateTime(offsets[2], object.lastSyncAt);
+  writer.writeDateTime(offsets[3], object.libraryArrangedAt);
+  writer.writeString(offsets[4], object.libraryArrangedBy);
+  writer.writeStringList(offsets[5], object.libraryArrangement);
 }
 
 SyncDeviceDB _syncDeviceDBDeserialize(
@@ -5600,6 +7232,9 @@ SyncDeviceDB _syncDeviceDBDeserialize(
     lastSyncAt: reader.readDateTimeOrNull(offsets[2]),
   );
   object.id = id;
+  object.libraryArrangedAt = reader.readDateTimeOrNull(offsets[3]);
+  object.libraryArrangedBy = reader.readStringOrNull(offsets[4]);
+  object.libraryArrangement = reader.readStringList(offsets[5]);
   return object;
 }
 
@@ -5616,6 +7251,12 @@ P _syncDeviceDBDeserializeProp<P>(
       return (reader.readString(offset)) as P;
     case 2:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 3:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
+      return (reader.readStringList(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -6113,6 +7754,479 @@ extension SyncDeviceDBQueryFilter
       ));
     });
   }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'libraryArrangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'libraryArrangedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'libraryArrangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'libraryArrangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'libraryArrangedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'libraryArrangedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'libraryArrangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'libraryArrangedBy',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'libraryArrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'libraryArrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'libraryArrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'libraryArrangedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'libraryArrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'libraryArrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'libraryArrangedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'libraryArrangedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'libraryArrangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'libraryArrangedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'libraryArrangement',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'libraryArrangement',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'libraryArrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'libraryArrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'libraryArrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'libraryArrangement',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'libraryArrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'libraryArrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementContains(String value,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'libraryArrangement',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'libraryArrangement',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'libraryArrangement',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'libraryArrangement',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'libraryArrangement',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'libraryArrangement',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'libraryArrangement',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'libraryArrangement',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'libraryArrangement',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      libraryArrangementLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'libraryArrangement',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
 }
 
 extension SyncDeviceDBQueryObject
@@ -6158,6 +8272,34 @@ extension SyncDeviceDBQuerySortBy
       sortByLastSyncAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastSyncAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      sortByLibraryArrangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      sortByLibraryArrangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      sortByLibraryArrangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      sortByLibraryArrangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedBy', Sort.desc);
     });
   }
 }
@@ -6213,6 +8355,34 @@ extension SyncDeviceDBQuerySortThenBy
       return query.addSortBy(r'lastSyncAt', Sort.desc);
     });
   }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      thenByLibraryArrangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      thenByLibraryArrangedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      thenByLibraryArrangedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      thenByLibraryArrangedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'libraryArrangedBy', Sort.desc);
+    });
+  }
 }
 
 extension SyncDeviceDBQueryWhereDistinct
@@ -6234,6 +8404,28 @@ extension SyncDeviceDBQueryWhereDistinct
   QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct> distinctByLastSyncAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastSyncAt');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct>
+      distinctByLibraryArrangedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'libraryArrangedAt');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct>
+      distinctByLibraryArrangedBy({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'libraryArrangedBy',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct>
+      distinctByLibraryArrangement() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'libraryArrangement');
     });
   }
 }
@@ -6261,6 +8453,27 @@ extension SyncDeviceDBQueryProperty
   QueryBuilder<SyncDeviceDB, DateTime?, QQueryOperations> lastSyncAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastSyncAt');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, DateTime?, QQueryOperations>
+      libraryArrangedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'libraryArrangedAt');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, String?, QQueryOperations>
+      libraryArrangedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'libraryArrangedBy');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, List<String>?, QQueryOperations>
+      libraryArrangementProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'libraryArrangement');
     });
   }
 }
@@ -7631,6 +9844,1014 @@ extension SyncRemovalDBQueryProperty
   QueryBuilder<SyncRemovalDB, String, QQueryOperations> removedByProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'removedBy');
+    });
+  }
+}
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types, experimental_member_use
+
+extension GetSyncAliasDBCollection on Isar {
+  IsarCollection<SyncAliasDB> get syncAliasDBs => this.collection();
+}
+
+const SyncAliasDBSchema = CollectionSchema(
+  name: r'SyncAliasDB',
+  id: 42848292155775194,
+  properties: {
+    r'fromId': PropertySchema(
+      id: 0,
+      name: r'fromId',
+      type: IsarType.string,
+    ),
+    r'intoId': PropertySchema(
+      id: 1,
+      name: r'intoId',
+      type: IsarType.string,
+    ),
+    r'mergedAt': PropertySchema(
+      id: 2,
+      name: r'mergedAt',
+      type: IsarType.dateTime,
+    ),
+    r'mergedBy': PropertySchema(
+      id: 3,
+      name: r'mergedBy',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _syncAliasDBEstimateSize,
+  serialize: _syncAliasDBSerialize,
+  deserialize: _syncAliasDBDeserialize,
+  deserializeProp: _syncAliasDBDeserializeProp,
+  idName: r'id',
+  indexes: {
+    r'fromId': IndexSchema(
+      id: 3228658487865934197,
+      name: r'fromId',
+      unique: true,
+      replace: true,
+      properties: [
+        IndexPropertySchema(
+          name: r'fromId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    )
+  },
+  links: {},
+  embeddedSchemas: {},
+  getId: _syncAliasDBGetId,
+  getLinks: _syncAliasDBGetLinks,
+  attach: _syncAliasDBAttach,
+  version: '3.4.1',
+);
+
+int _syncAliasDBEstimateSize(
+  SyncAliasDB object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  bytesCount += 3 + object.fromId.length * 3;
+  bytesCount += 3 + object.intoId.length * 3;
+  bytesCount += 3 + object.mergedBy.length * 3;
+  return bytesCount;
+}
+
+void _syncAliasDBSerialize(
+  SyncAliasDB object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeString(offsets[0], object.fromId);
+  writer.writeString(offsets[1], object.intoId);
+  writer.writeDateTime(offsets[2], object.mergedAt);
+  writer.writeString(offsets[3], object.mergedBy);
+}
+
+SyncAliasDB _syncAliasDBDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = SyncAliasDB(
+    fromId: reader.readString(offsets[0]),
+    intoId: reader.readString(offsets[1]),
+    mergedAt: reader.readDateTime(offsets[2]),
+    mergedBy: reader.readString(offsets[3]),
+  );
+  object.id = id;
+  return object;
+}
+
+P _syncAliasDBDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readString(offset)) as P;
+    case 1:
+      return (reader.readString(offset)) as P;
+    case 2:
+      return (reader.readDateTime(offset)) as P;
+    case 3:
+      return (reader.readString(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+Id _syncAliasDBGetId(SyncAliasDB object) {
+  return object.id;
+}
+
+List<IsarLinkBase<dynamic>> _syncAliasDBGetLinks(SyncAliasDB object) {
+  return [];
+}
+
+void _syncAliasDBAttach(
+    IsarCollection<dynamic> col, Id id, SyncAliasDB object) {
+  object.id = id;
+}
+
+extension SyncAliasDBByIndex on IsarCollection<SyncAliasDB> {
+  Future<SyncAliasDB?> getByFromId(String fromId) {
+    return getByIndex(r'fromId', [fromId]);
+  }
+
+  SyncAliasDB? getByFromIdSync(String fromId) {
+    return getByIndexSync(r'fromId', [fromId]);
+  }
+
+  Future<bool> deleteByFromId(String fromId) {
+    return deleteByIndex(r'fromId', [fromId]);
+  }
+
+  bool deleteByFromIdSync(String fromId) {
+    return deleteByIndexSync(r'fromId', [fromId]);
+  }
+
+  Future<List<SyncAliasDB?>> getAllByFromId(List<String> fromIdValues) {
+    final values = fromIdValues.map((e) => [e]).toList();
+    return getAllByIndex(r'fromId', values);
+  }
+
+  List<SyncAliasDB?> getAllByFromIdSync(List<String> fromIdValues) {
+    final values = fromIdValues.map((e) => [e]).toList();
+    return getAllByIndexSync(r'fromId', values);
+  }
+
+  Future<int> deleteAllByFromId(List<String> fromIdValues) {
+    final values = fromIdValues.map((e) => [e]).toList();
+    return deleteAllByIndex(r'fromId', values);
+  }
+
+  int deleteAllByFromIdSync(List<String> fromIdValues) {
+    final values = fromIdValues.map((e) => [e]).toList();
+    return deleteAllByIndexSync(r'fromId', values);
+  }
+
+  Future<Id> putByFromId(SyncAliasDB object) {
+    return putByIndex(r'fromId', object);
+  }
+
+  Id putByFromIdSync(SyncAliasDB object, {bool saveLinks = true}) {
+    return putByIndexSync(r'fromId', object, saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByFromId(List<SyncAliasDB> objects) {
+    return putAllByIndex(r'fromId', objects);
+  }
+
+  List<Id> putAllByFromIdSync(List<SyncAliasDB> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'fromId', objects, saveLinks: saveLinks);
+  }
+}
+
+extension SyncAliasDBQueryWhereSort
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QWhere> {
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhere> anyId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+}
+
+extension SyncAliasDBQueryWhere
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QWhereClause> {
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> idEqualTo(Id id) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IdWhereClause.between(
+        lower: id,
+        upper: id,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> idNotEqualTo(
+      Id id) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            )
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            );
+      } else {
+        return query
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            )
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            );
+      }
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> idGreaterThan(Id id,
+      {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IdWhereClause.greaterThan(lower: id, includeLower: include),
+      );
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> idLessThan(Id id,
+      {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IdWhereClause.lessThan(upper: id, includeUpper: include),
+      );
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> idBetween(
+    Id lowerId,
+    Id upperId, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IdWhereClause.between(
+        lower: lowerId,
+        includeLower: includeLower,
+        upper: upperId,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> fromIdEqualTo(
+      String fromId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'fromId',
+        value: [fromId],
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterWhereClause> fromIdNotEqualTo(
+      String fromId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fromId',
+              lower: [],
+              upper: [fromId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fromId',
+              lower: [fromId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fromId',
+              lower: [fromId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fromId',
+              lower: [],
+              upper: [fromId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+}
+
+extension SyncAliasDBQueryFilter
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QFilterCondition> {
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> fromIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fromId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      fromIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'fromId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> fromIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'fromId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> fromIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'fromId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      fromIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'fromId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> fromIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'fromId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> fromIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'fromId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> fromIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'fromId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      fromIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fromId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      fromIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'fromId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> idEqualTo(
+      Id value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> idGreaterThan(
+    Id value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> idLessThan(
+    Id value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> idBetween(
+    Id lower,
+    Id upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> intoIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'intoId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      intoIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'intoId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> intoIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'intoId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> intoIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'intoId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      intoIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'intoId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> intoIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'intoId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> intoIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'intoId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> intoIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'intoId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      intoIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'intoId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      intoIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'intoId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> mergedAtEqualTo(
+      DateTime value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mergedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'mergedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'mergedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> mergedAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'mergedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> mergedByEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mergedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'mergedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'mergedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> mergedByBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'mergedBy',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'mergedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'mergedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'mergedBy',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition> mergedByMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'mergedBy',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'mergedBy',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterFilterCondition>
+      mergedByIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'mergedBy',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension SyncAliasDBQueryObject
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QFilterCondition> {}
+
+extension SyncAliasDBQueryLinks
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QFilterCondition> {}
+
+extension SyncAliasDBQuerySortBy
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QSortBy> {
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByFromId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fromId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByFromIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fromId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByIntoId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intoId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByIntoIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intoId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByMergedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByMergedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByMergedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> sortByMergedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedBy', Sort.desc);
+    });
+  }
+}
+
+extension SyncAliasDBQuerySortThenBy
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QSortThenBy> {
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByFromId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fromId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByFromIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fromId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenById() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'id', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByIntoId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intoId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByIntoIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'intoId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByMergedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByMergedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByMergedBy() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedBy', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QAfterSortBy> thenByMergedByDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'mergedBy', Sort.desc);
+    });
+  }
+}
+
+extension SyncAliasDBQueryWhereDistinct
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QDistinct> {
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QDistinct> distinctByFromId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fromId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QDistinct> distinctByIntoId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'intoId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QDistinct> distinctByMergedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'mergedAt');
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, SyncAliasDB, QDistinct> distinctByMergedBy(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'mergedBy', caseSensitive: caseSensitive);
+    });
+  }
+}
+
+extension SyncAliasDBQueryProperty
+    on QueryBuilder<SyncAliasDB, SyncAliasDB, QQueryProperty> {
+  QueryBuilder<SyncAliasDB, int, QQueryOperations> idProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, String, QQueryOperations> fromIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fromId');
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, String, QQueryOperations> intoIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'intoId');
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, DateTime, QQueryOperations> mergedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'mergedAt');
+    });
+  }
+
+  QueryBuilder<SyncAliasDB, String, QQueryOperations> mergedByProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'mergedBy');
     });
   }
 }

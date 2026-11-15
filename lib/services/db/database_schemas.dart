@@ -17,4 +17,5 @@ const List<CollectionSchema<dynamic>> databaseSchemas = [
   PluginStorageEntitySchema,
   SyncDeviceDBSchema,
   SyncRemovalDBSchema,
+  SyncAliasDBSchema,
 ];

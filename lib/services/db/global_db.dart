@@ -142,6 +142,24 @@ class PlaylistDB {
   /// is [updatedAt]. Null when this Device did.
   String? savedBy;
 
+  // Library Sync change times of the playlist's details and of the order of
+  // its songs. A null time means the detail has not changed since
+  // [createdAt]; a null Device means this Device made the change.
+  DateTime? nameChangedAt;
+  String? nameChangedBy;
+  DateTime? descriptionChangedAt;
+  String? descriptionChangedBy;
+  DateTime? pinnedChangedAt;
+  String? pinnedChangedBy;
+
+  /// When the songs were last arranged; null if they never were.
+  DateTime? arrangedAt;
+  String? arrangedBy;
+
+  /// The media IDs that arrangement put in order. Songs it does not mention
+  /// follow it, in the order they were added.
+  List<String>? arrangement;
+
   @Backlink(to: 'playlist')
   final entries = IsarLinks<PlaylistEntryDB>();
 
@@ -205,6 +223,15 @@ class SyncDeviceDB {
 
   DateTime? lastSyncAt;
 
+  /// When the playlists of the library were last arranged, and by which
+  /// Device (null for this one); null if they never were since sync began.
+  DateTime? libraryArrangedAt;
+  String? libraryArrangedBy;
+
+  /// The sync IDs of the playlists that arrangement put in order. Playlists
+  /// it does not mention follow it, in the order they were created.
+  List<String>? libraryArrangement;
+
   SyncDeviceDB({
     required this.deviceId,
     required this.deviceName,
@@ -247,6 +274,29 @@ class SyncRemovalDB {
     this.mediaId,
     required this.removedAt,
     required this.removedBy,
+  });
+}
+
+/// Two synced playlists that came to bear the same name and became one: the
+/// playlist [fromId] is the playlist [intoId] from then on, on every Device.
+@collection
+class SyncAliasDB {
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  String fromId;
+
+  String intoId;
+
+  /// The name change that made the two playlists one, and its Device.
+  DateTime mergedAt;
+  String mergedBy;
+
+  SyncAliasDB({
+    required this.fromId,
+    required this.intoId,
+    required this.mergedAt,
+    required this.mergedBy,
   });
 }
 

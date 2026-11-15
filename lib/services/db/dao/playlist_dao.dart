@@ -7,6 +7,7 @@ import 'package:Bloomee/services/db/dao/track_dao.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/services/db/mappers/media_item_mapper.dart';
 import 'package:Bloomee/services/db/mappers/playlist_mapper.dart';
+import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 
 /// DAO for playlist CRUD and position-based track ordering.
@@ -19,9 +20,11 @@ import 'package:isar_community/isar.dart';
 /// All write operations that mutate order run inside a single [writeTxn] to
 /// prevent races.
 ///
-/// Changes are stamped with [clock]'s time. Taking a song out of a playlist,
-/// deleting a playlist and unliking leave a Removal Marker for Library Sync
-/// (see [SyncDAO]) in the same transaction.
+/// Changes are stamped with [clock]'s time: additions, renames, description
+/// and pinning changes, and arrangements of a playlist's songs or of the
+/// library's playlists. Taking a song out of a playlist, deleting a playlist
+/// and unliking leave a Removal Marker for Library Sync (see [SyncDAO]) in
+/// the same transaction.
 class PlaylistDAO {
   final Future<Isar> _db;
   final TrackDAO _trackDAO;
@@ -57,16 +60,61 @@ class PlaylistDAO {
           description: description,
           subtitle: subtitle,
           type: PlaylistTypeDB.userPlaylist,
+          sortOrder: SyncDAO.sortOrderForNewPlaylist(isar),
           createdat: _now(),
           updatedat: _now()));
     });
   }
 
   /// Insert or replace any [PlaylistDB] row (upsert by id).
+  ///
+  /// Replacing a row keeps its Library Sync bookkeeping and stamps the
+  /// details that differ.
   Future<int> putPlaylist(PlaylistDB playlist) async {
     final isar = await _db;
-    playlist.updatedAt = _now();
-    return isar.writeTxn(() => isar.playlistDBs.put(playlist));
+    return isar.writeTxn(() async {
+      final stored = await isar.playlistDBs.get(playlist.id);
+      if (stored != null) {
+        playlist
+          ..syncId = stored.syncId
+          ..savedBy = stored.savedBy
+          ..nameChangedAt = stored.nameChangedAt
+          ..nameChangedBy = stored.nameChangedBy
+          ..descriptionChangedAt = stored.descriptionChangedAt
+          ..descriptionChangedBy = stored.descriptionChangedBy
+          ..pinnedChangedAt = stored.pinnedChangedAt
+          ..pinnedChangedBy = stored.pinnedChangedBy
+          ..arrangedAt = stored.arrangedAt
+          ..arrangedBy = stored.arrangedBy
+          ..arrangement = stored.arrangement;
+        _stampDetails(playlist,
+            name: stored.name,
+            description: stored.description,
+            pinned: stored.isPinned);
+      }
+      playlist.updatedAt = _now();
+      return isar.playlistDBs.put(playlist);
+    });
+  }
+
+  /// Stamps each detail of [row] that differs from its value before.
+  void _stampDetails(PlaylistDB row,
+      {required String name, String? description, required bool pinned}) {
+    if (row.name != name) {
+      row
+        ..nameChangedAt = _now()
+        ..nameChangedBy = null;
+    }
+    if (row.description != description) {
+      row
+        ..descriptionChangedAt = _now()
+        ..descriptionChangedBy = null;
+    }
+    if (row.isPinned != pinned) {
+      row
+        ..pinnedChangedAt = _now()
+        ..pinnedChangedBy = null;
+    }
   }
 
   /// Find a playlist by its case-insensitive [name] (unique index).
@@ -152,14 +200,19 @@ class PlaylistDAO {
     String? subtitle,
   }) async {
     final isar = await _db;
-    final playlist = await isar.playlistDBs.get(playlistId);
-    if (playlist == null) return;
-    if (name != null) playlist.name = name;
-    if (thumbnail != null) playlist.thumbnail = thumbnail;
-    if (description != null) playlist.description = description;
-    if (subtitle != null) playlist.subtitle = subtitle;
-    playlist.updatedAt = _now();
-    await isar.writeTxn(() => isar.playlistDBs.put(playlist));
+    await isar.writeTxn(() async {
+      final playlist = await isar.playlistDBs.get(playlistId);
+      if (playlist == null) return;
+      final before = (playlist.name, playlist.description);
+      if (name != null) playlist.name = name;
+      if (thumbnail != null) playlist.thumbnail = thumbnail;
+      if (description != null) playlist.description = description;
+      if (subtitle != null) playlist.subtitle = subtitle;
+      _stampDetails(playlist,
+          name: before.$1, description: before.$2, pinned: playlist.isPinned);
+      playlist.updatedAt = _now();
+      await isar.playlistDBs.put(playlist);
+    });
   }
 
   // ── Track management ───────────────────────────────────────────────────────
@@ -232,6 +285,16 @@ class PlaylistDAO {
           ..addedAt = before.addedAt
           ..addedBy = before.addedBy;
         isar.playlistEntryDBs.putSync(entry);
+      }
+      // Dropping songs, or adding them at the end, arranges nothing.
+      final order = [for (final track in tracks) track.id];
+      final firstNew = order.indexWhere((id) => !previous.containsKey(id));
+      if (!listEquals([...order.where(previous.containsKey)],
+              [...previous.keys.where(kept.contains)]) ||
+          (firstNew >= 0 && order.skip(firstNew).any(previous.containsKey))) {
+        final row = isar.playlistDBs.getSync(playlistId)!;
+        SyncDAO.recordArrangement(row, order, _now());
+        isar.playlistDBs.putSync(row);
       }
     });
   }
@@ -381,12 +444,7 @@ class PlaylistDAO {
       movedEntry.position = newPosition;
       toUpdate.add(movedEntry);
       await isar.playlistEntryDBs.putAll(toUpdate);
-
-      final playlist = await isar.playlistDBs.get(playlistId);
-      if (playlist != null) {
-        playlist.updatedAt = _now();
-        await isar.playlistDBs.put(playlist);
-      }
+      await _recordArrangement(isar, playlistId, entries);
     });
   }
 
@@ -433,13 +491,28 @@ class PlaylistDAO {
       }
 
       await isar.playlistEntryDBs.putAll(entries);
-
-      final playlist = await isar.playlistDBs.get(playlistId);
-      if (playlist != null) {
-        playlist.updatedAt = _now();
-        await isar.playlistDBs.put(playlist);
-      }
+      await _recordArrangement(isar, playlistId, entries);
     });
+  }
+
+  /// Stamps playlist [playlistId] as arranged into the order of [entries]
+  /// (its entries, positions updated), inside the transaction that does it.
+  Future<void> _recordArrangement(
+      Isar isar, int playlistId, List<PlaylistEntryDB> entries) async {
+    final playlist = await isar.playlistDBs.get(playlistId);
+    if (playlist == null) return;
+    await Future.wait(entries.map((e) => e.track.load()));
+    final ordered = [...entries]
+      ..sort((a, b) => a.position.compareTo(b.position));
+    playlist.updatedAt = _now();
+    SyncDAO.recordArrangement(
+        playlist,
+        [
+          for (final e in ordered)
+            if (e.track.value case final track?) track.mediaId
+        ],
+        _now());
+    await isar.playlistDBs.put(playlist);
   }
 
   // ── Like helpers ───────────────────────────────────────────────────────────
@@ -584,7 +657,11 @@ class PlaylistDAO {
         .findFirstSync();
     return existing?.id ??
         isar.playlistDBs.putSync(PlaylistDB(
-            name: name, type: type, createdat: _now(), updatedat: _now()));
+            name: name,
+            type: type,
+            sortOrder: SyncDAO.sortOrderForNewPlaylist(isar),
+            createdat: _now(),
+            updatedat: _now()));
   }
 
   /// Atomic track upsert, duplicate check, position assignment and link creation.
@@ -645,7 +722,12 @@ class PlaylistDAO {
     await isar.writeTxn(() async {
       final playlist = await isar.playlistDBs.get(playlistId);
       if (playlist == null) return;
+      final before = playlist.isPinned;
       playlist.isPinned = pinned;
+      _stampDetails(playlist,
+          name: playlist.name,
+          description: playlist.description,
+          pinned: before);
       await isar.playlistDBs.put(playlist);
     });
   }
@@ -663,6 +745,7 @@ class PlaylistDAO {
         playlist.sortOrder = i;
         await isar.playlistDBs.put(playlist);
       }
+      await SyncDAO.recordLibraryArrangement(isar, _now());
     });
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:isolate';
+import 'dart:math';
 
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/synced_library_change.dart';
@@ -8,6 +9,7 @@ import 'package:Bloomee/services/db/database_schemas.dart';
 import 'package:Bloomee/services/db/db_provider.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/services/db/mappers/track_json_mapper.dart';
+import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
 
 /// This Device's Synced Library as read from the database.
@@ -22,11 +24,24 @@ class LocalSyncedLibrary {
   /// Device-only playlists, saved collections).
   final Set<String> unsyncedNames;
 
+  /// Orders of songs, by database row, and of the library's playlists that
+  /// were arranged before sync could record it (at the first sync, those
+  /// that differ from the order sync would give them); they are stored with
+  /// the next applied merge.
+  final Map<int, Arrangement> newArrangements;
+  final Arrangement? newOrder;
+
   const LocalSyncedLibrary({
     required this.library,
     required this.newIds,
     required this.unsyncedNames,
+    this.newArrangements = const {},
+    this.newOrder,
   });
+
+  /// Whether reading the library gave it bookkeeping not yet stored.
+  bool get hasNewBookkeeping =>
+      newIds.isNotEmpty || newArrangements.isNotEmpty || newOrder != null;
 }
 
 /// Database side of Library Sync: the Device's bookkeeping, reading the
@@ -158,6 +173,93 @@ class SyncDAO {
       ..id = known?.id ?? Isar.autoIncrement);
   }
 
+  // ── Change times left by the other data-access classes ──────────────────
+
+  /// A new permanent sync ID for a playlist.
+  static String newSyncId() => [
+        for (var i = 0; i < 16; i++)
+          _random.nextInt(256).toRadixString(16).padLeft(2, '0')
+      ].join();
+
+  static final Random _random = Random.secure();
+
+  /// Records that the songs of [row] were just arranged into the order
+  /// [mediaIds]; the caller stores [row] in the transaction that arranges
+  /// them.
+  static void recordArrangement(
+      PlaylistDB row, List<String> mediaIds, DateTime at) {
+    row
+      ..arrangedAt = at
+      ..arrangedBy = null
+      ..arrangement = mediaIds;
+  }
+
+  /// Records that the playlists of the library were just arranged, in the
+  /// order they now have. Call inside the write transaction that arranges
+  /// them. Nothing is recorded while sync has never been enabled: the first
+  /// sync takes the order as it finds it.
+  static Future<void> recordLibraryArrangement(Isar isar, DateTime at) async {
+    final device = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
+    if (device == null) return;
+    final rows = await isar.playlistDBs.where().findAll();
+    final ids = <String>[];
+    for (final row in rows..sort(_byLibraryOrder)) {
+      if (!_isSynced(row)) continue;
+      if (row.syncId == null) {
+        row.syncId = newSyncId();
+        await isar.playlistDBs.put(row);
+      }
+      ids.add(row.syncId!);
+    }
+    device
+      ..libraryArrangedAt = at
+      ..libraryArrangedBy = null
+      ..libraryArrangement = ids;
+    await isar.syncDeviceDBs.put(device);
+  }
+
+  /// Where a playlist made now goes in the library: after the others while
+  /// sync is enabled, so it stays where sync will put it; at the start, as
+  /// before sync existed, otherwise.
+  static int sortOrderForNewPlaylist(Isar isar) {
+    if (_ownId(isar) == null) return 0;
+    final last = isar.playlistDBs.where().sortBySortOrderDesc().findFirstSync();
+    return last == null ? 0 : last.sortOrder + 1;
+  }
+
+  /// Every playlist row in the library's order (pinning aside).
+  static List<PlaylistDB> _inLibraryOrder(Isar isar) =>
+      isar.playlistDBs.where().findAllSync()..sort(_byLibraryOrder);
+
+  static int _byLibraryOrder(PlaylistDB a, PlaylistDB b) {
+    final bySortOrder = a.sortOrder.compareTo(b.sortOrder);
+    return bySortOrder != 0 ? bySortOrder : a.id.compareTo(b.id);
+  }
+
+  static ChangeStamp _nameStamp(PlaylistDB row, String me) =>
+      ChangeStamp(row.nameChangedAt ?? row.createdAt, row.nameChangedBy ?? me);
+
+  static ChangeStamp _descriptionStamp(PlaylistDB row, String me) =>
+      ChangeStamp(row.descriptionChangedAt ?? row.createdAt,
+          row.descriptionChangedBy ?? me);
+
+  static ChangeStamp _pinnedStamp(PlaylistDB row, String me) => ChangeStamp(
+      row.pinnedChangedAt ?? row.createdAt, row.pinnedChangedBy ?? me);
+
+  static Arrangement? _arrangementOf(PlaylistDB row, String me) =>
+      row.arrangedAt == null
+          ? null
+          : Arrangement(ChangeStamp(row.arrangedAt!, row.arrangedBy ?? me),
+              row.arrangement ?? const []);
+
+  static Arrangement? _libraryArrangementOf(SyncDeviceDB? device, String me) =>
+      device?.libraryArrangedAt == null
+          ? null
+          : Arrangement(
+              ChangeStamp(
+                  device!.libraryArrangedAt!, device.libraryArrangedBy ?? me),
+              device.libraryArrangement ?? const []);
+
   // ── Syncing ───────────────────────────────────────────────────────────────
 
   /// Runs [operation] on a worker isolate with its own connection to the
@@ -210,18 +312,24 @@ class SyncDAO {
         ..remove('createdAt')
         ..remove('updatedAt');
 
-  /// Reads the Synced Library; playlists without a sync ID get one from
-  /// [newSyncId]. For a worker connection (see [onWorker]).
+  /// Reads the Synced Library, its playlists in the library's order;
+  /// playlists without a sync ID get one from [newSyncId]. For a worker
+  /// connection (see [onWorker]).
   Future<LocalSyncedLibrary> readSyncedLibrary(
       String Function() newSyncId) async {
     final isar = await _db;
     return isar.txnSync(() {
       final me = _ownId(isar) ?? '';
+      final device = isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId);
+      // Orders arranged before sync could record them are taken as they are
+      // at this Device's first sync; afterwards every arrangement is recorded.
+      final firstSync = device?.lastSyncAt == null;
       final playlists = <SyncedPlaylist>[];
       final liked = <SyncedSong>[];
       final saved = <SavedCollection>[];
       final tracks = <String, Map<String, dynamic>>{};
       final newIds = <int, String>{};
+      final newArrangements = <int, Arrangement>{};
       final unavailable = <String>{};
 
       List<SyncedSong> songsOf(PlaylistDB row) {
@@ -241,7 +349,7 @@ class SyncDAO {
         return songs;
       }
 
-      for (final row in isar.playlistDBs.where().findAllSync()) {
+      for (final row in _inLibraryOrder(isar)) {
         if (!_isSynced(row)) {
           unavailable.add(row.name.toLowerCase());
           if (_isLiked(row)) liked.addAll(songsOf(row));
@@ -257,12 +365,51 @@ class SyncDAO {
           continue;
         }
         final id = row.syncId ?? (newIds[row.id] = newSyncId());
+        final songs = songsOf(row);
+        var arrangement = _arrangementOf(row, me);
+        if (firstSync &&
+            arrangement == null &&
+            !listEquals([
+              for (final s in Arrangement.arrangeSongs(null, songs)) s.mediaId
+            ], [
+              for (final s in songs) s.mediaId
+            ])) {
+          // Arranged before sync recorded it: that order is kept, as of the
+          // latest addition, so any later arrangement beats it.
+          arrangement = newArrangements[row.id] = Arrangement(
+              songs
+                  .map((s) => s.added)
+                  .reduce((a, b) => ChangeStamp.latest(a, b)),
+              [for (final s in songs) s.mediaId]);
+        }
         playlists.add(SyncedPlaylist(
             id: id,
             name: row.name,
+            nameChanged: _nameStamp(row, me),
             description: row.description,
+            descriptionChanged: _descriptionStamp(row, me),
+            pinned: row.isPinned,
+            pinnedChanged: _pinnedStamp(row, me),
             createdAt: row.createdAt.toUtc(),
-            songs: songsOf(row)));
+            arrangement: arrangement,
+            songs: songs));
+      }
+      var order = _libraryArrangementOf(device, me);
+      Arrangement? newOrder;
+      if (firstSync &&
+          order == null &&
+          playlists.isNotEmpty &&
+          !listEquals([
+            for (final p in Arrangement.arrangePlaylists(null, playlists)) p.id
+          ], [
+            for (final p in playlists) p.id
+          ])) {
+        // Likewise for the library, as of the latest playlist made.
+        final latest = playlists
+            .map((p) => p.createdAt)
+            .reduce((a, b) => b.isAfter(a) ? b : a);
+        order = newOrder = Arrangement(
+            ChangeStamp(latest, me), [for (final p in playlists) p.id]);
       }
       final removals = [
         for (final row in isar.syncRemovalDBs.where().findAllSync())
@@ -272,15 +419,26 @@ class SyncDAO {
               mediaId: row.mediaId,
               removed: ChangeStamp(row.removedAt, row.removedBy))
       ];
+      final aliases = [
+        for (final row in isar.syncAliasDBs.where().findAllSync())
+          PlaylistAlias(
+              from: row.fromId,
+              into: row.intoId,
+              merged: ChangeStamp(row.mergedAt, row.mergedBy))
+      ];
       return LocalSyncedLibrary(
           library: SyncedLibrary(
               playlists: playlists,
               liked: liked,
               saved: saved,
               removals: removals,
-              tracks: tracks),
+              tracks: tracks,
+              order: order,
+              aliases: aliases),
           newIds: newIds,
-          unsyncedNames: unavailable);
+          unsyncedNames: unavailable,
+          newArrangements: newArrangements,
+          newOrder: newOrder);
     });
   }
 
@@ -289,7 +447,7 @@ class SyncDAO {
   /// anything was written. For a worker connection (see [onWorker]).
   Future<bool> apply(
       LocalSyncedLibrary local, SyncedLibraryMerge merge, DateTime now) async {
-    if (merge.changes.isEmpty && local.newIds.isEmpty) return false;
+    if (merge.changes.isEmpty && !local.hasNewBookkeeping) return false;
     final isar = await _db;
     final tracks = merge.library.tracks;
     isar.writeTxnSync(() {
@@ -300,26 +458,80 @@ class SyncDAO {
         row.syncId = syncId;
         isar.playlistDBs.putSync(row);
       });
-      // Removals first, so a name they free can be taken by an addition.
+      local.newArrangements.forEach((rowId, arrangement) {
+        final row = isar.playlistDBs.getSync(rowId);
+        if (row == null || row.arrangedAt != null) return;
+        _storeArrangement(isar, row, arrangement);
+      });
+      if (local.newOrder case final order?) {
+        final device = isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId);
+        if (device != null && device.libraryArrangedAt == null) {
+          _storeLibraryArrangement(isar, device, order);
+        }
+      }
+      // Identities first, then removals, so a name they free can be taken by
+      // a rename or an addition; orders last, once every song and playlist
+      // is in place.
       int phase(SyncedLibraryChange change) => switch (change) {
-            RemovalsLearned() => 0,
+            AliasesLearned() || RemovalsLearned() || PlaylistRekeyed() => 0,
+            PlaylistAbsorbed() ||
             PlaylistLost() ||
             SongsLost() ||
             LikesLost() ||
             CollectionsUnsaved() =>
               1,
-            _ => 2,
+            DetailsChanged() => 2,
+            SongsArranged() || PlaylistsArranged() => 4,
+            _ => 3,
           };
       final ordered = [
-        for (final p in [0, 1, 2])
+        for (final p in [0, 1, 2, 3, 4])
           ...merge.changes.where((change) => phase(change) == p)
+      ];
+      final details = [
+        for (final change in ordered)
+          if (change is DetailsChanged) change.playlist
       ];
       for (final change in ordered) {
         switch (change) {
+          case AliasesLearned(:final aliases):
+            for (final alias in aliases) {
+              isar.syncAliasDBs.putSync(SyncAliasDB(
+                  fromId: alias.from,
+                  intoId: alias.into,
+                  mergedAt: alias.merged.at,
+                  mergedBy: alias.merged.device));
+              _rekeyMarkers(isar, alias.from, alias.into);
+            }
           case RemovalsLearned(:final markers):
             for (final m in markers) {
               _record(isar, m.kind, m.playlistId, m.mediaId, m.removed);
             }
+          case PlaylistRekeyed(:final from, :final to):
+            final row = _bySyncId(isar, from);
+            if (row != null && _bySyncId(isar, to) == null) {
+              row.syncId = to;
+              isar.playlistDBs.putSync(row);
+            }
+            _rekeyMarkers(isar, from, to);
+          case PlaylistAbsorbed(:final playlistId, :final into):
+            final row = _bySyncId(isar, playlistId);
+            if (row == null) break;
+            final target = _bySyncId(isar, into);
+            if (target == null) {
+              row.syncId = into;
+              isar.playlistDBs.putSync(row);
+              break;
+            }
+            // Whatever it holds that the other lacks moves over, even a song
+            // added since the library was read.
+            _addSongs(isar, target, _entrySongs(isar, row, me),
+                _songRemovals(isar, target), tracks, me, now);
+            isar.playlistEntryDBs
+                .filter()
+                .playlistIdEqualTo(row.id)
+                .deleteAllSync();
+            isar.playlistDBs.deleteSync(row.id);
           case PlaylistLost(:final playlistId):
             final row = _bySyncId(isar, playlistId);
             if (row == null || _changedSinceDeletion(isar, row, me)) break;
@@ -351,6 +563,9 @@ class SyncDAO {
                 isar.playlistDBs.deleteSync(row.id);
               }
             }
+          case DetailsChanged(:final playlist):
+            // All together, at the first.
+            if (playlist == details.first) _changeDetails(isar, details, me);
           case PlaylistGained(:final playlist):
             final row = _bySyncId(isar, playlist.id) ??
                 _byName(isar, playlist) ??
@@ -373,10 +588,185 @@ class SyncDAO {
             for (final collection in collections) {
               _save(isar, collection, me);
             }
+          case SongsArranged(
+              :final playlistId,
+              :final mediaIds,
+              :final arrangement
+            ):
+            final row = _bySyncId(isar, playlistId);
+            if (row == null) break;
+            final held = _arrangementOf(row, me);
+            if (held != null &&
+                (arrangement == null ||
+                    held.arranged.isAfter(arrangement.arranged))) {
+              break; // Arranged here since the library was read.
+            }
+            if (arrangement != null) _storeArrangement(isar, row, arrangement);
+            _putSongsInOrder(isar, row, mediaIds);
+          case PlaylistsArranged(:final playlistIds, :final arrangement):
+            final device = isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId);
+            if (device == null) break;
+            final held = _libraryArrangementOf(device, me);
+            if (held != null &&
+                (arrangement == null ||
+                    held.arranged.isAfter(arrangement.arranged))) {
+              break; // Arranged here since the library was read.
+            }
+            if (arrangement != null) {
+              _storeLibraryArrangement(isar, device, arrangement);
+            }
+            _putPlaylistsInOrder(isar, playlistIds);
         }
       }
     });
     return true;
+  }
+
+  static void _storeArrangement(
+      Isar isar, PlaylistDB row, Arrangement arrangement) {
+    row
+      ..arrangedAt = arrangement.arranged.at
+      ..arrangedBy = arrangement.arranged.device
+      ..arrangement = arrangement.ids;
+    isar.playlistDBs.putSync(row);
+  }
+
+  static void _storeLibraryArrangement(
+      Isar isar, SyncDeviceDB device, Arrangement arrangement) {
+    device
+      ..libraryArrangedAt = arrangement.arranged.at
+      ..libraryArrangedBy = arrangement.arranged.device
+      ..libraryArrangement = arrangement.ids;
+    isar.syncDeviceDBs.putSync(device);
+  }
+
+  /// Moves the Removal Markers of songs taken out of the playlist [from] to
+  /// the playlist [to] it is known as now, and its deletion with them.
+  static void _rekeyMarkers(Isar isar, String from, String to) {
+    for (final marker
+        in isar.syncRemovalDBs.filter().playlistIdEqualTo(from).findAllSync()) {
+      isar.syncRemovalDBs.deleteSync(marker.id);
+      final kind = RemovalKind.values.byName(marker.kind.name);
+      _record(isar, kind, to, marker.mediaId,
+          ChangeStamp(marker.removedAt, marker.removedBy));
+    }
+  }
+
+  /// The songs [row] holds, with when they were added.
+  static List<SyncedSong> _entrySongs(Isar isar, PlaylistDB row, String me) => [
+        for (final entry in isar.playlistEntryDBs
+            .where()
+            .playlistIdEqualToAnyPosition(row.id)
+            .findAllSync())
+          if ((entry..track.loadSync()).track.value case final track?)
+            SyncedSong(mediaId: track.mediaId, added: _addedStamp(entry, me))
+      ];
+
+  /// Sets each detail of [playlists] whose change here is older. Names are
+  /// changed together, through names no playlist bears, so two playlists can
+  /// swap theirs; a name another playlist took since the library was read is
+  /// not taken.
+  static void _changeDetails(
+      Isar isar, List<SyncedPlaylist> playlists, String me) {
+    final renamed = <(PlaylistDB, String, SyncedPlaylist)>[];
+    for (final playlist in playlists) {
+      final row = _bySyncId(isar, playlist.id);
+      if (row == null) continue;
+      if (playlist.descriptionChanged.isAfter(_descriptionStamp(row, me))) {
+        row
+          ..description = playlist.description
+          ..descriptionChangedAt = playlist.descriptionChanged.at
+          ..descriptionChangedBy = playlist.descriptionChanged.device;
+      }
+      if (playlist.pinnedChanged.isAfter(_pinnedStamp(row, me))) {
+        row
+          ..isPinned = playlist.pinned
+          ..pinnedChangedAt = playlist.pinnedChanged.at
+          ..pinnedChangedBy = playlist.pinnedChanged.device;
+      }
+      if (playlist.nameChanged.isAfter(_nameStamp(row, me))) {
+        if (playlist.name == row.name) {
+          row
+            ..nameChangedAt = playlist.nameChanged.at
+            ..nameChangedBy = playlist.nameChanged.device;
+        } else {
+          renamed.add((row, row.name, playlist));
+          row.name = '\u0000${row.syncId}';
+        }
+      }
+      isar.playlistDBs.putSync(row);
+    }
+    for (final (row, previous, playlist) in renamed) {
+      final taken = isar.playlistDBs
+          .filter()
+          .nameEqualTo(playlist.name, caseSensitive: false)
+          .findFirstSync();
+      if (taken != null && taken.id != row.id) {
+        row.name = previous;
+      } else {
+        row
+          ..name = playlist.name
+          ..nameChangedAt = playlist.nameChanged.at
+          ..nameChangedBy = playlist.nameChanged.device;
+      }
+      isar.playlistDBs.putSync(row);
+    }
+  }
+
+  /// Puts the songs of [row] in the order [mediaIds]; any it holds beyond
+  /// them (added since the library was read) follow, in their order.
+  static void _putSongsInOrder(
+      Isar isar, PlaylistDB row, List<String> mediaIds) {
+    final entries = isar.playlistEntryDBs
+        .where()
+        .playlistIdEqualToAnyPosition(row.id)
+        .findAllSync();
+    final byMediaId = <String, PlaylistEntryDB>{};
+    for (final entry in entries) {
+      entry.track.loadSync();
+      if (entry.track.value case final track?) {
+        byMediaId.putIfAbsent(track.mediaId, () => entry);
+      }
+    }
+    final placed = <PlaylistEntryDB>{};
+    final ordered = [
+      for (final mediaId in mediaIds)
+        if (byMediaId[mediaId] case final entry? when placed.add(entry)) entry,
+      for (final entry in entries)
+        if (!placed.contains(entry)) entry,
+    ];
+    final moved = <PlaylistEntryDB>[];
+    for (var i = 0; i < ordered.length; i++) {
+      if (ordered[i].position != i) moved.add(ordered[i]..position = i);
+    }
+    if (moved.isNotEmpty) isar.playlistEntryDBs.putAllSync(moved);
+  }
+
+  /// Puts the synced playlists in the order [syncIds], in the places synced
+  /// playlists hold in the library; other playlists keep theirs. Synced
+  /// playlists beyond them (made since the library was read) follow.
+  static void _putPlaylistsInOrder(Isar isar, List<String> syncIds) {
+    final rows = _inLibraryOrder(isar);
+    final synced = {
+      for (final row in rows)
+        if (_isSynced(row) && row.syncId != null) row.syncId!: row
+    };
+    final placed = <PlaylistDB>{};
+    final queue = [
+      for (final id in syncIds)
+        if (synced[id] case final row? when placed.add(row)) row,
+      for (final row in rows)
+        if (synced[row.syncId] == row && !placed.contains(row)) row,
+    ].iterator;
+    final ordered = [
+      for (final row in rows)
+        if (synced[row.syncId] == row) (queue..moveNext()).current else row
+    ];
+    final moved = <PlaylistDB>[];
+    for (var i = 0; i < ordered.length; i++) {
+      if (ordered[i].sortOrder != i) moved.add(ordered[i]..sortOrder = i);
+    }
+    if (moved.isNotEmpty) isar.playlistDBs.putAllSync(moved);
   }
 
   static PlaylistDB? _bySyncId(Isar isar, String syncId) =>
@@ -461,9 +851,23 @@ class SyncDAO {
     final row = PlaylistDB(
         name: playlist.name,
         description: playlist.description,
+        isPinned: playlist.pinned,
+        sortOrder: sortOrderForNewPlaylist(isar),
         createdat: playlist.createdAt,
         updatedat: now)
-      ..syncId = playlist.id;
+      ..syncId = playlist.id
+      ..nameChangedAt = playlist.nameChanged.at
+      ..nameChangedBy = playlist.nameChanged.device
+      ..descriptionChangedAt = playlist.descriptionChanged.at
+      ..descriptionChangedBy = playlist.descriptionChanged.device
+      ..pinnedChangedAt = playlist.pinnedChanged.at
+      ..pinnedChangedBy = playlist.pinnedChanged.device;
+    if (playlist.arrangement case final arrangement?) {
+      row
+        ..arrangedAt = arrangement.arranged.at
+        ..arrangedBy = arrangement.arranged.device
+        ..arrangement = arrangement.ids;
+    }
     row.id = isar.playlistDBs.putSync(row);
     return row;
   }
@@ -494,12 +898,20 @@ class SyncDAO {
     return row == null ? null : ChangeStamp(row.removedAt, row.removedBy);
   }
 
-  /// Whether [playlist] had a song added or taken out after its stored
-  /// deletion, which brings it back.
+  /// Whether [playlist] had a song added or taken out, or its details or
+  /// order changed, after its stored deletion, which brings it back.
   static bool _changedSinceDeletion(Isar isar, PlaylistDB playlist, String me) {
     final deleted =
         _removedAt(isar, RemovalKind.playlist, playlist.syncId, null);
     if (deleted == null) return true;
+    if ([
+      _nameStamp(playlist, me),
+      _descriptionStamp(playlist, me),
+      _pinnedStamp(playlist, me),
+      if (_arrangementOf(playlist, me) case final a?) a.arranged,
+    ].any((stamp) => stamp.isAfter(deleted))) {
+      return true;
+    }
     final songRemovals = isar.syncRemovalDBs
         .filter()
         .kindEqualTo(SyncRemovalKindDB.song)

@@ -1,5 +1,6 @@
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/synced_library_change.dart';
+import 'package:flutter/foundation.dart';
 
 /// Combines this Device's Synced Library with other Devices' Device States
 /// under Latest Change Wins.
@@ -7,222 +8,413 @@ import 'package:Bloomee/core/models/sync/synced_library_change.dart';
 /// Pure: the same inputs give the same result whatever order [others] come
 /// in. A song is in a playlist, a song liked, an album or artist saved, when
 /// its latest addition is later than its latest Removal Marker. A playlist is
-/// deleted when its Removal Marker is later than every addition and removal of
-/// its songs; any later one brings it back. Songs gained by a playlist are
-/// appended in the order they were added.
+/// deleted when its Removal Marker is later than every change made to it (to
+/// its songs, details or order); any later one brings it back.
 ///
-/// A playlist met for the first time is gained, unless its name (ignoring
-/// case) is already used here: then its songs join the local playlist of that
-/// name, and are only ever added to it. A name that belongs to something sync
-/// does not cover ([unsyncedNames], lower-cased) is left out.
+/// Each detail of a playlist (name, description, pinning) follows its own
+/// latest change. The latest arrangement of a playlist's songs wins as a
+/// whole: the songs it mentions follow its order, unless added again after
+/// it, and the others come after, in the order they were added. The latest
+/// arrangement of the library's playlists wins the same way; playlists it
+/// does not mention come after, in the order they were created.
+///
+/// Playlist names are unique ignoring case, so two synced playlists that come
+/// to bear the same name, whether made apart or by a rename, become one: the
+/// playlist with the larger sync ID is the one with the smaller from then on
+/// (a [PlaylistAlias], passed on to every Device), and the two are merged
+/// under the same rules as two copies of one playlist. [local] lists its
+/// playlists in the library's order. A name that belongs to something sync
+/// does not cover ([unsyncedNames], lower-cased) is never taken.
 SyncedLibraryMerge mergeSyncedLibraries(
   SyncedLibrary local,
   List<DeviceState> others, {
   Set<String> unsyncedNames = const {},
 }) {
   final states = [...others]..sort((a, b) => a.deviceId.compareTo(b.deviceId));
-  final tracks = {...local.tracks};
-
-  void needTrack(DeviceState state, String mediaId) {
-    if (tracks.containsKey(mediaId)) return;
-    final details = state.library.tracks[mediaId];
-    if (details == null) {
-      throw FormatException(
-          'Device State of ${state.deviceName} lacks details for $mediaId.');
+  final aliases = <String, PlaylistAlias>{};
+  void addAlias(PlaylistAlias alias) {
+    // Always into the smaller ID, so following aliases ends; any other
+    // could only come from a damaged Device State.
+    if (alias.into.compareTo(alias.from) >= 0) return;
+    final known = aliases[alias.from];
+    if (known == null ||
+        alias.into.compareTo(known.into) < 0 ||
+        (alias.into == known.into && alias.merged.isAfter(known.merged))) {
+      aliases[alias.from] = alias;
     }
-    tracks[mediaId] = details;
   }
 
-  /// [held] as the merge leaves it: what it keeps, in place, then what it
-  /// gains, in the order it was added.
-  List<SyncedSong> songsAfter(List<SyncedSong> held, _Members<SyncedSong> m) {
-    for (final (state, song) in m.fresh) {
-      needTrack(state, song.mediaId);
-    }
-    return [
-      for (final s in held)
-        if (m.present[s.mediaId] case final song?) song,
-      for (final (_, song) in m.fresh) song,
-    ];
+  for (final alias in local.aliases) {
+    addAlias(alias);
   }
-
-  // Removal Markers: the latest of each, from every Device.
-  final removals = {for (final r in local.removals) r.key: r};
-  final learned = <String, RemovalMarker>{};
+  final known = {...aliases};
   for (final state in states) {
-    for (final marker in state.library.removals) {
+    for (final alias in state.library.aliases) {
+      addAlias(alias);
+    }
+  }
+  while (true) {
+    final pass = _MergePass(local, states, aliases, unsyncedNames);
+    final merge = pass.run();
+    if (merge != null) {
+      final learned = [
+        for (final alias in aliases.values)
+          if (known[alias.from] case final had
+              when had == null ||
+                  had.into != alias.into ||
+                  had.merged != alias.merged)
+            alias
+      ]..sort((a, b) => a.from.compareTo(b.from));
+      return SyncedLibraryMerge(library: merge.library, changes: [
+        if (learned.isNotEmpty) AliasesLearned(learned),
+        ...merge.changes,
+      ]);
+    }
+    pass.collisions.forEach(addAlias);
+  }
+}
+
+/// One attempt at the merge under a set of aliases. It fails, listing the
+/// aliases it found missing, when two playlists end with the same name.
+class _MergePass {
+  final SyncedLibrary local;
+  final List<DeviceState> states;
+  final Map<String, PlaylistAlias> aliases;
+  final Set<String> unsyncedNames;
+  final List<PlaylistAlias> collisions = [];
+
+  _MergePass(this.local, this.states, this.aliases, this.unsyncedNames);
+
+  /// The sync ID [id] is known by once every alias is followed.
+  String canon(String id) {
+    final seen = <String>{};
+    var current = id;
+    while (seen.add(current)) {
+      final alias = aliases[current];
+      if (alias == null) break;
+      current = alias.into;
+    }
+    return current;
+  }
+
+  RemovalMarker canonMarker(RemovalMarker m) => m.playlistId == null
+      ? m
+      : RemovalMarker(
+          kind: m.kind,
+          playlistId: canon(m.playlistId!),
+          mediaId: m.mediaId,
+          removed: m.removed);
+
+  Arrangement? canonOrder(Arrangement? order) {
+    if (order == null) return null;
+    final seen = <String>{};
+    return Arrangement(order.arranged, [
+      for (final id in order.ids.map(canon))
+        if (seen.add(id)) id
+    ]);
+  }
+
+  SyncedLibraryMerge? run() {
+    final tracks = {...local.tracks};
+    // Songs from this Device's own playlists that became one with another.
+    final self = DeviceState(
+        deviceId: '',
+        deviceName: 'this Device',
+        writtenAt: DateTime.utc(1970),
+        library: local);
+
+    void needTrack(DeviceState state, String mediaId) {
+      if (tracks.containsKey(mediaId)) return;
+      final details = state.library.tracks[mediaId];
+      if (details == null) {
+        throw FormatException(
+            'Device State of ${state.deviceName} lacks details for $mediaId.');
+      }
+      tracks[mediaId] = details;
+    }
+
+    /// [held] as adding and removing songs leaves it: what it keeps, in
+    /// place, then what it gains, in the order it was added.
+    List<SyncedSong> songsAfter(List<SyncedSong> held, _Members<SyncedSong> m) {
+      for (final (state, song) in m.fresh) {
+        needTrack(state, song.mediaId);
+      }
+      return [
+        for (final s in held)
+          if (m.present[s.mediaId] case final song?) song,
+        for (final (_, song) in m.fresh) song,
+      ];
+    }
+
+    // Removal Markers: the latest of each, from every Device.
+    final removals = <String, RemovalMarker>{};
+    for (final marker in local.removals.map(canonMarker)) {
       final known = removals[marker.key];
       if (known == null || marker.removed.isAfter(known.removed)) {
-        removals[marker.key] = learned[marker.key] = marker;
+        removals[marker.key] = marker;
       }
     }
-  }
-  ChangeStamp? removedAt(RemovalKind kind, String? playlistId, String? id) =>
-      removals[RemovalMarker.removalKey(kind, playlistId, id)]?.removed;
-  final songRemovals = <String, List<ChangeStamp>>{};
-  for (final marker in removals.values) {
-    if (marker.kind == RemovalKind.song) {
-      songRemovals
-          .putIfAbsent(marker.playlistId!, () => [])
-          .add(marker.removed);
-    }
-  }
-
-  // Playlists.
-  final localPlaylists = {for (final p in local.playlists) p.id: p};
-  final copies = <String, List<(DeviceState, SyncedPlaylist)>>{};
-  for (final state in states) {
-    for (final playlist in state.library.playlists) {
-      copies.putIfAbsent(playlist.id, () => []).add((state, playlist));
-    }
-  }
-  final playlists = <String, SyncedPlaylist>{};
-  final byName = {for (final p in local.playlists) p.name.toLowerCase(): p.id};
-  final gainedPlaylists = <String>{};
-  final lostPlaylists = <String>[];
-  final songsGained = <String, List<SyncedSong>>{};
-  final songsLost = <String, List<String>>{};
-  final joining = <(SyncedPlaylist, List<(DeviceState, SyncedSong)>)>[];
-
-  // Local playlists first, so a name freed by a deletion can be taken.
-  final ids = [
-    ...localPlaylists.keys.toList()..sort(),
-    ...copies.keys.where((id) => !localPlaylists.containsKey(id)).toList()
-      ..sort(),
-  ];
-  for (final id in ids) {
-    final mine = localPlaylists[id];
-    final theirs = copies[id] ?? const [];
-    final songs = _mergeMembers<SyncedSong>(
-      local: mine?.songs ?? const [],
-      others: [
-        for (final (state, copy) in theirs)
-          for (final song in copy.songs) (state, song)
-      ],
-      keyOf: (s) => s.mediaId,
-      stampOf: (s) => s.added,
-      removedAt: (s) => removedAt(RemovalKind.song, id, s.mediaId),
-    );
-
-    ChangeStamp? latestChange;
-    for (final stamp in [...songs.additions, ...?songRemovals[id]]) {
-      latestChange = ChangeStamp.latest(latestChange, stamp);
-    }
-    final deletion = removedAt(RemovalKind.playlist, id, null);
-    if (deletion != null &&
-        (latestChange == null || !latestChange.isAfter(deletion))) {
-      if (mine != null) {
-        lostPlaylists.add(id);
-        byName.remove(mine.name.toLowerCase());
+    final learned = <String, RemovalMarker>{};
+    for (final state in states) {
+      for (final marker in state.library.removals.map(canonMarker)) {
+        final known = removals[marker.key];
+        if (known == null || marker.removed.isAfter(known.removed)) {
+          removals[marker.key] = learned[marker.key] = marker;
+        }
       }
-      continue;
+    }
+    ChangeStamp? removedAt(RemovalKind kind, String? playlistId, String? id) =>
+        removals[RemovalMarker.removalKey(kind, playlistId, id)]?.removed;
+    final songRemovals = <String, List<ChangeStamp>>{};
+    for (final marker in removals.values) {
+      if (marker.kind == RemovalKind.song) {
+        songRemovals
+            .putIfAbsent(marker.playlistId!, () => [])
+            .add(marker.removed);
+      }
     }
 
-    if (mine != null) {
-      playlists[id] = mine.withSongs(songsAfter(mine.songs, songs));
+    // Playlists, by the sync ID they are known by.
+    final localGroups = <String, List<SyncedPlaylist>>{};
+    for (final playlist in local.playlists) {
+      localGroups.putIfAbsent(canon(playlist.id), () => []).add(playlist);
+    }
+    final copies = <String, List<(DeviceState, SyncedPlaylist)>>{};
+    final mine = <String, SyncedPlaylist>{};
+    final rekeyed = <PlaylistRekeyed>[];
+    final absorbed = <(String, String)>[];
+    localGroups.forEach((id, group) {
+      group.sort((a, b) => a.id == id
+          ? -1
+          : b.id == id
+              ? 1
+              : a.id.compareTo(b.id));
+      mine[id] = group.first;
+      if (group.first.id != id) {
+        rekeyed.add(PlaylistRekeyed(group.first.id, id));
+      }
+      for (final other in group.skip(1)) {
+        absorbed.add((other.id, id));
+        copies.putIfAbsent(id, () => []).add((self, other));
+      }
+    });
+    for (final state in states) {
+      for (final playlist in state.library.playlists) {
+        copies.putIfAbsent(canon(playlist.id), () => []).add((state, playlist));
+      }
+    }
+
+    final playlists = <String, SyncedPlaylist>{};
+    final gainedPlaylists = <String>[];
+    final lostPlaylists = <String>[];
+    final songsGained = <String, List<SyncedSong>>{};
+    final songsLost = <String, List<String>>{};
+    final detailsChanged = <String>[];
+    final songsArranged = <String>[];
+
+    for (final id in {...mine.keys, ...copies.keys}.toList()..sort()) {
+      final held = mine[id];
+      final theirs = copies[id] ?? const [];
+      final songs = _mergeMembers<SyncedSong>(
+        local: held?.songs ?? const [],
+        others: [
+          for (final (state, copy) in theirs)
+            for (final song in copy.songs) (state, song)
+        ],
+        keyOf: (s) => s.mediaId,
+        stampOf: (s) => s.added,
+        removedAt: (s) => removedAt(RemovalKind.song, id, s.mediaId),
+      );
+
+      // Each detail, and the arrangement, from the copy that changed it last;
+      // this Device's own copy first, so it keeps what no one changed later.
+      final all = [if (held != null) held, for (final (_, c) in theirs) c];
+      SyncedPlaylist latestBy(ChangeStamp Function(SyncedPlaylist) stamp) =>
+          all.reduce((a, b) => stamp(b).isAfter(stamp(a)) ? b : a);
+      var named = latestBy((p) => p.nameChanged);
+      final described = latestBy((p) => p.descriptionChanged);
+      final pinned = latestBy((p) => p.pinnedChanged);
+      Arrangement? arrangement;
+      for (final copy in all) {
+        if (copy.arrangement case final a?
+            when arrangement == null ||
+                a.arranged.isAfter(arrangement.arranged)) {
+          arrangement = a;
+        }
+      }
+      // A name sync does not cover here is not taken; the rename still
+      // counts as a change to the playlist.
+      final renamed = named.nameChanged;
+      if (unsyncedNames.contains(named.name.toLowerCase())) {
+        if (held == null) continue;
+        named = held;
+      }
+
+      ChangeStamp? latestChange;
+      for (final stamp in [
+        ...songs.additions,
+        ...?songRemovals[id],
+        renamed,
+        described.descriptionChanged,
+        pinned.pinnedChanged,
+        if (arrangement != null) arrangement.arranged,
+      ]) {
+        latestChange = ChangeStamp.latest(latestChange, stamp);
+      }
+      final deletion = removedAt(RemovalKind.playlist, id, null);
+      if (deletion != null &&
+          (latestChange == null || !latestChange.isAfter(deletion))) {
+        if (held != null) lostPlaylists.add(id);
+        continue;
+      }
+
+      final natural = songsAfter(held?.songs ?? const [], songs);
+      final ordered =
+          Arrangement.arrangeSongs(arrangement, songs.present.values);
+      DateTime createdAt = all.first.createdAt;
+      for (final copy in all) {
+        if (copy.createdAt.isBefore(createdAt)) createdAt = copy.createdAt;
+      }
+      final result = SyncedPlaylist(
+          id: id,
+          name: named.name,
+          nameChanged: named.nameChanged,
+          description: described.description,
+          descriptionChanged: described.descriptionChanged,
+          pinned: pinned.pinned,
+          pinnedChanged: pinned.pinnedChanged,
+          createdAt: createdAt,
+          arrangement: arrangement,
+          songs: ordered);
+      playlists[id] = result;
+
+      if (held == null) {
+        gainedPlaylists.add(id);
+        continue;
+      }
       if (songs.gained.isNotEmpty) {
         songsGained[id] = [for (final (_, song) in songs.gained) song];
       }
       if (songs.lost.isNotEmpty) songsLost[id] = songs.lost;
-      continue;
+      if (result.name != held.name ||
+          result.nameChanged != held.nameChanged ||
+          result.description != held.description ||
+          result.descriptionChanged != held.descriptionChanged ||
+          result.pinned != held.pinned ||
+          result.pinnedChanged != held.pinnedChanged) {
+        detailsChanged.add(id);
+      }
+      if (!listEquals(_mediaIds(ordered), _mediaIds(natural)) ||
+          arrangement != held.arrangement) {
+        songsArranged.add(id);
+      }
     }
 
-    final (firstState, first) = theirs.first;
-    if (byName.containsKey(first.name.toLowerCase())) {
-      joining.add((first, songs.gained));
-      continue;
+    // Two playlists that end with the same name become one.
+    final byName = <String, List<SyncedPlaylist>>{};
+    for (final playlist in playlists.values) {
+      byName.putIfAbsent(playlist.name.toLowerCase(), () => []).add(playlist);
     }
-    if (unsyncedNames.contains(first.name.toLowerCase())) continue;
-    // Its order is that of the copy of the lowest Device ID; songs only
-    // other copies hold follow in the order they were added.
-    final inFirst = {for (final s in first.songs) s.mediaId};
-    final ordered = [
-      for (final s in first.songs)
-        if (songs.present[s.mediaId] case final song?) (firstState, song),
-      for (final gained in songs.gained)
-        if (!inFirst.contains(gained.$2.mediaId)) gained,
+    for (final group in byName.values) {
+      if (group.length < 2) continue;
+      group.sort((a, b) => a.id.compareTo(b.id));
+      final merged = group
+          .map((p) => p.nameChanged)
+          .reduce((a, b) => ChangeStamp.latest(a, b));
+      for (final other in group.skip(1)) {
+        collisions.add(PlaylistAlias(
+            from: other.id, into: group.first.id, merged: merged));
+      }
+    }
+    if (collisions.isNotEmpty) return null;
+
+    // The order of the playlists in the library.
+    Arrangement? order = canonOrder(local.order);
+    for (final state in states) {
+      if (canonOrder(state.library.order) case final theirs?
+          when order == null || theirs.arranged.isAfter(order.arranged)) {
+        order = theirs;
+      }
+    }
+    final arranged = Arrangement.arrangePlaylists(order, playlists.values);
+    final seen = <String>{};
+    final heldOrder = [
+      for (final p in local.playlists)
+        if (playlists.containsKey(canon(p.id)) && seen.add(canon(p.id)))
+          canon(p.id)
     ];
-    for (final (state, song) in ordered) {
-      needTrack(state, song.mediaId);
-    }
-    playlists[id] = first.withSongs([for (final (_, song) in ordered) song]);
-    byName[first.name.toLowerCase()] = id;
-    gainedPlaylists.add(id);
+    final orderIds = [for (final p in arranged) p.id];
+    final orderChanged =
+        order != local.order || !listEquals(orderIds, heldOrder);
+
+    // Liked songs.
+    final likes = _mergeMembers<SyncedSong>(
+      local: local.liked,
+      others: [
+        for (final state in states)
+          for (final song in state.library.liked) (state, song)
+      ],
+      keyOf: (s) => s.mediaId,
+      stampOf: (s) => s.added,
+      removedAt: (s) => removedAt(RemovalKind.like, null, s.mediaId),
+    );
+    final liked = songsAfter(local.liked, likes);
+
+    // Saved albums and artists.
+    final saved = _mergeMembers<SavedCollection>(
+      local: local.saved,
+      others: [
+        for (final state in states)
+          for (final collection in state.library.saved) (state, collection)
+      ],
+      keyOf: (c) => c.key,
+      stampOf: (c) => c.saved,
+      removedAt: (c) => removedAt(RemovalKind.ofSaved(c.kind), null, c.mediaId),
+    );
+
+    final localSaved = {for (final c in local.saved) c.key: c};
+    return SyncedLibraryMerge(
+      library: SyncedLibrary(
+        playlists: arranged,
+        liked: liked,
+        saved: saved.present.values.toList(),
+        removals: removals.values.toList(),
+        tracks: tracks,
+        order: order,
+        aliases: aliases.values.toList(),
+      ),
+      changes: [
+        if (learned.isNotEmpty) RemovalsLearned(learned.values.toList()),
+        ...rekeyed,
+        for (final (from, into) in absorbed) PlaylistAbsorbed(from, into),
+        for (final id in lostPlaylists) PlaylistLost(id),
+        for (final entry in songsLost.entries)
+          SongsLost(entry.key, entry.value),
+        if (likes.lost.isNotEmpty) LikesLost(likes.lost),
+        if (saved.lost.isNotEmpty)
+          CollectionsUnsaved([
+            for (final key in saved.lost)
+              (localSaved[key]!.kind, localSaved[key]!.mediaId)
+          ]),
+        for (final id in detailsChanged) DetailsChanged(playlists[id]!),
+        for (final id in gainedPlaylists) PlaylistGained(playlists[id]!),
+        for (final entry in songsGained.entries)
+          SongsGained(entry.key, entry.value),
+        if (likes.gained.isNotEmpty)
+          LikesGained([for (final (_, song) in likes.gained) song]),
+        if (saved.gained.isNotEmpty)
+          CollectionsSaved([for (final (_, c) in saved.gained) c]),
+        for (final id in songsArranged)
+          SongsArranged(id, [for (final s in playlists[id]!.songs) s.mediaId],
+              playlists[id]!.arrangement),
+        if (orderChanged) PlaylistsArranged(orderIds, order),
+      ],
+    );
   }
-
-  for (final (playlist, songs) in joining) {
-    final target = byName[playlist.name.toLowerCase()]!;
-    final present = {for (final s in playlists[target]!.songs) s.mediaId};
-    final extra = [
-      for (final (state, song) in songs)
-        if (present.add(song.mediaId)) (state, song)
-    ];
-    if (extra.isEmpty) continue;
-    for (final (state, song) in extra) {
-      needTrack(state, song.mediaId);
-    }
-    final added = [for (final (_, song) in extra) song];
-    playlists[target] =
-        playlists[target]!.withSongs([...playlists[target]!.songs, ...added]);
-    if (!gainedPlaylists.contains(target)) {
-      songsGained.putIfAbsent(target, () => []).addAll(added);
-    }
-  }
-
-  // Liked songs.
-  final likes = _mergeMembers<SyncedSong>(
-    local: local.liked,
-    others: [
-      for (final state in states)
-        for (final song in state.library.liked) (state, song)
-    ],
-    keyOf: (s) => s.mediaId,
-    stampOf: (s) => s.added,
-    removedAt: (s) => removedAt(RemovalKind.like, null, s.mediaId),
-  );
-  final liked = songsAfter(local.liked, likes);
-
-  // Saved albums and artists.
-  final saved = _mergeMembers<SavedCollection>(
-    local: local.saved,
-    others: [
-      for (final state in states)
-        for (final collection in state.library.saved) (state, collection)
-    ],
-    keyOf: (c) => c.key,
-    stampOf: (c) => c.saved,
-    removedAt: (c) => removedAt(RemovalKind.ofSaved(c.kind), null, c.mediaId),
-  );
-
-  final localSaved = {for (final c in local.saved) c.key: c};
-  return SyncedLibraryMerge(
-    library: SyncedLibrary(
-      playlists: playlists.values.toList(),
-      liked: liked,
-      saved: saved.present.values.toList(),
-      removals: removals.values.toList(),
-      tracks: tracks,
-    ),
-    changes: [
-      if (learned.isNotEmpty) RemovalsLearned(learned.values.toList()),
-      for (final id in lostPlaylists) PlaylistLost(id),
-      for (final entry in songsLost.entries) SongsLost(entry.key, entry.value),
-      if (likes.lost.isNotEmpty) LikesLost(likes.lost),
-      if (saved.lost.isNotEmpty)
-        CollectionsUnsaved([
-          for (final key in saved.lost)
-            (localSaved[key]!.kind, localSaved[key]!.mediaId)
-        ]),
-      for (final id in gainedPlaylists) PlaylistGained(playlists[id]!),
-      for (final entry in songsGained.entries)
-        SongsGained(entry.key, entry.value),
-      if (likes.gained.isNotEmpty)
-        LikesGained([for (final (_, song) in likes.gained) song]),
-      if (saved.gained.isNotEmpty)
-        CollectionsSaved([for (final (_, c) in saved.gained) c]),
-    ],
-  );
 }
+
+List<String> _mediaIds(List<SyncedSong> songs) =>
+    [for (final s in songs) s.mediaId];
 
 /// One set of things merged under Latest Change Wins: a playlist's songs,
 /// the liked songs, or the saved collections.

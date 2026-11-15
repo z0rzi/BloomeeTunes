@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// When a change to the Synced Library was made, and by which Device: the
 /// order Latest Change Wins goes by. Two changes made at the same time are
 /// ordered by Device ID, so every Device settles them the same way.
@@ -54,12 +56,100 @@ class SyncedSong {
       added: ChangeStamp.fromJson(json, 'added'));
 }
 
+/// An order someone chose: of a playlist's songs (by media ID) or of the
+/// playlists of the library (by sync ID). It wins or loses as a whole; what
+/// it does not mention follows it.
+class Arrangement {
+  final ChangeStamp arranged;
+  final List<String> ids;
+
+  const Arrangement(this.arranged, this.ids);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Arrangement &&
+      other.arranged == arranged &&
+      listEquals(other.ids, ids);
+
+  @override
+  int get hashCode => Object.hash(arranged, Object.hashAll(ids));
+
+  Map<String, dynamic> toJson(String key) =>
+      {...arranged.toJson('arranged'), key: ids};
+
+  /// [items] in the order [arrangement] gives them: those it mentions and
+  /// [placed] accepts, in its order, then the others by [compare].
+  static List<T> arrange<T>(
+    Arrangement? arrangement,
+    Iterable<T> items, {
+    required String Function(T) idOf,
+    required int Function(T, T) compare,
+    bool Function(Arrangement, T)? placed,
+  }) {
+    final byId = {for (final item in items) idOf(item): item};
+    final ordered = <T>[];
+    if (arrangement != null) {
+      for (final id in arrangement.ids) {
+        final item = byId.remove(id);
+        if (item == null) continue;
+        if (placed == null || placed(arrangement, item)) {
+          ordered.add(item);
+        } else {
+          byId[id] = item;
+        }
+      }
+    }
+    return ordered..addAll(byId.values.toList()..sort(compare));
+  }
+
+  /// A playlist's songs in order: those [arrangement] mentions and that were
+  /// not added again after it, in its order, then the others in the order
+  /// they were added.
+  static List<SyncedSong> arrangeSongs(
+          Arrangement? arrangement, Iterable<SyncedSong> songs) =>
+      arrange(arrangement, songs,
+          idOf: (s) => s.mediaId,
+          placed: (a, s) => !s.added.isAfter(a.arranged),
+          compare: (x, y) {
+            final byAdded = x.added.compareTo(y.added);
+            return byAdded != 0 ? byAdded : x.mediaId.compareTo(y.mediaId);
+          });
+
+  /// The library's playlists in order: those [arrangement] mentions, in its
+  /// order, then the others in the order they were created.
+  static List<SyncedPlaylist> arrangePlaylists(
+          Arrangement? arrangement, Iterable<SyncedPlaylist> playlists) =>
+      arrange(arrangement, playlists,
+          idOf: (p) => p.id,
+          compare: (x, y) {
+            final byCreation = x.createdAt.compareTo(y.createdAt);
+            return byCreation != 0 ? byCreation : x.id.compareTo(y.id);
+          });
+
+  static Arrangement? fromJson(Object? json, String key) {
+    if (json == null) return null;
+    if (json is! Map<String, dynamic>) {
+      throw FormatException('Device State arrangement of "$key" is malformed.');
+    }
+    return Arrangement(ChangeStamp.fromJson(json, 'arranged'),
+        [for (final id in _list(json, key)) id as String]);
+  }
+}
+
 /// One playlist of the Synced Library, identified by its permanent sync ID.
+/// Each detail carries the time it last changed.
 class SyncedPlaylist {
   final String id;
   final String name;
+  final ChangeStamp nameChanged;
   final String? description;
+  final ChangeStamp descriptionChanged;
+  final bool pinned;
+  final ChangeStamp pinnedChanged;
   final DateTime createdAt;
+
+  /// The latest arrangement of its songs; null if they were never arranged.
+  final Arrangement? arrangement;
 
   /// In the playlist's order.
   final List<SyncedSong> songs;
@@ -67,36 +157,66 @@ class SyncedPlaylist {
   const SyncedPlaylist({
     required this.id,
     required this.name,
+    required this.nameChanged,
     this.description,
+    required this.descriptionChanged,
+    this.pinned = false,
+    required this.pinnedChanged,
     required this.createdAt,
+    this.arrangement,
     required this.songs,
   });
-
-  SyncedPlaylist withSongs(List<SyncedSong> songs) => SyncedPlaylist(
-      id: id,
-      name: name,
-      description: description,
-      createdAt: createdAt,
-      songs: songs);
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        ...nameChanged.toJson('nameChanged'),
         'description': description,
+        ...descriptionChanged.toJson('descriptionChanged'),
+        'pinned': pinned,
+        ...pinnedChanged.toJson('pinnedChanged'),
         'createdAt': createdAt.toUtc().toIso8601String(),
+        'arrangement': arrangement?.toJson('songs'),
         'songs': [for (final s in songs) s.toJson()],
       };
 
   factory SyncedPlaylist.fromJson(Map<String, dynamic> json) => SyncedPlaylist(
         id: _string(json, 'id'),
         name: _string(json, 'name'),
+        nameChanged: ChangeStamp.fromJson(json, 'nameChanged'),
         description: json['description'] as String?,
+        descriptionChanged: ChangeStamp.fromJson(json, 'descriptionChanged'),
+        pinned: json['pinned'] as bool? ?? false,
+        pinnedChanged: ChangeStamp.fromJson(json, 'pinnedChanged'),
         createdAt: _time(json, 'createdAt'),
+        arrangement: Arrangement.fromJson(json['arrangement'], 'songs'),
         songs: [
           for (final s in _list(json, 'songs'))
             SyncedSong.fromJson(s as Map<String, dynamic>)
         ],
       );
+}
+
+/// Two synced playlists that came to bear the same name (ignoring case) and
+/// became one: [from] is [into] from then on, on every Device. [into] is
+/// always the smaller sync ID, so every Device picks the same one.
+class PlaylistAlias {
+  final String from;
+  final String into;
+
+  /// The latest name change of the playlists that met.
+  final ChangeStamp merged;
+
+  const PlaylistAlias(
+      {required this.from, required this.into, required this.merged});
+
+  Map<String, dynamic> toJson() =>
+      {'from': from, 'into': into, ...merged.toJson('merged')};
+
+  factory PlaylistAlias.fromJson(Map<String, dynamic> json) => PlaylistAlias(
+      from: _string(json, 'from'),
+      into: _string(json, 'into'),
+      merged: ChangeStamp.fromJson(json, 'merged'));
 }
 
 /// The kinds of saved remote collection the Synced Library covers.
@@ -235,12 +355,21 @@ class SyncedLibrary {
   /// keyed by media ID, in the backup format's track shape.
   final Map<String, Map<String, dynamic>> tracks;
 
+  /// The latest arrangement of the playlists in the library; null if they
+  /// were never arranged.
+  final Arrangement? order;
+
+  /// Every pair of playlists this Device knows became one.
+  final List<PlaylistAlias> aliases;
+
   const SyncedLibrary({
     required this.playlists,
     this.liked = const [],
     this.saved = const [],
     this.removals = const [],
     required this.tracks,
+    this.order,
+    this.aliases = const [],
   });
 }
 
@@ -285,6 +414,10 @@ class DeviceState {
       'removals': [
         for (final r in sorted(library.removals, (r) => r.key)) r.toJson()
       ],
+      'order': library.order?.toJson('playlists'),
+      'aliases': [
+        for (final a in sorted(library.aliases, (a) => a.from)) a.toJson()
+      ],
       'tracks': [for (final id in mediaIds) library.tracks[id]],
     };
   }
@@ -315,6 +448,8 @@ class DeviceState {
         saved: items('saved', SavedCollection.fromJson),
         removals: items('removals', RemovalMarker.fromJson),
         tracks: tracks,
+        order: Arrangement.fromJson(json['order'], 'playlists'),
+        aliases: items('aliases', PlaylistAlias.fromJson),
       ),
     );
   }

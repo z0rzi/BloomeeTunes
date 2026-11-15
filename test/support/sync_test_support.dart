@@ -6,6 +6,7 @@ import 'package:Bloomee/services/db/dao/library_dao.dart';
 import 'package:Bloomee/services/db/dao/playlist_dao.dart';
 import 'package:Bloomee/services/db/dao/track_dao.dart';
 import 'package:Bloomee/services/db/db_provider.dart';
+import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/services/sync/local_folder_sync_location.dart';
 import 'package:Bloomee/services/sync/sync_location.dart';
 import 'package:Bloomee/src/rust/api/plugin/models.dart';
@@ -75,6 +76,10 @@ class SyncDevice {
 
   Future<void> sync() => engine.syncNow();
 
+  /// Turns Library Sync on.
+  Future<void> enable() async =>
+      id = (await engine.enable(deviceName: name)).deviceId;
+
   /// Creates [playlist] if needed, then adds [songs] to it, as the screens do.
   Future<void> add(String playlist, List<Track> songs) async {
     final id = await playlists.createPlaylist(playlist);
@@ -100,6 +105,46 @@ class SyncDevice {
 
   Future<List<String>> playlistNames() async =>
       [for (final p in await playlists.getAllPlaylists()) p.name]..sort();
+
+  Future<int> rowId(String playlist) async =>
+      (await playlists.getPlaylistByName(playlist))!.id;
+
+  /// Renames [playlist], as the screens do.
+  Future<void> rename(String playlist, String to) async =>
+      playlists.updatePlaylistMeta(await rowId(playlist), name: to);
+
+  /// Puts the songs of [playlist] in the order of [mediaIds], as the playlist
+  /// screen's drag and drop does.
+  Future<void> arrange(String playlist, List<String> mediaIds) async {
+    final id = await rowId(playlist);
+    final position = {
+      for (final e in await playlists.getPlaylistEntries(id))
+        e.track.value!.mediaId: e.position
+    };
+    await playlists.setTrackOrder(
+        id, [for (final mediaId in mediaIds) position[mediaId]!]);
+  }
+
+  /// Puts the playlists of the library in the order of [names], as the
+  /// library screen's drag and drop does.
+  Future<void> arrangeLibrary(List<String> names) async {
+    final all = await playlists.getAllPlaylists();
+    final named = {for (final p in all) p.name: p.id};
+    await playlists.reorderPlaylists([
+      for (final name in names) named[name]!,
+      for (final p in all)
+        if (!names.contains(p.name)) p.id
+    ]);
+  }
+
+  /// The user playlists in the order the library shows them, without the
+  /// liked songs.
+  Future<List<String>> libraryOrder() async => [
+        for (final p in await playlists.getAllPlaylists())
+          if (p.type == PlaylistTypeDB.userPlaylist &&
+              !DBProvider.standardPlaylists.contains(p.name))
+            p.name
+      ];
 }
 
 /// Several Devices of one person sharing a local-folder Sync Location in a
@@ -116,9 +161,10 @@ class SyncWorld {
 
   String get locationPath => p.join(root.path, 'location');
 
-  /// A new Device with sync enabled. [database] seeds it with an existing
-  /// database file instead of an empty library.
-  Future<SyncDevice> device(String name, {File? database}) async {
+  /// A new Device, with sync enabled unless [enabled] is false. [database]
+  /// seeds it with an existing database file instead of an empty library.
+  Future<SyncDevice> device(String name,
+      {File? database, bool enabled = true}) async {
     final directory = await Directory(p.join(root.path, 'devices', name))
         .create(recursive: true);
     await Directory(locationPath).create(recursive: true);
@@ -135,7 +181,7 @@ class SyncWorld {
     final device = SyncDevice._(name, isar, location, engine, clock.call);
     await PlaylistDAO(Future.value(isar), TrackDAO(Future.value(isar)))
         .ensurePlaylist(DBProvider.likedPlaylist);
-    device.id = (await engine.enable(deviceName: name)).deviceId;
+    if (enabled) await device.enable();
     devices.add(device);
     return device;
   }

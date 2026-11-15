@@ -135,7 +135,7 @@ schemas and migration runners remain removed.
 | `NotificationDAO` | Notification persistence |
 | `LyricsDAO` | Lyrics cache keyed by media ID |
 | `PluginStorageDAO` | Per-plugin key-value persistent storage |
-| `SyncDAO` | Library Sync bookkeeping (including the Removal Markers other DAOs leave in their own transactions), reading the Synced Library, applying a merge in one transaction |
+| `SyncDAO` | Library Sync bookkeeping (including the Removal Markers and arrangements other DAOs record in their own transactions), reading the Synced Library, applying a merge in one transaction |
 
 **Constructor pattern** — `const` constructors accept `Future<Isar>`:
 

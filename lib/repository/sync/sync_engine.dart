@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/repository/sync/synced_library_merge.dart';
@@ -37,7 +36,7 @@ class SyncEngine {
   /// Turns Library Sync on for this Device under [deviceName]. The Device's
   /// permanent ID is made the first time and kept afterwards.
   Future<SyncIdentity> enable({required String deviceName}) =>
-      _dao.enable(deviceName: deviceName, newDeviceId: _newId());
+      _dao.enable(deviceName: deviceName, newDeviceId: SyncDAO.newSyncId());
 
   /// Takes in what the other Devices published, then publishes this Device's
   /// Synced Library. One sync runs at a time.
@@ -84,12 +83,13 @@ class SyncEngine {
       for (final raw in others)
         DeviceState.fromJson(jsonDecode(raw) as Map<String, dynamic>)
     ];
-    final local = await dao.readSyncedLibrary(_newId);
+    final local = await dao.readSyncedLibrary(SyncDAO.newSyncId);
     final merge = mergeSyncedLibraries(local.library, states,
         unsyncedNames: local.unsyncedNames);
     final applied = await dao.apply(local, merge, now);
-    final library =
-        applied ? (await dao.readSyncedLibrary(_newId)).library : local.library;
+    final library = applied
+        ? (await dao.readSyncedLibrary(SyncDAO.newSyncId)).library
+        : local.library;
     final state = DeviceState(
         deviceId: me.deviceId,
         deviceName: me.deviceName,
@@ -108,11 +108,4 @@ class SyncEngine {
       return false;
     }
   }
-
-  static final Random _random = Random.secure();
-
-  static String _newId() => [
-        for (var i = 0; i < 16; i++)
-          _random.nextInt(256).toRadixString(16).padLeft(2, '0')
-      ].join();
 }
