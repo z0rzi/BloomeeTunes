@@ -148,7 +148,7 @@ class BackupDAO {
           tracks[t.mediaId] = t;
           if (seen.add(t.mediaId)) ids.add(t.mediaId);
         }
-        playlists.add(_playlistMap(p)..['entries'] = ids);
+        playlists.add(playlistDBToJson(p)..['entries'] = ids);
       }
       if (playlistName != null && playlists.isEmpty) {
         throw StateError('Playlist not found: $playlistName');
@@ -202,7 +202,7 @@ class BackupDAO {
       trackDBFromJson(t);
     }
     for (final p in document.rows('playlists')) {
-      _playlist(p);
+      playlistDBFromJson(p);
     }
   }
 
@@ -231,7 +231,8 @@ class BackupDAO {
           'Legacy files support new-copy or merge import only.');
     }
     final trackRows = document.rows('tracks').map(trackDBFromJson).toList();
-    final playlistRows = document.rows('playlists').map(_playlist).toList();
+    final playlistRows =
+        document.rows('playlists').map(playlistDBFromJson).toList();
     return isar.writeTxnSync(() {
       if (receiptKey != null &&
           isar.appSettingsBoolDBs
@@ -525,7 +526,7 @@ class BackupDAO {
               ids.add(id);
             }
           }
-          playlists.add(_playlistMap(playlist)..['entries'] = ids.toList());
+          playlists.add(playlistDBToJson(playlist)..['entries'] = ids.toList());
         }
         final downloads = <RecoveredDownload>[];
         for (final row in source.downloadDBs.where().findAllSync()) {
@@ -577,63 +578,5 @@ class BackupDAO {
         }),
         downloads: downloads,
         brokenEntries: brokenEntries);
-  }
-
-  static Map<String, dynamic> _playlistMap(PlaylistDB p) => {
-        'name': p.name,
-        'type': p.type.name,
-        'subtitle': p.subtitle,
-        'description': p.description,
-        'thumbnail': artworkDBToJson(p.thumbnail),
-        'artists': p.artists?.map(artistSummaryDBToJson).toList(),
-        'album': albumSummaryDBToJson(p.album),
-        'isPinned': p.isPinned,
-        'sortOrder': p.sortOrder,
-        'createdAt': p.createdAt.toUtc().toIso8601String(),
-        'updatedAt': p.updatedAt.toUtc().toIso8601String(),
-        'remotePlaylist': p.remotePlaylist == null
-            ? null
-            : {
-                'title': p.remotePlaylist!.name,
-                'mediaId': p.remotePlaylist!.mediaId,
-                'url': p.remotePlaylist!.url,
-                'subtitle': p.remotePlaylist!.subtitle,
-                'artists': p.remotePlaylist!.artists
-                    ?.map(artistSummaryDBToJson)
-                    .toList(),
-                'album': albumSummaryDBToJson(p.remotePlaylist!.album),
-                'thumbnail': artworkDBToJson(p.remotePlaylist!.thumbnail),
-              },
-      };
-
-  static PlaylistDB _playlist(Map<String, dynamic> p) {
-    final row = PlaylistDB(
-        name: p['name'] as String,
-        type: PlaylistTypeDB.values.byName(p['type'] as String),
-        description: p['description'] as String?,
-        subtitle: p['subtitle'] as String?,
-        thumbnail: artworkDBFromJson(p['thumbnail']),
-        artists: artistSummariesDBFromJson(p['artists']),
-        album: albumSummaryDBFromJson(p['album']),
-        sortOrder: p['sortOrder'] as int? ?? 0,
-        isPinned: p['isPinned'] as bool? ?? false,
-        createdat: p['createdAt'] == null
-            ? null
-            : DateTime.parse(p['createdAt'] as String),
-        updatedat: p['updatedAt'] == null
-            ? null
-            : DateTime.parse(p['updatedAt'] as String));
-    if (p['remotePlaylist'] != null) {
-      final r = p['remotePlaylist'] as Map<String, dynamic>;
-      row.remotePlaylist = RemotePlaylistSummaryDB(
-          title: r['title'] as String?,
-          mediaId: r['mediaId'] as String?,
-          url: r['url'] as String?,
-          subtitle: r['subtitle'] as String?,
-          artists: artistSummariesDBFromJson(r['artists']),
-          album: albumSummaryDBFromJson(r['album']),
-          thumbnail: artworkDBFromJson(r['thumbnail']));
-    }
-    return row;
   }
 }

@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:Bloomee/core/models/exported.dart';
 import 'package:Bloomee/core/models/media_playlist_model.dart';
+import 'package:Bloomee/services/db/dao/sync_dao.dart';
 import 'package:Bloomee/services/db/dao/track_dao.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/services/db/mappers/media_item_mapper.dart';
@@ -17,11 +18,18 @@ import 'package:isar_community/isar.dart';
 ///
 /// All write operations that mutate order run inside a single [writeTxn] to
 /// prevent races.
+///
+/// Changes are stamped with [clock]'s time. Taking a song out of a playlist,
+/// deleting a playlist and unliking leave a Removal Marker for Library Sync
+/// (see [SyncDAO]) in the same transaction.
 class PlaylistDAO {
   final Future<Isar> _db;
   final TrackDAO _trackDAO;
+  final DateTime Function() _now;
 
-  const PlaylistDAO(this._db, this._trackDAO);
+  const PlaylistDAO(this._db, this._trackDAO,
+      {DateTime Function() clock = DateTime.now})
+      : _now = clock;
 
   // ── Playlist CRUD ──────────────────────────────────────────────────────────
 
@@ -48,14 +56,16 @@ class PlaylistDAO {
           thumbnail: thumbnail,
           description: description,
           subtitle: subtitle,
-          type: PlaylistTypeDB.userPlaylist));
+          type: PlaylistTypeDB.userPlaylist,
+          createdat: _now(),
+          updatedat: _now()));
     });
   }
 
   /// Insert or replace any [PlaylistDB] row (upsert by id).
   Future<int> putPlaylist(PlaylistDB playlist) async {
     final isar = await _db;
-    playlist.updatedAt = DateTime.now();
+    playlist.updatedAt = _now();
     return isar.writeTxn(() => isar.playlistDBs.put(playlist));
   }
 
@@ -112,12 +122,16 @@ class PlaylistDAO {
   /// Delete a playlist by id, cascading to all its [PlaylistEntryDB] rows.
   Future<void> deletePlaylist(int playlistId) async {
     final isar = await _db;
-    await isar.writeTxn(() async {
-      await isar.playlistEntryDBs
+    isar.writeTxnSync(() {
+      final playlist = isar.playlistDBs.getSync(playlistId);
+      if (playlist != null) {
+        SyncDAO.recordDeletionInTransaction(isar, playlist, _now());
+      }
+      isar.playlistEntryDBs
           .filter()
           .playlistIdEqualTo(playlistId)
-          .deleteAll();
-      await isar.playlistDBs.delete(playlistId);
+          .deleteAllSync();
+      isar.playlistDBs.deleteSync(playlistId);
     });
     await _trackDAO.purgeOrphanTracks();
     log('Deleted playlist id=$playlistId', name: 'PlaylistDAO');
@@ -144,7 +158,7 @@ class PlaylistDAO {
     if (thumbnail != null) playlist.thumbnail = thumbnail;
     if (description != null) playlist.description = description;
     if (subtitle != null) playlist.subtitle = subtitle;
-    playlist.updatedAt = DateTime.now();
+    playlist.updatedAt = _now();
     await isar.writeTxn(() => isar.playlistDBs.put(playlist));
   }
 
@@ -182,36 +196,67 @@ class PlaylistDAO {
   }
 
   /// Replace the full ordered contents of [playlistId] with [tracks].
+  ///
+  /// A song it keeps keeps its addition time; one it drops is removed.
   Future<void> setPlaylistTracks(int playlistId, List<Track> tracks) async {
     final isar = await _db;
     isar.writeTxnSync(() {
-      if (isar.playlistDBs.getSync(playlistId) == null) return;
+      final playlist = isar.playlistDBs.getSync(playlistId);
+      if (playlist == null) return;
+      final previous = <String, PlaylistEntryDB>{};
+      for (final entry in isar.playlistEntryDBs
+          .where()
+          .playlistIdEqualToAnyPosition(playlistId)
+          .findAllSync()) {
+        entry.track.loadSync();
+        final mediaId = entry.track.value?.mediaId;
+        if (mediaId != null) previous.putIfAbsent(mediaId, () => entry);
+      }
+      final kept = {for (final track in tracks) track.id};
+      for (final mediaId in previous.keys) {
+        if (!kept.contains(mediaId)) {
+          SyncDAO.recordSongRemovalInTransaction(
+              isar, playlist, mediaId, _now());
+        }
+      }
       isar.playlistEntryDBs
           .filter()
           .playlistIdEqualTo(playlistId)
           .deleteAllSync();
-      addTracksInTransaction(isar, playlistId, tracks);
+      for (final id in addTracksInTransaction(isar, playlistId, tracks)) {
+        final entry = isar.playlistEntryDBs.getSync(id)!;
+        entry.track.loadSync();
+        final before = previous[entry.track.value?.mediaId];
+        if (before == null) continue;
+        entry
+          ..addedAt = before.addedAt
+          ..addedBy = before.addedBy;
+        isar.playlistEntryDBs.putSync(entry);
+      }
     });
   }
 
   /// Remove a specific entry by its [entryId].
   Future<void> removeEntry(int entryId) async {
     final isar = await _db;
-    final entry = await isar.playlistEntryDBs.get(entryId);
-    if (entry == null) return;
-    final playlistId = entry.playlistId;
-    await entry.track.load();
-    final trackMediaId = entry.track.value?.mediaId;
-
-    await isar.writeTxn(() async {
-      await isar.playlistEntryDBs.delete(entryId);
-      if (playlistId != null) {
-        final playlist = await isar.playlistDBs.get(playlistId);
-        if (playlist != null) {
-          playlist.updatedAt = DateTime.now();
-          await isar.playlistDBs.put(playlist);
+    final trackMediaId = isar.writeTxnSync(() {
+      final entry = isar.playlistEntryDBs.getSync(entryId);
+      if (entry == null) return null;
+      entry.track.loadSync();
+      final mediaId = entry.track.value?.mediaId;
+      isar.playlistEntryDBs.deleteSync(entryId);
+      final playlistId = entry.playlistId;
+      final playlist =
+          playlistId == null ? null : isar.playlistDBs.getSync(playlistId);
+      if (playlist != null) {
+        if (mediaId != null) {
+          SyncDAO.recordSongRemovalInTransaction(
+              isar, playlist, mediaId, _now());
         }
+        playlist.updatedAt = _now();
+        isar.playlistDBs.putSync(playlist);
       }
+      return mediaId;
     });
 
     if (trackMediaId != null) {
@@ -339,7 +384,7 @@ class PlaylistDAO {
 
       final playlist = await isar.playlistDBs.get(playlistId);
       if (playlist != null) {
-        playlist.updatedAt = DateTime.now();
+        playlist.updatedAt = _now();
         await isar.playlistDBs.put(playlist);
       }
     });
@@ -391,7 +436,7 @@ class PlaylistDAO {
 
       final playlist = await isar.playlistDBs.get(playlistId);
       if (playlist != null) {
-        playlist.updatedAt = DateTime.now();
+        playlist.updatedAt = _now();
         await isar.playlistDBs.put(playlist);
       }
     });
@@ -538,7 +583,8 @@ class PlaylistDAO {
         .nameEqualTo(name, caseSensitive: false)
         .findFirstSync();
     return existing?.id ??
-        isar.playlistDBs.putSync(PlaylistDB(name: name, type: type));
+        isar.playlistDBs.putSync(PlaylistDB(
+            name: name, type: type, createdat: _now(), updatedat: _now()));
   }
 
   /// Atomic track upsert, duplicate check, position assignment and link creation.
@@ -566,16 +612,16 @@ class PlaylistDAO {
     for (final track in tracks) {
       final trackId = _trackDAO.upsertTrackInTransaction(isar, track);
       if (!seen.add(trackId)) continue;
-      final entry =
-          PlaylistEntryDB(playlistId: playlistId, position: position++)
-            ..playlist.value = playlist
-            ..track.value = isar.trackDBs.getSync(trackId);
+      final entry = PlaylistEntryDB(
+          playlistId: playlistId, position: position++, addedAtOverride: _now())
+        ..playlist.value = playlist
+        ..track.value = isar.trackDBs.getSync(trackId);
       added.add(isar.playlistEntryDBs.putSync(entry));
       entry.playlist.saveSync();
       entry.track.saveSync();
     }
     if (added.isNotEmpty) {
-      playlist.updatedAt = DateTime.now();
+      playlist.updatedAt = _now();
       isar.playlistDBs.putSync(playlist);
     }
     return added;

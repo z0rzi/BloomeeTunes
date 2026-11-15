@@ -1,7 +1,8 @@
-﻿import 'dart:developer';
+import 'dart:developer';
 
 import 'package:Bloomee/core/models/exported.dart';
 import 'package:Bloomee/core/models/media_playlist_model.dart';
+import 'package:Bloomee/services/db/dao/sync_dao.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/services/db/mappers/collection_mapper.dart';
 import 'package:Bloomee/services/db/mappers/media_item_mapper.dart';
@@ -13,15 +14,20 @@ import 'package:isar_community/isar.dart';
 /// Each saved collection is stored as a [PlaylistDB] row with a typed
 /// [PlaylistTypeDB] discriminator. Deduplication uses the embedded mediaId
 /// so the same remote entity is never saved twice regardless of display name.
+///
+/// Unsaving leaves a Removal Marker for Library Sync (see [SyncDAO]) in the
+/// same transaction.
 class LibraryDAO {
   final Future<Isar> _db;
+  final DateTime Function() _now;
 
-  const LibraryDAO(this._db);
+  const LibraryDAO(this._db, {DateTime Function() clock = DateTime.now})
+      : _now = clock;
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
   /// Extract the canonical mediaId from a [PlaylistDB] based on its type.
-  String _mediaIdOf(PlaylistDB p) {
+  static String mediaIdOf(PlaylistDB p) {
     switch (p.type) {
       case PlaylistTypeDB.artist:
         return (p.artists != null && p.artists!.isNotEmpty)
@@ -44,7 +50,7 @@ class LibraryDAO {
     final candidates =
         await isar.playlistDBs.filter().typeIndexEqualTo(type.index).findAll();
     for (final c in candidates) {
-      if (_mediaIdOf(c) == mediaId) return c;
+      if (mediaIdOf(c) == mediaId) return c;
     }
     return null;
   }
@@ -60,8 +66,9 @@ class LibraryDAO {
     final existing = await _findByMediaId(PlaylistTypeDB.artist, artist.id);
 
     final artistDb = artistSummaryToArtistSummaryDB(artist);
-    final row =
-        existing ?? PlaylistDB(name: artist.id, type: PlaylistTypeDB.artist);
+    final row = existing ??
+        PlaylistDB(
+            name: artist.id, type: PlaylistTypeDB.artist, createdat: _now());
 
     row.type = PlaylistTypeDB.artist;
     row.name = artist.id;
@@ -71,7 +78,8 @@ class LibraryDAO {
     row.artists = [artistDb];
     row.album = null;
     row.remotePlaylist = null;
-    row.updatedAt = DateTime.now();
+    row.updatedAt = _now();
+    row.savedBy = null;
 
     final isar = await _db;
     final id = await isar.writeTxn(() => isar.playlistDBs.put(row));
@@ -85,8 +93,9 @@ class LibraryDAO {
     final existing = await _findByMediaId(PlaylistTypeDB.album, album.id);
 
     final albumDb = albumSummaryToAlbumSummaryDB(album);
-    final row =
-        existing ?? PlaylistDB(name: album.id, type: PlaylistTypeDB.album);
+    final row = existing ??
+        PlaylistDB(
+            name: album.id, type: PlaylistTypeDB.album, createdat: _now());
 
     row.type = PlaylistTypeDB.album;
     row.name = album.id;
@@ -96,7 +105,8 @@ class LibraryDAO {
     row.artists = albumDb.artists;
     row.album = albumDb;
     row.remotePlaylist = null;
-    row.updatedAt = DateTime.now();
+    row.updatedAt = _now();
+    row.savedBy = null;
 
     final isar = await _db;
     final id = await isar.writeTxn(() => isar.playlistDBs.put(row));
@@ -111,7 +121,10 @@ class LibraryDAO {
         await _findByMediaId(PlaylistTypeDB.remotePlaylist, playlist.id);
 
     final row = existing ??
-        PlaylistDB(name: playlist.id, type: PlaylistTypeDB.remotePlaylist);
+        PlaylistDB(
+            name: playlist.id,
+            type: PlaylistTypeDB.remotePlaylist,
+            createdat: _now());
 
     final owner = playlist.owner;
     final ownerArtists = (owner != null && owner.trim().isNotEmpty)
@@ -137,7 +150,8 @@ class LibraryDAO {
     row.artists = ownerArtists;
     row.album = null;
     row.remotePlaylist = remoteSummary;
-    row.updatedAt = DateTime.now();
+    row.updatedAt = _now();
+    row.savedBy = null;
 
     final isar = await _db;
     final id = await isar.writeTxn(() => isar.playlistDBs.put(row));
@@ -183,7 +197,10 @@ class LibraryDAO {
     final existing = await _findByMediaId(type, mediaId);
     if (existing == null) return false;
     final isar = await _db;
-    await isar.writeTxn(() => isar.playlistDBs.delete(existing.id));
+    isar.writeTxnSync(() {
+      SyncDAO.recordDeletionInTransaction(isar, existing, _now());
+      isar.playlistDBs.deleteSync(existing.id);
+    });
     log('Removed saved ${type.name}: $mediaId', name: 'LibraryDAO');
     return true;
   }
@@ -191,7 +208,12 @@ class LibraryDAO {
   /// Remove a saved entry by its Isar [id].
   Future<void> removeSavedById(int id) async {
     final isar = await _db;
-    await isar.writeTxn(() => isar.playlistDBs.delete(id));
+    isar.writeTxnSync(() {
+      final row = isar.playlistDBs.getSync(id);
+      if (row == null) return;
+      SyncDAO.recordDeletionInTransaction(isar, row, _now());
+      isar.playlistDBs.deleteSync(id);
+    });
   }
 
   // ── Existence check ────────────────────────────────────────────────────────

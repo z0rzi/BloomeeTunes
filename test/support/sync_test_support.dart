@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:Bloomee/repository/sync/sync_engine.dart';
+import 'package:Bloomee/services/db/dao/library_dao.dart';
 import 'package:Bloomee/services/db/dao/playlist_dao.dart';
 import 'package:Bloomee/services/db/dao/track_dao.dart';
 import 'package:Bloomee/services/db/db_provider.dart';
@@ -57,13 +58,20 @@ class SyncDevice {
   final Isar isar;
   final TrackDAO tracks;
   final PlaylistDAO playlists;
+  final LibraryDAO library;
   final RecordingSyncLocation location;
   final SyncEngine engine;
 
-  SyncDevice._(this.name, this.isar, this.location, this.engine)
+  /// This Device's permanent ID, which settles changes made at the same time.
+  late final String id;
+
+  SyncDevice._(this.name, this.isar, this.location, this.engine,
+      DateTime Function() clock)
       : tracks = TrackDAO(Future.value(isar)),
-        playlists =
-            PlaylistDAO(Future.value(isar), TrackDAO(Future.value(isar)));
+        playlists = PlaylistDAO(
+            Future.value(isar), TrackDAO(Future.value(isar)),
+            clock: clock),
+        library = LibraryDAO(Future.value(isar), clock: clock);
 
   Future<void> sync() => engine.syncNow();
 
@@ -73,6 +81,12 @@ class SyncDevice {
     for (final song in songs) {
       await playlists.addTrackToPlaylist(id!, song);
     }
+  }
+
+  /// Takes [mediaId] out of [playlist], as the screens do.
+  Future<void> remove(String playlist, String mediaId) async {
+    final row = (await playlists.getPlaylistByName(playlist))!;
+    await playlists.removeTrackFromPlaylist(row.id, mediaId);
   }
 
   /// Media IDs of [playlist] in order, or null when it does not exist.
@@ -118,10 +132,10 @@ class SyncWorld {
         RecordingSyncLocation(LocalFolderSyncLocation(locationPath));
     final engine = SyncEngine(
         database: Future.value(isar), location: location, clock: clock.call);
-    final device = SyncDevice._(name, isar, location, engine);
+    final device = SyncDevice._(name, isar, location, engine, clock.call);
     await PlaylistDAO(Future.value(isar), TrackDAO(Future.value(isar)))
         .ensurePlaylist(DBProvider.likedPlaylist);
-    await engine.enable(deviceName: name);
+    device.id = (await engine.enable(deviceName: name)).deviceId;
     devices.add(device);
     return device;
   }

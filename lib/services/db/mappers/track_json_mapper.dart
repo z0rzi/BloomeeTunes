@@ -1,7 +1,8 @@
 import 'package:Bloomee/services/db/global_db.dart';
 
-// Track details as plain JSON maps, shared by the backup format and the
-// Device State so a song can be recreated on a Device that never saw it.
+// Track and playlist details as plain JSON maps, shared by the backup format
+// and the Device State so a song or a saved collection can be recreated on a
+// Device that never saw it.
 
 Map<String, dynamic>? artworkDBToJson(ArtworkDB? a) => a == null
     ? null
@@ -86,3 +87,61 @@ TrackDB trackDBFromJson(Map<String, dynamic> t) => TrackDB(
       language: t['language'] as String?,
       isExplicit: t['isExplicit'] as bool? ?? false,
     );
+
+Map<String, dynamic> playlistDBToJson(PlaylistDB p) => {
+      'name': p.name,
+      'type': p.type.name,
+      'subtitle': p.subtitle,
+      'description': p.description,
+      'thumbnail': artworkDBToJson(p.thumbnail),
+      'artists': p.artists?.map(artistSummaryDBToJson).toList(),
+      'album': albumSummaryDBToJson(p.album),
+      'isPinned': p.isPinned,
+      'sortOrder': p.sortOrder,
+      'createdAt': p.createdAt.toUtc().toIso8601String(),
+      'updatedAt': p.updatedAt.toUtc().toIso8601String(),
+      'remotePlaylist': p.remotePlaylist == null
+          ? null
+          : {
+              'title': p.remotePlaylist!.name,
+              'mediaId': p.remotePlaylist!.mediaId,
+              'url': p.remotePlaylist!.url,
+              'subtitle': p.remotePlaylist!.subtitle,
+              'artists': p.remotePlaylist!.artists
+                  ?.map(artistSummaryDBToJson)
+                  .toList(),
+              'album': albumSummaryDBToJson(p.remotePlaylist!.album),
+              'thumbnail': artworkDBToJson(p.remotePlaylist!.thumbnail),
+            },
+    };
+
+PlaylistDB playlistDBFromJson(Map<String, dynamic> p) {
+  final row = PlaylistDB(
+      name: p['name'] as String,
+      type: PlaylistTypeDB.values.byName(p['type'] as String),
+      description: p['description'] as String?,
+      subtitle: p['subtitle'] as String?,
+      thumbnail: artworkDBFromJson(p['thumbnail']),
+      artists: artistSummariesDBFromJson(p['artists']),
+      album: albumSummaryDBFromJson(p['album']),
+      sortOrder: p['sortOrder'] as int? ?? 0,
+      isPinned: p['isPinned'] as bool? ?? false,
+      createdat: p['createdAt'] == null
+          ? null
+          : DateTime.parse(p['createdAt'] as String),
+      updatedat: p['updatedAt'] == null
+          ? null
+          : DateTime.parse(p['updatedAt'] as String));
+  if (p['remotePlaylist'] != null) {
+    final r = p['remotePlaylist'] as Map<String, dynamic>;
+    row.remotePlaylist = RemotePlaylistSummaryDB(
+        title: r['title'] as String?,
+        mediaId: r['mediaId'] as String?,
+        url: r['url'] as String?,
+        subtitle: r['subtitle'] as String?,
+        artists: artistSummariesDBFromJson(r['artists']),
+        album: albumSummaryDBFromJson(r['album']),
+        thumbnail: artworkDBFromJson(r['thumbnail']));
+  }
+  return row;
+}

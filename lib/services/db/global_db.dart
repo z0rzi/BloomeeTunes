@@ -138,6 +138,10 @@ class PlaylistDB {
   @Index()
   String? syncId;
 
+  /// For a saved album or artist: the Device that last saved it, whose time
+  /// is [updatedAt]. Null when this Device did.
+  String? savedBy;
+
   @Backlink(to: 'playlist')
   final entries = IsarLinks<PlaylistEntryDB>();
 
@@ -171,6 +175,9 @@ class PlaylistEntryDB {
   int position;
   DateTime addedAt;
 
+  /// The Device that added this song at [addedAt]; null when this Device did.
+  String? addedBy;
+
   PlaylistEntryDB({
     this.playlistId,
     this.position = 0,
@@ -202,6 +209,44 @@ class SyncDeviceDB {
     required this.deviceId,
     required this.deviceName,
     this.lastSyncAt,
+  });
+}
+
+/// What a [SyncRemovalDB] records the removal of.
+enum SyncRemovalKindDB { playlist, song, like, album, artist }
+
+/// A Removal Marker: something taken out of the Synced Library, kept so the
+/// removal reaches the other Devices. One row per removed thing, holding its
+/// latest removal.
+@collection
+class SyncRemovalDB {
+  Id id = Isar.autoIncrement;
+
+  /// Identifies what was removed (kind, playlist and media ID together).
+  @Index(unique: true, replace: true)
+  String key;
+
+  @enumerated
+  SyncRemovalKindDB kind;
+
+  /// Sync ID of the deleted playlist, or of the one a song was taken out of.
+  String? playlistId;
+
+  /// Media ID of the removed song, album or artist.
+  String? mediaId;
+
+  DateTime removedAt;
+
+  /// The Device that made the removal.
+  String removedBy;
+
+  SyncRemovalDB({
+    required this.key,
+    required this.kind,
+    this.playlistId,
+    this.mediaId,
+    required this.removedAt,
+    required this.removedBy,
   });
 }
 

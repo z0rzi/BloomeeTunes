@@ -135,7 +135,7 @@ schemas and migration runners remain removed.
 | `NotificationDAO` | Notification persistence |
 | `LyricsDAO` | Lyrics cache keyed by media ID |
 | `PluginStorageDAO` | Per-plugin key-value persistent storage |
-| `SyncDAO` | Library Sync bookkeeping, reading the Synced Library, applying a merge in one transaction |
+| `SyncDAO` | Library Sync bookkeeping (including the Removal Markers other DAOs leave in their own transactions), reading the Synced Library, applying a merge in one transaction |
 
 **Constructor pattern** — `const` constructors accept `Future<Isar>`:
 
@@ -154,7 +154,7 @@ PlaylistDAO(DBProvider.db, TrackDAO(DBProvider.db))
 | `playlist_mapper.dart` | `Playlist` ↔ `PlaylistDB`, `PlaylistType` ↔ `PlaylistTypeDB` |
 | `collection_mapper.dart` | `ArtistSummary`/`AlbumSummary`/`PlaylistSummary` ↔ `PlaylistDB` |
 | `lyrics_mapper.dart` | `Lyrics` ↔ `LyricsDB` |
-| `track_json_mapper.dart` | `TrackDB` and its embedded types ↔ JSON maps (backup format, Device State) |
+| `track_json_mapper.dart` | `TrackDB`, `PlaylistDB` and their embedded types ↔ JSON maps (backup format, Device State) |
 
 ---
 
