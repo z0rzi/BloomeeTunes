@@ -8,12 +8,15 @@ import 'package:Bloomee/services/sync/sync_location_http.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
-/// The Dropbox app Bloomee signs in to: its app key, supplied at build time
-/// (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`), and where Dropbox answers.
+/// The Dropbox app Bloomee signs in to: its app key, and where Dropbox
+/// answers. The key is the one the owner entered on this Device for an app
+/// they registered themselves, or else the one supplied at build time
+/// (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`).
 ///
 /// The app is registered with the App Folder permission type, so whatever it
 /// is granted reaches only its own folder (`Apps/<app name>/`). Its key is
-/// not a secret: sign-in uses PKCE and no client secret.
+/// not a secret: sign-in uses PKCE and no client secret. A sign-in belongs
+/// to the app it was made with.
 class DropboxApp {
   /// The build-time define holding the app key.
   static const keyDefine = 'BLOOMEE_DROPBOX_APP_KEY';
@@ -54,7 +57,7 @@ class DropboxApp {
             requestTimeout: requestTimeout, client: client);
 
   /// The app this build was given a key for, or null for a build without
-  /// one, which does not offer Dropbox.
+  /// one, where the owner enters the key of their own app.
   static DropboxApp? fromBuild() => _fromBuild;
 
   static final DropboxApp? _fromBuild = _keyFromBuild.trim().isEmpty
@@ -94,7 +97,8 @@ class DropboxApp {
 
   /// Asks the token endpoint with [form]. Only a refused grant (a code or
   /// refresh token Dropbox does not accept, as once revoked) means the owner
-  /// must sign in again; any other refusal is reported as it is.
+  /// must sign in again; an app Dropbox does not know (a wrong app key) is
+  /// [SyncLocationAppRefused]; any other refusal is reported as it is.
   Future<Map<String, Object?>> _token(Map<String, String> form) async {
     final response = await _http.post(_tokenEndpoint, body: form);
     if (response.statusCode == 200) {
@@ -107,9 +111,14 @@ class DropboxApp {
       }
       throw const SyncLocationFailed('Dropbox gave an unreadable answer.');
     }
-    if (_summary(response) == 'invalid_grant') {
+    final summary = _summary(response);
+    if (summary == 'invalid_grant') {
       throw SyncLocationSignInRefused(
           'Dropbox refused the sign-in: ${_describe(response)}');
+    }
+    if (summary.startsWith('invalid_client')) {
+      throw SyncLocationAppRefused(
+          'Dropbox does not know the app key "$key": ${_describe(response)}');
     }
     throw _unexpected(response);
   }

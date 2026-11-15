@@ -47,7 +47,8 @@ prerelease with the existing filenames and version/build-number scheme.
 the built-in GitHub token with `contents: write`. APK builds remain manual.
 When the `BLOOMEE_DROPBOX_APP_KEY` secret is set, each build passes it as
 `--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`; without it the builds succeed and
-Bloomee offers no Dropbox Sync Location.
+Bloomee offers Dropbox through an app each person registers themselves, whose key
+they enter in the Library Sync settings.
 
 Fork-only: on this fork the Android app is `ls.bloomee.musicplayer.sync`, named
 "Bloomee Sync", so it installs beside the official app. Pushing a `sync-v*` tag

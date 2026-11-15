@@ -2439,4 +2439,59 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get dialogSyncKeyringBody =>
       'Bloomee, bu cihazın senkronizasyon konumundaki girişini sistem anahtarlığında saklar; anahtarlık şu anda okunamadığı için bu cihaz senkronize olmuyor. Anahtarlığın kilidini açın (Linux\'ta GNOME Keyring veya KWallet), ardından Bloomee\'yi yeniden başlatın.';
+
+  @override
+  String get syncDropboxNeedsAppKey => 'Kendi Dropbox uygulamanız gerekli';
+
+  @override
+  String get syncDropboxOwnApp => 'Kendi Dropbox uygulamanızı kullanın';
+
+  @override
+  String get syncDropboxOwnAppOptional =>
+      'İsteğe bağlı: olmadığında Bloomee\'nin Dropbox uygulaması kullanılır';
+
+  @override
+  String get syncDropboxOwnAppNeeded =>
+      'Gerekli: Bloomee\'nin bu sürümünün kendi Dropbox uygulaması yok';
+
+  @override
+  String syncDropboxOwnAppKey(String key) {
+    return 'Uygulama anahtarı: $key';
+  }
+
+  @override
+  String get dialogDropboxAppTitle => 'Kendi Dropbox uygulamanızı kullanın';
+
+  @override
+  String get dialogDropboxAppBody =>
+      'Kendi Dropbox uygulamanızı kaydedin; bu cihaz Bloomee\'ninki yerine onun üzerinden giriş yapar:\n1. Dropbox App Console\'da bir uygulama oluşturun: Scoped access\'i, ardından App folder\'ı seçin ve bir ad verin. Dropbox\'ınızdaki klasörü Apps/<ad> olur.\n2. Uygulamanın Permissions sekmesinde files.metadata.read, files.content.read ve files.content.write seçeneklerini işaretleyin, sonra Submit\'e tıklayın.\n3. Settings sekmesinde App key\'i kopyalayıp aşağıya yapıştırın. Anahtar gizli değildir ve App secret gerekmez.\nHer cihazınıza aynı anahtarı girin: her uygulamanın kendi klasörü vardır, bu yüzden farklı uygulamalardaki cihazlar birbiriyle senkronize olmaz.';
+
+  @override
+  String get buttonDropboxOpenAppConsole => 'Dropbox App Console\'u aç';
+
+  @override
+  String get dialogDropboxAppKey => 'Uygulama anahtarı (App key)';
+
+  @override
+  String get dialogDropboxAppBuiltInNote =>
+      'Bloomee\'nin Dropbox uygulamasını kullanmak için boş bırakın.';
+
+  @override
+  String get dialogDropboxAppRequiredNote =>
+      'Bloomee\'nin bu sürümünün kendi Dropbox uygulaması yok: Dropbox sizinkine ihtiyaç duyar.';
+
+  @override
+  String get dialogDropboxAppSignOutNote =>
+      'Anahtarı değiştirmek veya silmek bu cihazda Dropbox\'tan çıkış yapar, çünkü bir giriş tek bir uygulamaya aittir. Dropbox üzerinden senkronizasyon, yeniden giriş yapana kadar durur.';
+
+  @override
+  String get dialogDropboxAppKeyFailed =>
+      'Anahtar değiştirilmedi: Dropbox girişini tutan sistem anahtarlığı değiştirilemiyor.';
+
+  @override
+  String get buttonDropboxAppSave => 'Kaydet';
+
+  @override
+  String get syncDropboxAppKeyRefused =>
+      'Dropbox bu uygulama anahtarını tanımıyor. Kendi anahtarınızı girdiyseniz “Kendi Dropbox uygulamanızı kullanın” bölümünden kontrol edin: Dropbox App Console\'da uygulamanızın Settings sekmesinden yeniden kopyalayın.';
 }

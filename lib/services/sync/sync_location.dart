@@ -52,6 +52,13 @@ final class SyncLocationFailed extends SyncLocationException {
   const SyncLocationFailed(super.message);
 }
 
+/// The Sync Location does not know the app Bloomee signs in as, as when
+/// Dropbox answers `invalid_client` for a wrong app key: only the owner
+/// correcting the app key helps.
+final class SyncLocationAppRefused extends SyncLocationFailed {
+  const SyncLocationAppRefused(super.message);
+}
+
 /// Rejects paths that could leave the Sync Location.
 List<String> syncPathSegments(String path) {
   final segments = path.split('/');

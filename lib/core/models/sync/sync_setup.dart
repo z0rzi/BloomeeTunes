@@ -3,8 +3,9 @@ import 'package:equatable/equatable.dart';
 
 /// The kinds of Sync Location a Device can choose.
 enum SyncLocationKind {
-  /// The owner's Dropbox, in Bloomee's app folder. Offered on Linux and
-  /// Android, by a build given a Dropbox app key.
+  /// The owner's Dropbox, in the app folder of the Dropbox app Bloomee signs
+  /// in through: the owner's own, or the one the build was given. Offered on
+  /// Linux and Android.
   dropbox,
 
   /// A folder on the owner's own WebDAV server, signed in to with a user
@@ -16,14 +17,13 @@ enum SyncLocationKind {
   localFolder;
 
   /// The kinds offered on [operatingSystem] (as `Platform.operatingSystem`
-  /// names it), in the order the settings show them. Only a build with a
-  /// Dropbox app key offers [dropbox].
-  static List<SyncLocationKind> offeredOn(String operatingSystem,
-      {required bool dropbox}) {
+  /// names it), in the order the settings show them. A build without a
+  /// Dropbox app key offers [dropbox] too, through the owner's own app.
+  static List<SyncLocationKind> offeredOn(String operatingSystem) {
     final linuxOrAndroid =
         operatingSystem == 'linux' || operatingSystem == 'android';
     return [
-      if (dropbox && linuxOrAndroid) SyncLocationKind.dropbox,
+      if (linuxOrAndroid) SyncLocationKind.dropbox,
       if (linuxOrAndroid) webDav,
       if (operatingSystem == 'linux') localFolder,
     ];
@@ -73,6 +73,10 @@ class SyncSetup extends Equatable {
   final String? webDavAddress;
   final String? webDavUser;
 
+  /// The key of the owner's own Dropbox app, entered on this Device; null
+  /// when Bloomee signs in to Dropbox through the app the build was given.
+  final String? dropboxAppKey;
+
   /// This Device's name: the one chosen, or the machine's name until then.
   final String deviceName;
 
@@ -83,6 +87,7 @@ class SyncSetup extends Equatable {
       this.folder,
       this.webDavAddress,
       this.webDavUser,
+      this.dropboxAppKey,
       this.deviceName = ''});
 
   /// The Sync Location this setup syncs with, if one was chosen.
@@ -102,6 +107,7 @@ class SyncSetup extends Equatable {
         folder,
         webDavAddress,
         webDavUser,
+        dropboxAppKey,
         deviceName
       ];
 }
@@ -121,6 +127,10 @@ enum SyncLocationProblem {
 
   /// The sign-in could not be kept in the system keyring.
   keyringUnavailable,
+
+  /// Dropbox does not know the app Bloomee signs in through (`invalid_client`):
+  /// the app key is wrong.
+  appKeyRefused,
 
   /// The address given is not a server address.
   invalidAddress,
@@ -184,6 +194,14 @@ final class SyncSignInNeeded extends SyncError {
 /// (it is locked, say): sync does not start until it can.
 final class SyncKeyringUnavailable extends SyncError {
   const SyncKeyringUnavailable(super.at, super.detail);
+}
+
+/// Dropbox does not know the app this Device signs in through (a wrong app
+/// key, or an app its owner deleted), or this build has no Dropbox app and
+/// none was entered: only the owner correcting the app key helps. The
+/// sign-in is kept, and sync tries again by itself.
+final class SyncAppKeyRefused extends SyncError {
+  const SyncAppKeyRefused(super.at, super.detail);
 }
 
 /// The sync failed for another reason; sync retries by itself.

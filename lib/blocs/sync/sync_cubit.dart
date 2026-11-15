@@ -72,6 +72,14 @@ class SyncState extends Equatable {
   /// The kinds of Sync Location this Device offers; none means sync cannot
   /// be set up here yet.
   final List<SyncLocationKind> locationKinds;
+
+  /// Whether the build was given a Dropbox app key; without one, Dropbox
+  /// needs the key of the owner's own app.
+  final bool dropboxBuiltIn;
+
+  /// Whether there is a Dropbox app to sign in through: the owner's own, or
+  /// the build's.
+  bool get hasDropboxApp => dropboxBuiltIn || setup.dropboxAppKey != null;
   final bool loaded;
 
   /// How sync is set up on this Device, as last read.
@@ -106,6 +114,7 @@ class SyncState extends Equatable {
 
   const SyncState({
     this.locationKinds = const [],
+    this.dropboxBuiltIn = false,
     this.loaded = false,
     this.setup = const SyncSetup(),
     this.dropboxSignedIn = false,
@@ -138,6 +147,7 @@ class SyncState extends Equatable {
         : setupProblem();
     return SyncState(
       locationKinds: locationKinds,
+      dropboxBuiltIn: dropboxBuiltIn,
       loaded: loaded ?? this.loaded,
       setup: setup ?? this.setup,
       dropboxSignedIn: dropboxSignedIn ?? this.dropboxSignedIn,
@@ -156,6 +166,7 @@ class SyncState extends Equatable {
   @override
   List<Object?> get props => [
         locationKinds,
+        dropboxBuiltIn,
         loaded,
         setup,
         dropboxSignedIn,
@@ -187,6 +198,7 @@ class SyncCubit extends Cubit<SyncState> {
   SyncCubit(this._repository)
       : super(SyncState(
             locationKinds: _repository.locationKinds,
+            dropboxBuiltIn: _repository.hasBuiltInDropboxApp,
             status: _repository.status)) {
     _subscriptions
       ..add(_repository.statusChanges.listen(_onStatus))
@@ -234,8 +246,26 @@ class SyncCubit extends Cubit<SyncState> {
   }
 
   /// Starts signing in to Dropbox, returning the Dropbox page the owner
-  /// opens to allow Bloomee.
-  Uri beginDropboxSignIn() => _repository.beginDropboxSignIn();
+  /// opens to allow Bloomee; null when there is no Dropbox app to sign in
+  /// through (a build without one, where the owner entered no key).
+  Future<Uri?> beginDropboxSignIn() => _repository.beginDropboxSignIn();
+
+  /// Makes [key] the key of the owner's own Dropbox app on this Device; an
+  /// empty key goes back to the build's app. Changing the app ends this
+  /// Device's Dropbox sign-in, as signing out does. Completes with false
+  /// when the system keyring, which holds the sign-in, cannot be changed,
+  /// and then nothing changed.
+  Future<bool> setDropboxAppKey(String key) async {
+    try {
+      await _repository.setDropboxAppKey(key);
+      return true;
+    } catch (error) {
+      log('Could not change the Dropbox app key: $error', name: 'SyncCubit');
+      return false;
+    } finally {
+      await load();
+    }
+  }
 
   /// Finishes the sign-in with the [code] the owner pasted from that page;
   /// completes with why it failed, or null once signed in.

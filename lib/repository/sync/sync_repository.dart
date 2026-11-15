@@ -37,7 +37,9 @@ typedef SyncSchedulerFactory = SyncScheduler Function(
 /// and the WebDAV password are kept in the system keyring
 /// ([CredentialStore]), never in the database or anything published. When
 /// the Sync Location stops accepting them, sync stops until the owner signs
-/// in again ([SyncSignInNeeded]).
+/// in again ([SyncSignInNeeded]). Dropbox is signed in to through the
+/// owner's own Dropbox app when they entered its key on this Device
+/// ([setDropboxAppKey]), or else through the app the build was given.
 class SyncRepository {
   /// The file written and removed to test a Sync Location, in the area
   /// that holds Device States (which only reads `.json` files).
@@ -57,7 +59,19 @@ class SyncRepository {
   final FutureOr<String> Function() _machineName;
   final SyncSchedulerFactory _schedulerFor;
   final CredentialStore _credentials;
-  final DropboxApp? _dropbox;
+
+  /// The Dropbox app the build was given, if any.
+  final DropboxApp? _builtInDropbox;
+
+  /// Makes the Dropbox app of a key the owner entered.
+  final DropboxApp Function(String key) _dropboxWithKey;
+
+  /// The owner's own Dropbox app, as last made.
+  DropboxApp? _ownDropbox;
+
+  /// Counts the changes of the Dropbox app this Device signs in through, so
+  /// that a sign-in begun through another app is not kept.
+  int _dropboxAppChanges = 0;
 
   /// The kinds of Sync Location this Device offers.
   final List<SyncLocationKind> locationKinds;
@@ -72,8 +86,9 @@ class SyncRepository {
   /// The kind of Sync Location [_engine] syncs with.
   SyncLocationKind? _engineKind;
 
-  /// The Dropbox sign-in under way, waiting for the owner's code.
-  DropboxSignIn? _pendingSignIn;
+  /// The Dropbox sign-in under way, waiting for the owner's code, and the
+  /// count of [_dropboxAppChanges] when it began.
+  ({DropboxSignIn signIn, int appChanges})? _pendingSignIn;
   SyncScheduler? _scheduler;
   StreamSubscription<void>? _libraryChanges;
   bool _inBackground = false;
@@ -90,6 +105,7 @@ class SyncRepository {
     List<SyncLocationKind>? locationKinds,
     CredentialStore? credentials,
     DropboxApp? dropbox,
+    DropboxApp Function(String key)? dropboxWithKey,
   })  : _database = database,
         _backups = backups,
         _settings = SettingsDAO(database),
@@ -98,10 +114,14 @@ class SyncRepository {
         _machineName = machineName ?? thisMachineName,
         _schedulerFor = scheduler ?? ((run) => SyncScheduler(run: run)),
         _credentials = credentials ?? const KeyringCredentialStore(),
-        _dropbox = dropbox ?? DropboxApp.fromBuild(),
+        _builtInDropbox = dropbox ?? DropboxApp.fromBuild(),
+        _dropboxWithKey = dropboxWithKey ?? ((key) => DropboxApp(key: key)),
         locationKinds = locationKinds ??
-            SyncLocationKind.offeredOn(Platform.operatingSystem,
-                dropbox: (dropbox ?? DropboxApp.fromBuild()) != null);
+            SyncLocationKind.offeredOn(Platform.operatingSystem);
+
+  /// Whether the build was given a Dropbox app key; without one, Dropbox
+  /// needs the key of the owner's own app ([setDropboxAppKey]).
+  bool get hasBuiltInDropboxApp => _builtInDropbox != null;
 
   SyncStatus get status => _status;
   Stream<SyncStatus> get statusChanges => _statusChanges.stream;
@@ -123,6 +143,7 @@ class SyncRepository {
           await _settings.getSettingStr(SettingKeys.librarySyncWebDavAddress),
       webDavUser:
           await _settings.getSettingStr(SettingKeys.librarySyncWebDavUser),
+      dropboxAppKey: await _ownDropboxKey(),
       deviceName: identity?.deviceName ??
           await _settings.getSettingStr(SettingKeys.librarySyncDeviceName) ??
           (machine.isEmpty || machine == 'localhost' ? 'Bloomee' : machine),
@@ -173,8 +194,8 @@ class SyncRepository {
       final SyncLocation location;
       try {
         location = await _locationAt(choice);
-      } on SyncLocationSignInRefused {
-        return SyncLocationProblem.signInRefused;
+      } on SyncLocationException catch (error) {
+        return _problemOf(error) ?? SyncLocationProblem.notFound;
       } on CredentialStoreUnavailable {
         return SyncLocationProblem.keyringUnavailable;
       }
@@ -215,17 +236,28 @@ class SyncRepository {
     }
   }
 
-  /// Starts signing in to Dropbox, returning the Dropbox page the owner
-  /// opens to allow Bloomee; they paste back the code it shows, for
-  /// [finishDropboxSignIn]. Only for a build that offers Dropbox.
-  Uri beginDropboxSignIn() => (_pendingSignIn = _dropboxApp.beginSignIn()).page;
+  /// Starts signing in to Dropbox through the Dropbox app this Device uses
+  /// (see [setDropboxAppKey]), returning the Dropbox page the owner opens to
+  /// allow Bloomee; they paste back the code it shows, for
+  /// [finishDropboxSignIn]. Null when there is no app to sign in through: a
+  /// build without a Dropbox app key, where the owner has entered none.
+  Future<Uri?> beginDropboxSignIn() async {
+    // Counted before the app is read, so that a key changed meanwhile is
+    // seen at [finishDropboxSignIn].
+    final appChanges = _dropboxAppChanges;
+    final signIn = (await _dropboxApp())?.beginSignIn();
+    _pendingSignIn =
+        signIn == null ? null : (signIn: signIn, appChanges: appChanges);
+    return signIn?.page;
+  }
 
   /// Finishes the sign-in [beginDropboxSignIn] started with the [code] the
   /// owner pasted, keeping it in the keyring; otherwise says why it failed.
   /// Sync stopped for want of a sign-in resumes at once.
   Future<SyncLocationProblem?> finishDropboxSignIn(String code) async {
-    final signIn = _pendingSignIn;
-    if (signIn == null) return SyncLocationProblem.signInRefused;
+    final pending = _pendingSignIn;
+    if (pending == null) return SyncLocationProblem.signInRefused;
+    final (:signIn, :appChanges) = pending;
     final String refreshToken;
     try {
       refreshToken = await signIn.finish(code);
@@ -233,8 +265,13 @@ class SyncRepository {
       log('Dropbox sign-in not finished: $error', name: 'SyncRepository');
       return _problemOf(error) ?? SyncLocationProblem.notFound;
     }
-    if (identical(_pendingSignIn, signIn)) _pendingSignIn = null;
+    if (_pendingSignIn == pending) _pendingSignIn = null;
     final resumed = await _setupChanges.run(() async {
+      // The app key changed since the sign-in began: it belongs to the old
+      // app.
+      if (appChanges != _dropboxAppChanges) {
+        return SyncLocationProblem.signInRefused;
+      }
       try {
         await _credentials.write(dropboxCredential, refreshToken);
       } on CredentialStoreUnavailable {
@@ -329,31 +366,86 @@ class SyncRepository {
   /// of. Throws [CredentialStoreUnavailable] when the keyring cannot be
   /// read or changed, and then changes nothing.
   Future<void> signOutOf(SyncLocationKind kind) => _setupChanges.run(() async {
-        final credential = _credentialOf(kind);
-        if (credential == null) return;
-        final refreshToken = kind == SyncLocationKind.dropbox
-            ? await _credentials.read(dropboxCredential)
-            : null;
-        await _credentials.delete(credential);
-        final setup = await this.setup();
-        if (setup.enabled && setup.locationKind == kind) {
-          await _stopSyncing();
+        switch (kind) {
+          case SyncLocationKind.dropbox:
+            await _signOutOfDropbox(await _dropboxApp());
+          case SyncLocationKind.webDav:
+            await _credentials.delete(webDavCredential);
+            await _stopSyncingThrough(kind);
+          case SyncLocationKind.localFolder:
+            return;
         }
-        if (refreshToken != null) await _endDropboxSignIn(refreshToken);
       });
 
-  /// The keyring entry holding the sign-in to a Sync Location of [kind];
-  /// none for a local folder.
-  static String? _credentialOf(SyncLocationKind kind) => switch (kind) {
-        SyncLocationKind.dropbox => dropboxCredential,
-        SyncLocationKind.webDav => webDavCredential,
-        SyncLocationKind.localFolder => null,
-      };
+  /// Makes [key] the key of the Dropbox app this Device signs in through:
+  /// the owner's own app, which they registered themselves; an empty key
+  /// goes back to the app the build was given. The key is kept in this
+  /// Device's settings, which never travel in a backup or a Device State.
+  ///
+  /// When that changes the app, this Device's Dropbox sign-in ends, as
+  /// [signOutOf] ends it, for a sign-in belongs to one app: sync through
+  /// Dropbox is turned off until the owner signs in again. Throws
+  /// [CredentialStoreUnavailable] when the keyring cannot be read or
+  /// changed, and then changes nothing.
+  Future<void> setDropboxAppKey(String key) => _setupChanges.run(() async {
+        final entered = key.trim();
+        final previous = await _ownDropboxKey();
+        if (entered == (previous ?? '')) return;
+        final before = _dropboxAppFor(previous);
+        final after = _dropboxAppFor(entered.isEmpty ? null : entered);
+        if (before?.key != after?.key) {
+          await _signOutOfDropbox(before);
+          _dropboxAppChanges++;
+          _pendingSignIn = null;
+        }
+        await _settings.putSettingStr(
+            SettingKeys.librarySyncDropboxAppKey, entered);
+      });
 
-  /// Ends the Dropbox sign-in [refreshToken] on Dropbox, when it can.
-  Future<void> _endDropboxSignIn(String refreshToken) async {
-    final app = _dropbox;
-    if (app == null) return;
+  /// The key of the owner's own Dropbox app entered on this Device, if any.
+  Future<String?> _ownDropboxKey() async {
+    final key =
+        (await _settings.getSettingStr(SettingKeys.librarySyncDropboxAppKey))
+            ?.trim();
+    return key == null || key.isEmpty ? null : key;
+  }
+
+  /// The Dropbox app this Device signs in through: the owner's own, when
+  /// they entered its key, or else the build's; null when there is neither.
+  Future<DropboxApp?> _dropboxApp() async =>
+      _dropboxAppFor(await _ownDropboxKey());
+
+  /// The Dropbox app of the owner's own key [ownKey], or the build's when
+  /// there is none.
+  DropboxApp? _dropboxAppFor(String? ownKey) {
+    if (ownKey == null) return _builtInDropbox;
+    final own = _ownDropbox;
+    if (own != null && own.key == ownKey) return own;
+    return _ownDropbox = _dropboxWithKey(ownKey);
+  }
+
+  /// Ends this Device's Dropbox sign-in, made through [app]: it leaves the
+  /// keyring first, so that a keyring refusing the change changes nothing;
+  /// then sync through Dropbox is turned off, and the sign-in is ended on
+  /// Dropbox when it can be reached.
+  Future<void> _signOutOfDropbox(DropboxApp? app) async {
+    final refreshToken = await _credentials.read(dropboxCredential);
+    await _credentials.delete(dropboxCredential);
+    await _stopSyncingThrough(SyncLocationKind.dropbox);
+    if (app != null && refreshToken != null) {
+      await _endDropboxSignIn(app, refreshToken);
+    }
+  }
+
+  /// Turns sync off when it is on through a Sync Location of [kind].
+  Future<void> _stopSyncingThrough(SyncLocationKind kind) async {
+    final setup = await this.setup();
+    if (setup.enabled && setup.locationKind == kind) await _stopSyncing();
+  }
+
+  /// Ends the Dropbox sign-in [refreshToken], made through [app], on
+  /// Dropbox, when it can.
+  Future<void> _endDropboxSignIn(DropboxApp app, String refreshToken) async {
     try {
       await DropboxSyncLocation(
               app: app, refreshToken: refreshToken, clock: _clock)
@@ -446,7 +538,10 @@ class SyncRepository {
       case SyncLocationKind.localFolder:
         return LocalFolderSyncLocation(chosen.folder!);
       case SyncLocationKind.dropbox:
-        final app = _dropboxApp;
+        final app = await _dropboxApp() ??
+            (throw const SyncLocationAppRefused(
+                'This build has no Dropbox app key, and none was entered on '
+                'this Device.'));
         final refreshToken = await _credentials.read(dropboxCredential) ??
             (throw const SyncLocationSignInRefused(
                 'This Device is not signed in to Dropbox.'));
@@ -470,9 +565,6 @@ class SyncRepository {
             address: address, user: user, password: password);
     }
   }
-
-  DropboxApp get _dropboxApp =>
-      _dropbox ?? (throw StateError('This build has no Dropbox app key.'));
 
   SyncEngine _engineWith(SyncLocation location) => SyncEngine(
       database: _database,
@@ -559,6 +651,8 @@ class SyncRepository {
           SyncLocationUnreachable(_clock(), message),
         CredentialStoreUnavailable(:final message) =>
           SyncKeyringUnavailable(_clock(), message),
+        SyncLocationAppRefused(:final message) =>
+          SyncAppKeyRefused(_clock(), message),
         _ => SyncFailed(_clock(), '$error'),
       };
 
@@ -568,11 +662,13 @@ class SyncRepository {
   }
 
   /// What [error] means for setting up a Sync Location, when it says more
-  /// than the step that met it: a refused sign-in, or a refusal. Null for a
-  /// Sync Location that cannot be reached.
+  /// than the step that met it: a refused sign-in, an app key Dropbox does
+  /// not know, or another refusal. Null for a Sync Location that cannot be
+  /// reached.
   static SyncLocationProblem? _problemOf(SyncLocationException error) =>
       switch (error) {
         SyncLocationSignInRefused() => SyncLocationProblem.signInRefused,
+        SyncLocationAppRefused() => SyncLocationProblem.appKeyRefused,
         SyncLocationFailed() => SyncLocationProblem.refused,
         SyncLocationUnavailable() => null,
       };

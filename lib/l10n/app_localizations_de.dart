@@ -2500,4 +2500,59 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dialogSyncKeyringBody =>
       'Bloomee speichert die Anmeldung dieses Geräts bei seinem Sync-Speicherort im Schlüsselbund des Systems, der gerade nicht gelesen werden kann, daher synchronisiert dieses Gerät nicht. Entsperre den Schlüsselbund (unter Linux GNOME Keyring oder KWallet) und starte Bloomee dann neu.';
+
+  @override
+  String get syncDropboxNeedsAppKey => 'Benötigt deine eigene Dropbox-App';
+
+  @override
+  String get syncDropboxOwnApp => 'Eigene Dropbox-App verwenden';
+
+  @override
+  String get syncDropboxOwnAppOptional =>
+      'Optional: Ohne sie wird die Dropbox-App von Bloomee verwendet';
+
+  @override
+  String get syncDropboxOwnAppNeeded =>
+      'Erforderlich: Diese Version von Bloomee hat keine eigene Dropbox-App';
+
+  @override
+  String syncDropboxOwnAppKey(String key) {
+    return 'App-Schlüssel: $key';
+  }
+
+  @override
+  String get dialogDropboxAppTitle => 'Eigene Dropbox-App verwenden';
+
+  @override
+  String get dialogDropboxAppBody =>
+      'Registriere eine eigene Dropbox-App, dann meldet sich dieses Gerät über sie statt über die von Bloomee an:\n1. Erstelle in der Dropbox App Console eine App: Wähle Scoped access, dann App folder, und gib ihr einen Namen. Ihr Ordner in deiner Dropbox ist Apps/<Name>.\n2. Setze im Tab Permissions der App Häkchen bei files.metadata.read, files.content.read und files.content.write und klicke auf Submit.\n3. Kopiere im Tab Settings den App key und füge ihn unten ein. Der Schlüssel ist nicht geheim, und das App secret wird nicht benötigt.\nGib auf jedem deiner Geräte denselben Schlüssel ein: Jede App hat ihren eigenen Ordner, daher synchronisieren Geräte mit verschiedenen Apps nicht miteinander.';
+
+  @override
+  String get buttonDropboxOpenAppConsole => 'Dropbox App Console öffnen';
+
+  @override
+  String get dialogDropboxAppKey => 'App-Schlüssel (App key)';
+
+  @override
+  String get dialogDropboxAppBuiltInNote =>
+      'Lass das Feld leer, um die Dropbox-App von Bloomee zu verwenden.';
+
+  @override
+  String get dialogDropboxAppRequiredNote =>
+      'Diese Version von Bloomee hat keine eigene Dropbox-App: Dropbox braucht deine.';
+
+  @override
+  String get dialogDropboxAppSignOutNote =>
+      'Wenn du den Schlüssel änderst oder löschst, wird dieses Gerät von Dropbox abgemeldet, denn eine Anmeldung gehört zu einer App. Die Synchronisierung über Dropbox stoppt, bis du dich wieder anmeldest.';
+
+  @override
+  String get dialogDropboxAppKeyFailed =>
+      'Der Schlüssel wurde nicht geändert: Der Schlüsselbund des Systems, der die Dropbox-Anmeldung enthält, kann nicht geändert werden.';
+
+  @override
+  String get buttonDropboxAppSave => 'Speichern';
+
+  @override
+  String get syncDropboxAppKeyRefused =>
+      'Dropbox kennt diesen App-Schlüssel nicht. Wenn du deinen eigenen eingegeben hast, prüfe ihn unter „Eigene Dropbox-App verwenden“: Kopiere ihn erneut aus dem Tab Settings deiner App in der Dropbox App Console.';
 }

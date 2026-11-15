@@ -2520,4 +2520,61 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get dialogSyncKeyringBody =>
       'Bloomee conserve la connexion de cet appareil à son emplacement de synchronisation dans le trousseau du système, illisible pour l\'instant : cet appareil ne se synchronise donc pas. Déverrouillez le trousseau (sous Linux, GNOME Keyring ou KWallet), puis redémarrez Bloomee.';
+
+  @override
+  String get syncDropboxNeedsAppKey =>
+      'Nécessite votre propre application Dropbox';
+
+  @override
+  String get syncDropboxOwnApp => 'Utiliser votre propre application Dropbox';
+
+  @override
+  String get syncDropboxOwnAppOptional =>
+      'Facultatif : sans elle, l\'application Dropbox de Bloomee est utilisée';
+
+  @override
+  String get syncDropboxOwnAppNeeded =>
+      'Nécessaire : cette version de Bloomee n\'a pas d\'application Dropbox à elle';
+
+  @override
+  String syncDropboxOwnAppKey(String key) {
+    return 'Clé d\'application : $key';
+  }
+
+  @override
+  String get dialogDropboxAppTitle =>
+      'Utiliser votre propre application Dropbox';
+
+  @override
+  String get dialogDropboxAppBody =>
+      'Enregistrez votre propre application Dropbox, et cet appareil se connecte par elle plutôt que par celle de Bloomee :\n1. Dans l\'App Console de Dropbox, créez une application : choisissez Scoped access, puis App folder, et donnez-lui un nom. Son dossier dans votre Dropbox est Apps/<nom>.\n2. Dans l\'onglet Permissions de l\'application, cochez files.metadata.read, files.content.read et files.content.write, puis cliquez sur Submit.\n3. Dans son onglet Settings, copiez l\'App key et collez-la ci-dessous. La clé n\'est pas un secret, et l\'App secret n\'est pas nécessaire.\nSaisissez la même clé sur chacun de vos appareils : chaque application a son propre dossier, et des appareils sur des applications différentes ne se synchronisent pas entre eux.';
+
+  @override
+  String get buttonDropboxOpenAppConsole => 'Ouvrir l\'App Console de Dropbox';
+
+  @override
+  String get dialogDropboxAppKey => 'Clé d\'application (App key)';
+
+  @override
+  String get dialogDropboxAppBuiltInNote =>
+      'Laissez-la vide pour utiliser l\'application Dropbox de Bloomee.';
+
+  @override
+  String get dialogDropboxAppRequiredNote =>
+      'Cette version de Bloomee n\'a pas d\'application Dropbox à elle : Dropbox a besoin de la vôtre.';
+
+  @override
+  String get dialogDropboxAppSignOutNote =>
+      'Changer ou effacer la clé déconnecte cet appareil de Dropbox, car une connexion appartient à une seule application. La synchronisation par Dropbox s\'arrête jusqu\'à ce que vous vous reconnectiez.';
+
+  @override
+  String get dialogDropboxAppKeyFailed =>
+      'La clé n\'a pas été changée : le trousseau du système, qui conserve la connexion à Dropbox, ne peut pas être modifié.';
+
+  @override
+  String get buttonDropboxAppSave => 'Enregistrer';
+
+  @override
+  String get syncDropboxAppKeyRefused =>
+      'Dropbox ne connaît pas cette clé d\'application. Si vous avez saisi la vôtre, vérifiez-la dans « Utiliser votre propre application Dropbox » : copiez-la de nouveau depuis l\'onglet Settings de votre application dans l\'App Console de Dropbox.';
 }

@@ -2353,4 +2353,59 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get dialogSyncKeyringBody =>
       'Bloomee は、このデバイスの同期先へのログイン情報をシステムのキーリングに保存していますが、現在キーリングを読み取れないため、このデバイスは同期されません。キーリングのロックを解除してから（Linux では GNOME Keyring または KWallet）、Bloomee を再起動してください。';
+
+  @override
+  String get syncDropboxNeedsAppKey => 'ご自身の Dropbox アプリが必要です';
+
+  @override
+  String get syncDropboxOwnApp => '自分の Dropbox アプリを使用';
+
+  @override
+  String get syncDropboxOwnAppOptional =>
+      '任意: 設定しない場合は Bloomee の Dropbox アプリを使用します';
+
+  @override
+  String get syncDropboxOwnAppNeeded =>
+      '必須: このバージョンの Bloomee には独自の Dropbox アプリがありません';
+
+  @override
+  String syncDropboxOwnAppKey(String key) {
+    return 'アプリキー: $key';
+  }
+
+  @override
+  String get dialogDropboxAppTitle => '自分の Dropbox アプリを使用';
+
+  @override
+  String get dialogDropboxAppBody =>
+      'ご自身で Dropbox アプリを登録すると、このデバイスは Bloomee のアプリではなくそのアプリを通してログインします。\n1. Dropbox App Console でアプリを作成します。Scoped access、次に App folder を選び、名前を付けてください。Dropbox 内のフォルダーは Apps/<名前> になります。\n2. アプリの Permissions タブで files.metadata.read、files.content.read、files.content.write にチェックを入れ、Submit を押してください。\n3. Settings タブで App key をコピーし、下に貼り付けてください。このキーは秘密ではなく、App secret は不要です。\nすべてのデバイスで同じキーを入力してください。アプリごとにフォルダーが分かれているため、異なるアプリを使うデバイス同士は同期しません。';
+
+  @override
+  String get buttonDropboxOpenAppConsole => 'Dropbox App Console を開く';
+
+  @override
+  String get dialogDropboxAppKey => 'アプリキー (App key)';
+
+  @override
+  String get dialogDropboxAppBuiltInNote =>
+      '空欄のままにすると、Bloomee の Dropbox アプリを使用します。';
+
+  @override
+  String get dialogDropboxAppRequiredNote =>
+      'このバージョンの Bloomee には独自の Dropbox アプリがないため、ご自身のアプリが必要です。';
+
+  @override
+  String get dialogDropboxAppSignOutNote =>
+      'キーを変更または消去すると、このデバイスは Dropbox からログアウトします。ログインは 1 つのアプリに属するためです。もう一度ログインするまで、Dropbox での同期は停止します。';
+
+  @override
+  String get dialogDropboxAppKeyFailed =>
+      'キーは変更されませんでした: Dropbox のログイン情報を保持するシステムのキーリングを変更できません。';
+
+  @override
+  String get buttonDropboxAppSave => '保存';
+
+  @override
+  String get syncDropboxAppKeyRefused =>
+      'Dropbox はこのアプリキーを認識しません。ご自身のキーを入力した場合は「自分の Dropbox アプリを使用」で確認し、Dropbox App Console のアプリの Settings タブからもう一度コピーしてください。';
 }

@@ -120,7 +120,7 @@ void main() {
           app: wrongKey, refreshToken: standIn.signedInRefreshToken());
 
       await expectLater(
-          dropbox.list('sync'), throwsA(isA<SyncLocationFailed>()));
+          dropbox.list('sync'), throwsA(isA<SyncLocationAppRefused>()));
     });
 
     test('the pasted code from the Dropbox page gives a lasting sign-in',

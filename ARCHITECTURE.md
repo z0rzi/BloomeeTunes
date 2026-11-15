@@ -154,14 +154,19 @@ the `package:http` client, the request timeout, and what failures mean, the same
 both: unreachable, a dropped connection, a timeout, HTTP 408, 429 and 5xx are
 `SyncLocationUnavailable` (retried quietly); a refused secure connection and any other
 refusal are `SyncLocationFailed`, which setting up a Sync Location reports as
-`SyncLocationProblem.refused`. Dropbox sign-in
+`SyncLocationProblem.refused` (Dropbox not knowing the app key, `invalid_client`, is
+`SyncLocationAppRefused`, reported as `SyncLocationProblem.appKeyRefused`). Dropbox sign-in
 (`DropboxApp.beginSignIn`) is the authorisation-code flow with PKCE, no client secret,
 offline access and no redirect: the owner pastes back the code Dropbox shows. The
 refresh token and the WebDAV password are kept only in the system keyring through
 `CredentialStore` (`flutter_secure_storage`: Android Keystore, the desktop secret
-service on Linux), never in the database, a Device State or a backup. The app key
-comes from the build (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`); a build without it
-does not offer Dropbox. When Dropbox or the WebDAV server refuses the sign-in, sync
+service on Linux), never in the database, a Device State or a backup. The app key is
+the one the owner entered on the Device for a Dropbox app they registered themselves
+(`SyncRepository.setDropboxAppKey`, kept in the device-local setting
+`librarySyncDropboxAppKey`, which is not on the backup allowlist), else the build's
+(`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`); a build without one offers Dropbox through
+the owner's own app. A sign-in belongs to one app, so changing the app ends the Dropbox
+sign-in as signing out does. When Dropbox or the WebDAV server refuses the sign-in, sync
 stops (`SyncSignInNeeded`, alerted each time sync stops for it, including at a start
 without a sign-in) until the owner signs in again; a refused Dropbox sign-in is
 forgotten, a refused WebDAV password is kept until the owner enters another. A keyring

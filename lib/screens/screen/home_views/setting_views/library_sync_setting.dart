@@ -86,8 +86,8 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     final cubit = _cubit;
     if (on) {
       final chosen = cubit.state.setup.locationKind;
-      // A choice this build no longer offers (a build without the Dropbox
-      // app key, say) is asked again.
+      // A choice this build does not offer (one made on another platform's
+      // build, say) is asked again.
       final kind = chosen != null && cubit.state.locationKinds.contains(chosen)
           ? chosen
           : await _askLocation();
@@ -157,14 +157,34 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     await _cubit.choose(choice, deviceName: _deviceName.text);
   }
 
-  /// Signs this Device in to Dropbox; completes with whether it is.
-  Future<bool> _signInToDropbox() async =>
-      await showDialog<bool>(
-        context: context,
-        barrierColor: Colors.black54,
-        builder: (_) => _DropboxSignInDialog(cubit: _cubit),
-      ) ??
-      false;
+  /// Signs this Device in to Dropbox; completes with whether it is. A build
+  /// without a Dropbox app first asks for the owner's own.
+  Future<bool> _signInToDropbox() async {
+    if (!_cubit.state.hasDropboxApp && !await _editDropboxApp()) {
+      return false;
+    }
+    final page = await _cubit.beginDropboxSignIn();
+    if (page == null || !mounted) return false;
+    return await showDialog<bool>(
+          context: context,
+          barrierColor: Colors.black54,
+          builder: (_) => _DropboxSignInDialog(cubit: _cubit, page: page),
+        ) ??
+        false;
+  }
+
+  /// Asks for the key of the owner's own Dropbox app; completes with whether
+  /// it was saved.
+  Future<bool> _editDropboxApp() async {
+    final changed = await showDialog<bool>(
+          context: context,
+          barrierColor: Colors.black54,
+          builder: (_) => _DropboxAppDialog(cubit: _cubit),
+        ) ??
+        false;
+    if (mounted) setState(() => _switchKey++);
+    return changed;
+  }
 
   /// Asks for the WebDAV server's address, user name and password, and
   /// signs in with them; completes with whether this Device is signed in.
@@ -371,13 +391,25 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
             title: l10n.syncDropbox,
             subtitle: state.dropboxSignedIn
                 ? l10n.syncDropboxSignedIn
-                : l10n.syncDropboxSignedOut,
+                : state.hasDropboxApp
+                    ? l10n.syncDropboxSignedOut
+                    : l10n.syncDropboxNeedsAppKey,
             badge: inUse,
             onTap: () => _choose(kind, again: false),
           ),
           SettingInfoText(text: l10n.syncDropboxNote),
           if (state.dropboxSignedIn)
             _signOutButton(kind, l10n.buttonDropboxSignOut),
+          SettingNavTile(
+            icon: Icons.key_rounded,
+            title: l10n.syncDropboxOwnApp,
+            subtitle: switch (state.setup.dropboxAppKey) {
+              final key? => l10n.syncDropboxOwnAppKey(key),
+              null when state.dropboxBuiltIn => l10n.syncDropboxOwnAppOptional,
+              null => l10n.syncDropboxOwnAppNeeded,
+            },
+            onTap: _editDropboxApp,
+          ),
         ],
       SyncLocationKind.webDav => [
           SettingNavTile(
@@ -433,6 +465,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           l10n.syncErrorWebDavSignInNeeded,
         SyncSignInNeeded() => l10n.syncErrorSignInNeeded,
         SyncKeyringUnavailable() => l10n.syncErrorKeyringUnavailable,
+        SyncAppKeyRefused() => l10n.syncDropboxAppKeyRefused,
         SyncFailed(:final detail) => l10n.syncErrorFailed(detail),
         SyncNeedsOwner(:final outcome) => switch (outcome) {
             SyncHeld(declined: true) => l10n.syncErrorPaused,
@@ -466,6 +499,7 @@ String problemText(AppLocalizations l10n, SyncLocationProblem problem,
         l10n.syncWebDavKeyringUnavailable,
       (SyncLocationProblem.keyringUnavailable, _) =>
         l10n.syncKeyringUnavailable,
+      (SyncLocationProblem.appKeyRefused, _) => l10n.syncDropboxAppKeyRefused,
       (SyncLocationProblem.invalidAddress, _) => l10n.syncWebDavInvalidAddress,
       (SyncLocationProblem.insecureAddress, _) =>
         l10n.syncWebDavInsecureAddress,
@@ -482,14 +516,16 @@ String problemText(AppLocalizations l10n, SyncLocationProblem problem,
 class _DropboxSignInDialog extends StatefulWidget {
   final SyncCubit cubit;
 
-  const _DropboxSignInDialog({required this.cubit});
+  /// The Dropbox page of the sign-in begun.
+  final Uri page;
+
+  const _DropboxSignInDialog({required this.cubit, required this.page});
 
   @override
   State<_DropboxSignInDialog> createState() => _DropboxSignInDialogState();
 }
 
 class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
-  late final Uri _page = widget.cubit.beginDropboxSignIn();
   final TextEditingController _code = TextEditingController();
   bool _pageNotOpened = false;
   bool _signingIn = false;
@@ -504,7 +540,8 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
   Future<void> _openPage() async {
     var opened = false;
     try {
-      opened = await launchUrl(_page, mode: LaunchMode.externalApplication);
+      opened =
+          await launchUrl(widget.page, mode: LaunchMode.externalApplication);
     } catch (error) {
       log('The Dropbox page could not be opened: $error',
           name: 'LibrarySyncSettings');
@@ -558,7 +595,7 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
               Text(l10n.dialogDropboxPageNotOpened,
                   style: TextStyle(color: secondary, fontSize: 13)),
               const SizedBox(height: 4),
-              SelectableText(_page.toString(),
+              SelectableText(widget.page.toString(),
                   style: const TextStyle(
                       color: Default_Theme.primaryColor2, fontSize: 12)),
             ],
@@ -601,6 +638,151 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
                             dimension: 16,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : Text(l10n.buttonDropboxSignIn),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The owner's own Dropbox app: the steps to register one, and its key,
+/// which this Device then signs in through. Pops with whether it was
+/// saved.
+class _DropboxAppDialog extends StatefulWidget {
+  final SyncCubit cubit;
+
+  const _DropboxAppDialog({required this.cubit});
+
+  @override
+  State<_DropboxAppDialog> createState() => _DropboxAppDialogState();
+}
+
+class _DropboxAppDialogState extends State<_DropboxAppDialog> {
+  /// Where Dropbox apps are registered.
+  static final _appConsole =
+      Uri.parse('https://www.dropbox.com/developers/apps');
+
+  late final TextEditingController _key =
+      TextEditingController(text: widget.cubit.state.setup.dropboxAppKey ?? '');
+  bool _saving = false;
+  bool _failed = false;
+
+  @override
+  void dispose() {
+    _key.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openConsole() async {
+    try {
+      await launchUrl(_appConsole, mode: LaunchMode.externalApplication);
+    } catch (error) {
+      log('The Dropbox App Console could not be opened: $error',
+          name: 'LibrarySyncSettings');
+    }
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _failed = false;
+    });
+    final saved = await widget.cubit.setDropboxAppKey(_key.text);
+    if (!mounted) return;
+    if (saved) return Navigator.of(context).pop(true);
+    setState(() {
+      _saving = false;
+      _failed = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final state = widget.cubit.state;
+    final secondary = Default_Theme.primaryColor2.withValues(alpha: 0.7);
+    final noteStyle = TextStyle(color: secondary, fontSize: 13);
+    return BloomeeDialogSurface(
+      title: l10n.dialogDropboxAppTitle,
+      icon: Icons.key_rounded,
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.dialogDropboxAppBody,
+                style: TextStyle(color: secondary, fontSize: 14)),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _openConsole,
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: Text(l10n.buttonDropboxOpenAppConsole),
+            ),
+            SelectableText(_appConsole.toString(),
+                style: const TextStyle(
+                    color: Default_Theme.primaryColor2, fontSize: 12)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _key,
+              enabled: !_saving,
+              autocorrect: false,
+              enableSuggestions: false,
+              onSubmitted: (_) => _save(),
+              style: const TextStyle(
+                  color: Default_Theme.primaryColor2, fontSize: 15),
+              decoration: InputDecoration(
+                labelText: l10n.dialogDropboxAppKey,
+                labelStyle: TextStyle(color: secondary),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+                state.dropboxBuiltIn
+                    ? l10n.dialogDropboxAppBuiltInNote
+                    : l10n.dialogDropboxAppRequiredNote,
+                style: noteStyle),
+            if (state.dropboxSignedIn) ...[
+              const SizedBox(height: 8),
+              Text(l10n.dialogDropboxAppSignOutNote, style: noteStyle),
+            ],
+            if (_failed) ...[
+              const SizedBox(height: 8),
+              Text(l10n.dialogDropboxAppKeyFailed,
+                  style:
+                      const TextStyle(color: Colors.redAccent, fontSize: 13)),
+            ],
+            const SizedBox(height: 12),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowAlignment: OverflowBarAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text(l10n.buttonCancel),
+                ),
+                ListenableBuilder(
+                  listenable: _key,
+                  builder: (context, _) => FilledButton(
+                    // Without an app of the build's, an empty key would leave
+                    // nothing to sign in through, unless it clears the one
+                    // entered.
+                    onPressed: _saving ||
+                            (!state.dropboxBuiltIn &&
+                                state.setup.dropboxAppKey == null &&
+                                _key.text.trim().isEmpty)
+                        ? null
+                        : _save,
+                    child: _saving
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(l10n.buttonDropboxAppSave),
                   ),
                 ),
               ],

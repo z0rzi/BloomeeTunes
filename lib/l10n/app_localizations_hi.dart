@@ -2491,4 +2491,59 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get dialogSyncKeyringBody =>
       'Bloomee अपने सिंक स्थान के लिए इस डिवाइस का लॉगिन सिस्टम कीरिंग में रखता है, जो अभी पढ़ी नहीं जा सकती, इसलिए यह डिवाइस सिंक नहीं होता। कीरिंग को अनलॉक करें (Linux पर GNOME Keyring या KWallet), फिर Bloomee को रीस्टार्ट करें।';
+
+  @override
+  String get syncDropboxNeedsAppKey => 'आपका अपना Dropbox ऐप चाहिए';
+
+  @override
+  String get syncDropboxOwnApp => 'अपना Dropbox ऐप इस्तेमाल करें';
+
+  @override
+  String get syncDropboxOwnAppOptional =>
+      'वैकल्पिक: इसके बिना Bloomee का अपना Dropbox ऐप इस्तेमाल होता है';
+
+  @override
+  String get syncDropboxOwnAppNeeded =>
+      'ज़रूरी: Bloomee के इस संस्करण में अपना Dropbox ऐप नहीं है';
+
+  @override
+  String syncDropboxOwnAppKey(String key) {
+    return 'ऐप कुंजी: $key';
+  }
+
+  @override
+  String get dialogDropboxAppTitle => 'अपना Dropbox ऐप इस्तेमाल करें';
+
+  @override
+  String get dialogDropboxAppBody =>
+      'अपना खुद का Dropbox ऐप रजिस्टर करें, फिर यह डिवाइस Bloomee के ऐप की जगह उसी से लॉगिन करेगा:\n1. Dropbox App Console में एक ऐप बनाएँ: Scoped access चुनें, फिर App folder, और उसे एक नाम दें। आपके Dropbox में उसका फ़ोल्डर Apps/<नाम> होगा।\n2. ऐप के Permissions टैब में files.metadata.read, files.content.read और files.content.write चुनें, फिर Submit करें।\n3. उसके Settings टैब में App key कॉपी करें और नीचे पेस्ट करें। यह कुंजी गुप्त नहीं है, और App secret की ज़रूरत नहीं है।\nअपने हर डिवाइस पर यही कुंजी डालें: हर ऐप का अपना फ़ोल्डर होता है, इसलिए अलग-अलग ऐप वाले डिवाइस आपस में सिंक नहीं होते।';
+
+  @override
+  String get buttonDropboxOpenAppConsole => 'Dropbox App Console खोलें';
+
+  @override
+  String get dialogDropboxAppKey => 'ऐप कुंजी (App key)';
+
+  @override
+  String get dialogDropboxAppBuiltInNote =>
+      'Bloomee का अपना Dropbox ऐप इस्तेमाल करने के लिए इसे खाली छोड़ें।';
+
+  @override
+  String get dialogDropboxAppRequiredNote =>
+      'Bloomee के इस संस्करण में अपना Dropbox ऐप नहीं है: Dropbox के लिए आपका ऐप चाहिए।';
+
+  @override
+  String get dialogDropboxAppSignOutNote =>
+      'कुंजी बदलने या हटाने पर यह डिवाइस Dropbox से लॉगआउट हो जाता है, क्योंकि एक लॉगिन एक ही ऐप का होता है। फिर से लॉगिन करने तक Dropbox से सिंक रुका रहता है।';
+
+  @override
+  String get dialogDropboxAppKeyFailed =>
+      'कुंजी नहीं बदली गई: Dropbox लॉगिन रखने वाली सिस्टम कीरिंग को बदला नहीं जा सकता।';
+
+  @override
+  String get buttonDropboxAppSave => 'सहेजें';
+
+  @override
+  String get syncDropboxAppKeyRefused =>
+      'Dropbox इस ऐप कुंजी को नहीं पहचानता। अगर आपने अपनी कुंजी डाली है, तो उसे “अपना Dropbox ऐप इस्तेमाल करें” में जाँचें: Dropbox App Console में अपने ऐप के Settings टैब से उसे फिर से कॉपी करें।';
 }

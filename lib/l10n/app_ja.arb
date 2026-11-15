@@ -811,5 +811,20 @@
   "dialogSyncWebDavSignInBody": "WebDAV サーバーがこのデバイスのユーザー名とパスワードを受け付けなくなりました。ライブラリ同期の設定でもう一度入力するまで、このデバイスでの同期は停止します。",
   "syncErrorKeyringUnavailable": "このデバイスのログイン情報を保持するシステムのキーリングを読み取れません。ロックを解除してから Bloomee を再起動してください。",
   "dialogSyncKeyringTitle": "システムのキーリングを読み取れません",
-  "dialogSyncKeyringBody": "Bloomee は、このデバイスの同期先へのログイン情報をシステムのキーリングに保存していますが、現在キーリングを読み取れないため、このデバイスは同期されません。キーリングのロックを解除してから（Linux では GNOME Keyring または KWallet）、Bloomee を再起動してください。"
+  "dialogSyncKeyringBody": "Bloomee は、このデバイスの同期先へのログイン情報をシステムのキーリングに保存していますが、現在キーリングを読み取れないため、このデバイスは同期されません。キーリングのロックを解除してから（Linux では GNOME Keyring または KWallet）、Bloomee を再起動してください。",
+  "syncDropboxNeedsAppKey": "ご自身の Dropbox アプリが必要です",
+  "syncDropboxOwnApp": "自分の Dropbox アプリを使用",
+  "syncDropboxOwnAppOptional": "任意: 設定しない場合は Bloomee の Dropbox アプリを使用します",
+  "syncDropboxOwnAppNeeded": "必須: このバージョンの Bloomee には独自の Dropbox アプリがありません",
+  "syncDropboxOwnAppKey": "アプリキー: {key}",
+  "dialogDropboxAppTitle": "自分の Dropbox アプリを使用",
+  "dialogDropboxAppBody": "ご自身で Dropbox アプリを登録すると、このデバイスは Bloomee のアプリではなくそのアプリを通してログインします。\n1. Dropbox App Console でアプリを作成します。Scoped access、次に App folder を選び、名前を付けてください。Dropbox 内のフォルダーは Apps/<名前> になります。\n2. アプリの Permissions タブで files.metadata.read、files.content.read、files.content.write にチェックを入れ、Submit を押してください。\n3. Settings タブで App key をコピーし、下に貼り付けてください。このキーは秘密ではなく、App secret は不要です。\nすべてのデバイスで同じキーを入力してください。アプリごとにフォルダーが分かれているため、異なるアプリを使うデバイス同士は同期しません。",
+  "buttonDropboxOpenAppConsole": "Dropbox App Console を開く",
+  "dialogDropboxAppKey": "アプリキー (App key)",
+  "dialogDropboxAppBuiltInNote": "空欄のままにすると、Bloomee の Dropbox アプリを使用します。",
+  "dialogDropboxAppRequiredNote": "このバージョンの Bloomee には独自の Dropbox アプリがないため、ご自身のアプリが必要です。",
+  "dialogDropboxAppSignOutNote": "キーを変更または消去すると、このデバイスは Dropbox からログアウトします。ログインは 1 つのアプリに属するためです。もう一度ログインするまで、Dropbox での同期は停止します。",
+  "dialogDropboxAppKeyFailed": "キーは変更されませんでした: Dropbox のログイン情報を保持するシステムのキーリングを変更できません。",
+  "buttonDropboxAppSave": "保存",
+  "syncDropboxAppKeyRefused": "Dropbox はこのアプリキーを認識しません。ご自身のキーを入力した場合は「自分の Dropbox アプリを使用」で確認し、Dropbox App Console のアプリの Settings タブからもう一度コピーしてください。"
 }

@@ -2335,4 +2335,55 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get dialogSyncKeyringBody =>
       'Bloomee 将此设备登录同步位置所用的信息保存在系统密钥环中，但目前无法读取该密钥环，因此此设备不会同步。请解锁密钥环（在 Linux 上为 GNOME Keyring 或 KWallet），然后重启 Bloomee。';
+
+  @override
+  String get syncDropboxNeedsAppKey => '需要您自己的 Dropbox 应用';
+
+  @override
+  String get syncDropboxOwnApp => '使用您自己的 Dropbox 应用';
+
+  @override
+  String get syncDropboxOwnAppOptional => '可选：不设置时使用 Bloomee 的 Dropbox 应用';
+
+  @override
+  String get syncDropboxOwnAppNeeded => '必需：此版本的 Bloomee 没有自带的 Dropbox 应用';
+
+  @override
+  String syncDropboxOwnAppKey(String key) {
+    return '应用密钥：$key';
+  }
+
+  @override
+  String get dialogDropboxAppTitle => '使用您自己的 Dropbox 应用';
+
+  @override
+  String get dialogDropboxAppBody =>
+      '注册一个您自己的 Dropbox 应用后，此设备将通过它登录，而不是通过 Bloomee 的应用：\n1. 在 Dropbox App Console 中创建一个应用：选择 Scoped access，然后选择 App folder，并为它命名。它在您 Dropbox 中的文件夹是 Apps/<名称>。\n2. 在该应用的 Permissions 标签页中勾选 files.metadata.read、files.content.read 和 files.content.write，然后点击 Submit。\n3. 在其 Settings 标签页中复制 App key，并粘贴到下方。该密钥不是机密，也不需要 App secret。\n请在您的每台设备上输入同一个密钥：每个应用都有自己的文件夹，使用不同应用的设备之间不会同步。';
+
+  @override
+  String get buttonDropboxOpenAppConsole => '打开 Dropbox App Console';
+
+  @override
+  String get dialogDropboxAppKey => '应用密钥 (App key)';
+
+  @override
+  String get dialogDropboxAppBuiltInNote => '留空则使用 Bloomee 的 Dropbox 应用。';
+
+  @override
+  String get dialogDropboxAppRequiredNote =>
+      '此版本的 Bloomee 没有自带的 Dropbox 应用：Dropbox 需要您自己的应用。';
+
+  @override
+  String get dialogDropboxAppSignOutNote =>
+      '更改或清除密钥会使此设备退出 Dropbox 登录，因为一次登录只属于一个应用。在您重新登录之前，通过 Dropbox 的同步会停止。';
+
+  @override
+  String get dialogDropboxAppKeyFailed => '密钥未更改：无法更改保存 Dropbox 登录信息的系统密钥环。';
+
+  @override
+  String get buttonDropboxAppSave => '保存';
+
+  @override
+  String get syncDropboxAppKeyRefused =>
+      'Dropbox 无法识别此应用密钥。如果您输入的是自己的密钥，请在“使用您自己的 Dropbox 应用”中检查：从 Dropbox App Console 中您应用的 Settings 标签页重新复制。';
 }

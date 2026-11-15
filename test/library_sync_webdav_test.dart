@@ -93,13 +93,13 @@ void main() {
   }
 
   test('WebDAV is offered on Linux and Android, after Dropbox', () {
-    expect(SyncLocationKind.offeredOn('linux', dropbox: true), [
+    expect(SyncLocationKind.offeredOn('linux'), [
       SyncLocationKind.dropbox,
       SyncLocationKind.webDav,
       SyncLocationKind.localFolder
     ]);
-    expect(SyncLocationKind.offeredOn('android', dropbox: false),
-        [SyncLocationKind.webDav]);
+    expect(SyncLocationKind.offeredOn('android'),
+        [SyncLocationKind.dropbox, SyncLocationKind.webDav]);
   });
 
   test(
