@@ -110,14 +110,14 @@ void main() {
       () async {
     final phone = await world.device('phone');
     final laptop = await world.device('laptop', enabled: false);
-    await phone.add(
-        'Road trip', [for (final id in ids(1, 8)) song(id, title: 'Song $id')]);
+    await phone.add('Road trip',
+        [for (final id in ids(1, 20)) song(id, title: 'Song $id')]);
     await phone.sync();
     final app = await appWithSyncOn(laptop);
     expect(app.state.askAboutHold, isNull);
 
     world.clock.advance(const Duration(minutes: 5));
-    for (final id in ids(1, 3)) {
+    for (final id in ids(1, 6)) {
       await phone.remove('Road trip', id);
     }
     await phone.sync();
@@ -128,8 +128,8 @@ void main() {
     expect(
         [for (final r in hold.removals) (r.playlistName, r.title)],
         unorderedEquals(
-            [for (final id in ids(1, 3)) ('Road trip', 'Song $id')]));
-    expect(await laptop.songsOf('Road trip'), ids(1, 8));
+            [for (final id in ids(1, 6)) ('Road trip', 'Song $id')]));
+    expect(await laptop.songsOf('Road trip'), ids(1, 20));
 
     await syncNow(app);
     expect(app.state.askAboutHold, same(hold),
@@ -138,18 +138,18 @@ void main() {
     await app.answerRemovalGuard(hold, confirm: true);
     await pumpEventQueue();
     expect(app.state.askAboutHold, isNull);
-    expect(await laptop.songsOf('Road trip'), ids(4, 8));
+    expect(await laptop.songsOf('Road trip'), ids(7, 20));
   });
 
   test('a Removal Guard question closed without an answer is asked again',
       () async {
     final phone = await world.device('phone');
     final laptop = await world.device('laptop', enabled: false);
-    await phone.add('Road trip', [for (final id in ids(1, 8)) song(id)]);
+    await phone.add('Road trip', [for (final id in ids(1, 20)) song(id)]);
     await phone.sync();
     final app = await appWithSyncOn(laptop);
     world.clock.advance(const Duration(minutes: 5));
-    for (final id in ids(1, 3)) {
+    for (final id in ids(1, 6)) {
       await phone.remove('Road trip', id);
     }
     await phone.sync();
@@ -160,7 +160,7 @@ void main() {
     await syncNow(app);
 
     expect(app.state.askAboutHold, isNotNull);
-    expect(await laptop.songsOf('Road trip'), ids(1, 8));
+    expect(await laptop.songsOf('Road trip'), ids(1, 20));
   });
 
   test(
@@ -168,11 +168,11 @@ void main() {
       () async {
     final phone = await world.device('phone');
     final laptop = await world.device('laptop', enabled: false);
-    await phone.add('Road trip', [for (final id in ids(1, 8)) song(id)]);
+    await phone.add('Road trip', [for (final id in ids(1, 20)) song(id)]);
     await phone.sync();
     final app = await appWithSyncOn(laptop);
     world.clock.advance(const Duration(minutes: 5));
-    for (final id in ids(1, 3)) {
+    for (final id in ids(1, 6)) {
       await phone.remove('Road trip', id);
     }
     await phone.sync();
@@ -185,12 +185,12 @@ void main() {
     expect(app.state.askAboutHold, isNull);
     expect(app.state.declinedHold, isNotNull);
     expect(app.state.status.lastError, isA<SyncNeedsOwner>());
-    expect(await laptop.songsOf('Road trip'), ids(1, 8));
+    expect(await laptop.songsOf('Road trip'), ids(1, 20));
 
     await app.answerRemovalGuard(app.state.declinedHold!, confirm: true);
     await pumpEventQueue();
     expect(app.state.declinedHold, isNull);
-    expect(await laptop.songsOf('Road trip'), ids(4, 8));
+    expect(await laptop.songsOf('Road trip'), ids(7, 20));
   });
 
   test('a refused clock raises one alert naming the Device', () async {
@@ -224,17 +224,17 @@ void main() {
     final phone = await world.device('phone');
     final desktop = await world.device('desktop');
     final laptop = await world.device('laptop', enabled: false);
-    await phone.add('Road trip', [for (final id in ids(1, 8)) song(id)]);
+    await phone.add('Road trip', [for (final id in ids(1, 20)) song(id)]);
     await phone.sync();
     final app = await appWithSyncOn(laptop);
     desktop.clockAhead = const Duration(days: 2);
-    await desktop.add('Focus', [song('yt::20')]);
+    await desktop.add('Focus', [song('yt::30')]);
     await desktop.sync();
     await syncNow(app);
     app.alertShown(app.state.alerts.single);
 
     world.clock.advance(const Duration(minutes: 5));
-    for (final id in ids(1, 3)) {
+    for (final id in ids(1, 6)) {
       await phone.remove('Road trip', id);
     }
     await phone.sync();

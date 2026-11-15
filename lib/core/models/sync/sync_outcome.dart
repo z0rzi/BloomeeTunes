@@ -77,8 +77,9 @@ final class DeviceStateFromFuture extends SkippedDeviceState {
 }
 
 /// A merge the Removal Guard holds for the owner's confirmation, because it
-/// would remove more than a quarter of the songs of the Synced Library or
-/// delete more than three playlists.
+/// would remove more than a quarter of the songs of a Synced Library holding
+/// at least the guard's minimum number of songs, or delete more than three
+/// playlists.
 class RemovalGuardHold {
   /// The songs of the Synced Library now: each song of each synced playlist,
   /// and each liked song.

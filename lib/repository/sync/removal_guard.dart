@@ -67,7 +67,14 @@ RemovalGuardHold removalsOf(SyncedLibrary local, SyncedLibraryMerge merge,
   );
 }
 
+/// The fewest songs a Synced Library holds for the Removal Guard's quarter
+/// rule to apply: below it, removing a song or two would already be a quarter.
+const removalGuardMinimumSongs = 20;
+
 /// Whether the Removal Guard holds a merge taking out [what]: more than a
-/// quarter of the songs of the Synced Library, or more than three playlists.
+/// quarter of the songs of a Synced Library holding at least
+/// [removalGuardMinimumSongs], or more than three playlists whatever its size.
 bool removalGuardHolds(RemovalGuardHold what) =>
-    what.songsRemoved * 4 > what.songsInLibrary || what.playlistsDeleted > 3;
+    (what.songsInLibrary >= removalGuardMinimumSongs &&
+        what.songsRemoved * 4 > what.songsInLibrary) ||
+    what.playlistsDeleted > 3;

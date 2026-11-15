@@ -42,13 +42,15 @@ void main() {
   List<String> ids(int from, int to) =>
       [for (var i = from; i <= to; i++) 'yt::$i'];
 
-  /// Two Devices holding "Road trip" with eight songs, the first then
-  /// taking [removed] of them out.
-  Future<(SyncDevice, SyncDevice)> roadTripLosing(List<String> removed) async {
+  /// Two Devices holding "Road trip" with [songs] songs (by default 20, the
+  /// smallest library the quarter rule applies to), the first then taking
+  /// [removed] of them out.
+  Future<(SyncDevice, SyncDevice)> roadTripLosing(List<String> removed,
+      {int songs = 20}) async {
     final a = await world.device('laptop');
     final b = await world.device('phone');
-    await a.add(
-        'Road trip', [for (final id in ids(1, 8)) song(id, title: 'Song $id')]);
+    await a.add('Road trip',
+        [for (final id in ids(1, songs)) song(id, title: 'Song $id')]);
     await a.sync();
     await b.sync();
     world.clock.advance(const Duration(minutes: 5));
@@ -62,16 +64,16 @@ void main() {
   test(
       'a sync that would remove more than a quarter of the songs is held: nothing is applied, and it tells what and from which Device',
       () async {
-    final (_, b) = await roadTripLosing(['yt::1', 'yt::2', 'yt::3']);
+    final (_, b) = await roadTripLosing(ids(1, 6));
 
     final outcome = await b.engine.syncNow();
 
     expect(outcome, isA<SyncHeld>());
     final hold = (outcome as SyncHeld).hold;
     expect(outcome.declined, isFalse);
-    expect(await b.songsOf('Road trip'), ids(1, 8));
-    expect(hold.songsRemoved, 3);
-    expect(hold.songsInLibrary, 8);
+    expect(await b.songsOf('Road trip'), ids(1, 20));
+    expect(hold.songsRemoved, 6);
+    expect(hold.songsInLibrary, 20);
     expect(hold.deviceNames, {'laptop'});
     expect(
         [
@@ -79,40 +81,54 @@ void main() {
             (r.kind, r.playlistName, r.mediaId, r.title)
         ],
         unorderedEquals([
-          for (final id in ['yt::1', 'yt::2', 'yt::3'])
+          for (final id in ids(1, 6))
             (RemovalKind.song, 'Road trip', id, 'Song $id')
         ]));
   });
 
-  test('a sync removing exactly a quarter of the songs is not held', () async {
-    final (_, b) = await roadTripLosing(['yt::1', 'yt::2']);
+  test(
+      'in a library of fewer than 20 songs, a sync removing more than a quarter of them is applied without being held, after a protection snapshot',
+      () async {
+    final (_, b) = await roadTripLosing(ids(1, 10), songs: 19);
+    final snapshotsBefore = await b.protectionSnapshots();
 
     final outcome = await b.engine.syncNow();
 
     expect(outcome, isA<SyncCompleted>());
-    expect(await b.songsOf('Road trip'), ids(3, 8));
+    expect(await b.songsOf('Road trip'), ids(11, 19));
+    expect(await b.protectionSnapshots(), snapshotsBefore + 1);
+    expect(await b.latestSnapshotPlaylists(), ['Liked', 'Road trip']);
+  });
+
+  test('a sync removing exactly a quarter of the songs is not held', () async {
+    final (_, b) = await roadTripLosing(ids(1, 5));
+
+    final outcome = await b.engine.syncNow();
+
+    expect(outcome, isA<SyncCompleted>());
+    expect(await b.songsOf('Road trip'), ids(6, 20));
   });
 
   test('confirming a held sync applies it', () async {
-    final (a, b) = await roadTripLosing(['yt::1', 'yt::2', 'yt::3']);
+    final (a, b) = await roadTripLosing(ids(1, 6));
     final held = await b.engine.syncNow() as SyncHeld;
 
     final outcome = await b.engine.answerRemovalGuard(held.hold, confirm: true);
 
     expect(outcome, isA<SyncCompleted>());
-    expect(await b.songsOf('Road trip'), ids(4, 8));
+    expect(await b.songsOf('Road trip'), ids(7, 20));
     world.clock.advance(const Duration(minutes: 1));
     await a.sync();
-    expect(await a.songsOf('Road trip'), ids(4, 8));
+    expect(await a.songsOf('Road trip'), ids(7, 20));
   });
 
   test(
       'confirming a held sync that has since grown to remove more holds it again',
       () async {
-    final (a, b) = await roadTripLosing(['yt::1', 'yt::2', 'yt::3']);
+    final (a, b) = await roadTripLosing(ids(1, 6));
     final shown = await b.engine.syncNow() as SyncHeld;
     world.clock.advance(const Duration(minutes: 1));
-    await a.remove('Road trip', 'yt::4');
+    await a.remove('Road trip', 'yt::7');
     await a.sync();
     // A scheduled sync while the owner reads what was shown.
     expect(await b.engine.syncNow(), isA<SyncHeld>());
@@ -121,14 +137,14 @@ void main() {
         await b.engine.answerRemovalGuard(shown.hold, confirm: true);
 
     expect(outcome, isA<SyncHeld>());
-    expect((outcome as SyncHeld).hold.songsRemoved, 4);
-    expect(await b.songsOf('Road trip'), ids(1, 8));
+    expect((outcome as SyncHeld).hold.songsRemoved, 7);
+    expect(await b.songsOf('Road trip'), ids(1, 20));
   });
 
   test(
       'declining a held sync leaves the library untouched and sync paused until the owner confirms it',
       () async {
-    final (a, b) = await roadTripLosing(['yt::1', 'yt::2', 'yt::3']);
+    final (a, b) = await roadTripLosing(ids(1, 6));
     final held = await b.engine.syncNow() as SyncHeld;
 
     final declined =
@@ -138,31 +154,34 @@ void main() {
 
     // Paused: nothing comes in or goes out, even across a restart.
     world.clock.advance(const Duration(minutes: 1));
-    await a.add('Road trip', [song('yt::9')]);
+    await a.add('Road trip', [song('yt::21')]);
     await a.sync();
-    await b.add('Focus', [song('yt::20')]);
+    await b.add('Focus', [song('yt::30')]);
     final restarted = b.restartedEngine();
     final paused = await restarted.syncNow();
     expect(paused, isA<SyncHeld>().having((h) => h.declined, 'declined', true));
-    expect((paused as SyncHeld).hold.songsRemoved, 3);
-    expect(await b.songsOf('Road trip'), ids(1, 8));
+    expect((paused as SyncHeld).hold.songsRemoved, 6);
+    expect(await b.songsOf('Road trip'), ids(1, 20));
     await a.sync();
     expect(await a.songsOf('Focus'), isNull);
 
     final confirmed =
         await restarted.answerRemovalGuard(paused.hold, confirm: true);
     expect(confirmed, isA<SyncCompleted>());
-    expect(await b.songsOf('Road trip'), [...ids(4, 8), 'yt::9']);
+    expect(await b.songsOf('Road trip'), [...ids(7, 20), 'yt::21']);
     await a.sync();
-    expect(await a.songsOf('Focus'), ['yt::20']);
+    expect(await a.songsOf('Focus'), ['yt::30']);
   });
 
-  /// Two Devices holding a large "Archive" and five one-song playlists, the
-  /// first then deleting [deleted] of the small ones.
-  Future<SyncDevice> playlistsDeleted(int deleted) async {
+  /// Two Devices holding five one-song playlists and, [withArchive], a large
+  /// "Archive", the first then deleting [deleted] of the one-song ones.
+  Future<SyncDevice> playlistsDeleted(int deleted,
+      {bool withArchive = true}) async {
     final a = await world.device('laptop');
     final b = await world.device('phone');
-    await a.add('Archive', [for (final id in ids(100, 139)) song(id)]);
+    if (withArchive) {
+      await a.add('Archive', [for (final id in ids(100, 139)) song(id)]);
+    }
     for (var i = 1; i <= 5; i++) {
       await a.add('Mix $i', [song('yt::$i')]);
     }
@@ -191,6 +210,21 @@ void main() {
     ], unorderedEquals(['Mix 1', 'Mix 2', 'Mix 3', 'Mix 4']));
     expect(await b.playlistNames(),
         ['Archive', 'Liked', 'Mix 1', 'Mix 2', 'Mix 3', 'Mix 4', 'Mix 5']);
+  });
+
+  test(
+      'a sync that would delete more than three playlists is held in a library of fewer than 20 songs too',
+      () async {
+    final b = await playlistsDeleted(4, withArchive: false);
+
+    final outcome = await b.engine.syncNow();
+
+    expect(outcome, isA<SyncHeld>());
+    final hold = (outcome as SyncHeld).hold;
+    expect(hold.songsInLibrary, 5);
+    expect(hold.playlistsDeleted, 4);
+    expect(await b.playlistNames(),
+        ['Liked', 'Mix 1', 'Mix 2', 'Mix 3', 'Mix 4', 'Mix 5']);
   });
 
   test('a sync deleting three playlists and few songs is not held', () async {
