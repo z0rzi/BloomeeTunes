@@ -28,7 +28,8 @@ Run everything from the repository root, inside the shell:
 - Enter the environment: `nix develop` (or prefix a single command: `nix develop -c <command>`)
 - Fetch packages (first time, and after `pubspec.lock` changes): `flutter pub get --enforce-lockfile`
 - Run one test file: `flutter test test/backup_database_test.dart`
-- Run the whole suite: `flutter test --no-pub` (as in `CONTRIBUTING.md`). It takes under 2 minutes; the database tests occasionally time out and then hang the run (see the baseline in `.scratch/library-sync/issues/01-build-from-source-on-nixos.md`), so an agent should wrap it: `timeout 900 flutter test --no-pub`
+- Run the whole suite: `flutter test --no-pub` (as in `CONTRIBUTING.md`). It takes under 2 minutes. An agent should still wrap it, so that a hang a future change brings in cannot block it: `timeout 900 flutter test --no-pub`
+- A test opens an Isar database with `createTestDirectory` and `openTestDatabase` from `test/support/isar_test_support.dart`, not `Isar.open` and `Directory.systemTemp`: they keep the database in memory (`/dev/shm`) and apart from every other test's, which is what keeps the database tests from timing out and a timed-out test from hanging the run (their comments say why).
 - Static analysis, as upstream CI runs it: `flutter analyze --no-fatal-infos`
 - Rust check, as upstream CI runs it: `cargo check --manifest-path rust/Cargo.toml`
 - Linux build: `flutter build linux --release` (about 8 minutes from cold). A build offers Dropbox as a Sync Location only when given the Dropbox app key: add `--dart-define=BLOOMEE_DROPBOX_APP_KEY=<key>` (the key is never committed). The Dropbox sign-in is kept in the desktop secret service (GNOME Keyring, KWallet), which must be running and unlocked.

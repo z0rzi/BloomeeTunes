@@ -62,9 +62,8 @@ void main() {
 
   setUpAll(initializeTestIsar);
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('bloomee_backup_test_');
-    isar = await Isar.open(DBProvider.schemas,
-        directory: root.path, name: 'test', inspector: false);
+    root = await createTestDirectory('bloomee_backup_test_');
+    isar = await openTestDatabase(root);
     tracks = TrackDAO(Future.value(isar));
     playlists = PlaylistDAO(Future.value(isar), tracks);
     backups = BackupDAO(Future.value(isar));

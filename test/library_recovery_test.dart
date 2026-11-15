@@ -5,7 +5,6 @@ import 'package:Bloomee/services/db/dao/backup_dao.dart';
 import 'package:Bloomee/services/db/dao/download_dao.dart';
 import 'package:Bloomee/services/db/dao/playlist_dao.dart';
 import 'package:Bloomee/services/db/dao/track_dao.dart';
-import 'package:Bloomee/services/db/db_provider.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/src/rust/api/plugin/models.dart';
 import 'package:crypto/crypto.dart';
@@ -42,9 +41,8 @@ void main() {
   late TrackDAO tracks;
   setUpAll(initializeTestIsar);
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('bloomee_recovery_test_');
-    database = await Isar.open(DBProvider.schemas,
-        directory: root.path, name: 'test', inspector: false);
+    root = await createTestDirectory('bloomee_recovery_test_');
+    database = await openTestDatabase(root);
     tracks = TrackDAO(Future.value(database));
     playlists = PlaylistDAO(Future.value(database), tracks);
     downloads = DownloadDAO(Future.value(database), tracks, playlists,
@@ -226,7 +224,7 @@ void main() {
         database.trackDBs.filter().mediaIdEqualTo('lost-link').deleteAll());
     await downloads.putDownloadRecord(
         fileName: 'old.m4a', filePath: root.path, track: song('download'));
-    final livePath = p.join(root.path, 'test.isar');
+    final livePath = p.join(root.path, '${database.name}.isar');
     final plan = await repository.prepareLibraryRecovery(livePath);
     expect(plan.brokenEntries, 1);
     expect(plan.downloads, hasLength(1));
@@ -257,8 +255,8 @@ void main() {
         fileName: 'local.m4a', filePath: root.path, track: song('local::123'));
     await downloads.putDownloadRecord(
         fileName: 'download.m4a', filePath: root.path, track: song('remote'));
-    final plan =
-        await repository.prepareLibraryRecovery(p.join(root.path, 'test.isar'));
+    final plan = await repository
+        .prepareLibraryRecovery(p.join(root.path, '${database.name}.isar'));
     await repository.recoverLibrary(plan);
     expect(await ids('_LOCAL_MUSIC'), ['local::123']);
     expect(await ids('_DOWNLOADS'), ['remote']);

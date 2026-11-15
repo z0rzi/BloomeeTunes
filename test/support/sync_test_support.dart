@@ -18,6 +18,8 @@ import 'package:Bloomee/src/rust/api/plugin/models.dart';
 import 'package:isar_community/isar.dart';
 import 'package:path/path.dart' as p;
 
+import 'isar_test_support.dart';
+
 /// A clock the test moves by hand. It starts at the real time, so nothing
 /// dated by the real clock (such as a database made earlier) is in its
 /// future.
@@ -289,7 +291,7 @@ class SyncWorld {
   SyncWorld._(this.root);
 
   static Future<SyncWorld> create() async =>
-      SyncWorld._(await Directory.systemTemp.createTemp('bloomee_sync_world_'));
+      SyncWorld._(await createTestDirectory('bloomee_sync_world_'));
 
   String get locationPath => p.join(root.path, 'location');
 
@@ -311,8 +313,7 @@ class SyncWorld {
     if (database != null) {
       await database.copy(p.join(directory.path, '$instance.isar'));
     }
-    final isar = await Isar.open(DBProvider.schemas,
-        directory: directory.path, name: instance, inspector: false);
+    final isar = await openTestDatabase(directory, name: instance);
     final syncLocation = RecordingSyncLocation(
         LocalFolderSyncLocation(location ?? locationPath));
     final deviceClock = _DeviceClock(clock);
