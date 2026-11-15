@@ -188,13 +188,13 @@ class BloomeeDialogSurface extends StatelessWidget {
   Widget _actionBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      // Wraps on a narrow screen rather than overflowing.
+      child: OverflowBar(
+        alignment: MainAxisAlignment.end,
+        spacing: 8,
+        overflowAlignment: OverflowBarAlignment.end,
         children: [
-          for (int i = 0; i < actions!.length; i++) ...[
-            if (i > 0) const SizedBox(width: 8),
-            _buildAction(context, actions![i]),
-          ],
+          for (final action in actions!) _buildAction(context, action),
         ],
       ),
     );

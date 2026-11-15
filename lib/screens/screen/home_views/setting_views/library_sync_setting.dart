@@ -631,14 +631,16 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
                       const TextStyle(color: Colors.redAccent, fontSize: 13)),
             ],
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            // Wraps on a narrow screen rather than overflowing.
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: 8,
+              overflowAlignment: OverflowBarAlignment.end,
               children: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: Text(l10n.buttonCancel),
                 ),
-                const SizedBox(width: 8),
                 ValueListenableBuilder(
                   valueListenable: _code,
                   builder: (context, value, _) => FilledButton(
