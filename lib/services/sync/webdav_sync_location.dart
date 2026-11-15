@@ -1,12 +1,10 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:Bloomee/services/sync/sync_location.dart';
+import 'package:Bloomee/services/sync/sync_location_http.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'package:xml/xml.dart';
 
 /// A folder on a WebDAV server as a Sync Location, signed in to with a user
@@ -17,21 +15,15 @@ import 'package:xml/xml.dart';
 /// it, are created when missing.
 ///
 /// A WebDAV server may show an upload while it arrives, so a write goes to a
-/// hidden temporary file beside its target (`.<name>.<random>.partial`) and
-/// is then moved into place: a reader sees the previous file or the new one,
-/// never part of it. Temporary files are never listed.
+/// hidden temporary file beside its target (see [SyncTemporaryFiles]) and is
+/// then moved into place: a reader sees the previous file or the new one,
+/// never part of it. Failures are reported as [SyncLocationHttp] says.
 class WebDavSyncLocation implements SyncLocation {
   /// The folder synced in, without a trailing slash.
   final Uri address;
   final String user;
   final String _authorization;
-
-  /// How long one call may take before the server counts as unreachable.
-  final Duration requestTimeout;
-
-  final http.Client _client;
-
-  static final Random _random = Random.secure();
+  final SyncLocationHttp _http;
 
   /// Throws [ArgumentError] for an address the password must not be sent
   /// to (see [isProtected]).
@@ -39,14 +31,13 @@ class WebDavSyncLocation implements SyncLocation {
     required Uri address,
     required this.user,
     required String password,
-    this.requestTimeout = const Duration(minutes: 2),
+    Duration requestTimeout = SyncLocationHttp.defaultRequestTimeout,
     http.Client? client,
   })  : address = _normalised(address),
         _authorization =
             'Basic ${base64.encode(utf8.encode('$user:$password'))}',
-        _client = client ??
-            IOClient(
-                HttpClient()..connectionTimeout = const Duration(seconds: 20)) {
+        _http = SyncLocationHttp('The WebDAV server',
+            requestTimeout: requestTimeout, client: client) {
     if (!isProtected(address)) {
       throw ArgumentError.value(address, 'address',
           'Only https, or http on localhost, protects the password');
@@ -81,12 +72,6 @@ class WebDavSyncLocation implements SyncLocation {
       port: address.hasPort ? address.port : null,
       pathSegments: address.pathSegments.where((s) => s.isNotEmpty));
 
-  static bool _isTemporaryName(String name) =>
-      name.startsWith('.') && name.endsWith('.partial');
-
-  static String _temporaryNameFor(String name) =>
-      '.$name.${_random.nextInt(1 << 32).toRadixString(16)}.partial';
-
   List<String> get _base => address.pathSegments;
 
   /// The address of the file or folder at [segments] inside [address].
@@ -105,7 +90,7 @@ class WebDavSyncLocation implements SyncLocation {
       if (isFolder || segments.length != folder.length + 1) continue;
       if (!_startsWith(segments, folder)) continue;
       final name = segments.last;
-      if (!_isTemporaryName(name)) names.add(name);
+      if (!SyncTemporaryFiles.isTemporary(name)) names.add(name);
     }
     return names;
   }
@@ -121,7 +106,8 @@ class WebDavSyncLocation implements SyncLocation {
   Future<void> write(String path, List<int> bytes) async {
     final segments = syncPathSegments(path);
     final directory = segments.sublist(0, segments.length - 1);
-    final temporary = _url([...directory, _temporaryNameFor(segments.last)]);
+    final temporary =
+        _url([...directory, SyncTemporaryFiles.nameFor(segments.last)]);
     Future<http.Response> upload() => _send('PUT', temporary,
         headers: {HttpHeaders.contentTypeHeader: 'application/octet-stream'},
         body: bytes);
@@ -228,9 +214,8 @@ class WebDavSyncLocation implements SyncLocation {
     return true;
   }
 
-  /// Sends one call, reporting a failure to reach the server as
-  /// [SyncLocationUnavailable] and a refused password as
-  /// [SyncLocationSignInRefused].
+  /// Sends one call, without following redirects, reporting a refused
+  /// password as [SyncLocationSignInRefused].
   Future<http.Response> _send(String method, Uri url,
       {Map<String, String> headers = const {}, List<int>? body}) async {
     final request = http.Request(method, url)
@@ -238,26 +223,7 @@ class WebDavSyncLocation implements SyncLocation {
       ..headers.addAll(headers)
       ..headers[HttpHeaders.authorizationHeader] = _authorization;
     if (body != null) request.bodyBytes = body;
-    final http.Response response;
-    try {
-      response = await http.Response.fromStream(
-              await _client.send(request).timeout(requestTimeout))
-          .timeout(requestTimeout);
-    } on TimeoutException {
-      throw const SyncLocationUnavailable(
-          'The WebDAV server did not answer in time.');
-    } on TlsException catch (error) {
-      // Not something waiting fixes: the server's certificate is not
-      // trusted (self-signed or expired, say), or it does not speak https.
-      throw SyncLocationFailed(
-          'The WebDAV server\'s secure connection was refused: $error');
-    } on IOException catch (error) {
-      throw SyncLocationUnavailable(
-          'The WebDAV server cannot be reached: $error');
-    } on http.ClientException catch (error) {
-      throw SyncLocationUnavailable(
-          'The WebDAV server cannot be reached: $error');
-    }
+    final response = await _http.send(request);
     if (response.statusCode == 401) {
       throw SyncLocationSignInRefused(
           'The WebDAV server refused the user name and password of $user.');
@@ -266,19 +232,11 @@ class WebDavSyncLocation implements SyncLocation {
   }
 
   /// [response] when its status is one of [expected]; otherwise what it
-  /// means as an exception: the server is busy or down (try again later),
-  /// or it refused the operation.
-  static http.Response _expect(http.Response response, Set<int> expected) {
-    final status = response.statusCode;
-    if (expected.contains(status)) return response;
+  /// means as an exception (see [SyncLocationHttp.unexpected]).
+  http.Response _expect(http.Response response, Set<int> expected) {
+    if (expected.contains(response.statusCode)) return response;
     final request = response.request;
-    final what =
-        request == null ? '' : ' ${request.method} ${request.url.path}';
-    if (status == 408 || status == 429 || status >= 500) {
-      throw SyncLocationUnavailable(
-          'The WebDAV server is not available now ($status$what).');
-    }
-    throw SyncLocationFailed(
-        'The WebDAV server refused the operation ($status$what).');
+    throw _http.unexpected(response.statusCode,
+        request == null ? '' : ' ${request.method} ${request.url.path}');
   }
 }

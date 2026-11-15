@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:Bloomee/services/sync/local_folder_sync_location.dart';
+import 'package:Bloomee/services/sync/sync_location.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -17,7 +18,7 @@ void main() {
         final target = p.joinAll([root.path, ...path.split('/')]);
         await Directory(p.dirname(target)).create(recursive: true);
         await File(p.join(p.dirname(target),
-                LocalFolderSyncLocation.temporaryNameFor(p.basename(target))))
+                SyncTemporaryFiles.nameFor(p.basename(target))))
             .writeAsBytes(partial);
       },
       dispose: () => root.delete(recursive: true),
@@ -43,8 +44,7 @@ void main() {
     await watching.cancel();
     final move = events.whereType<FileSystemMoveEvent>().single;
     expect(move.destination, target);
-    expect(
-        LocalFolderSyncLocation.isTemporaryName(p.basename(move.path)), isTrue);
+    expect(SyncTemporaryFiles.isTemporary(p.basename(move.path)), isTrue);
     expect(events.where((e) => e.path == target && e is! FileSystemMoveEvent),
         isEmpty,
         reason: 'the target itself must never be written in place');

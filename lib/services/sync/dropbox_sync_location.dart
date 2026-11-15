@@ -1,13 +1,12 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:Bloomee/services/sync/sync_location.dart';
+import 'package:Bloomee/services/sync/sync_location_http.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 
 /// The Dropbox app Bloomee signs in to: its app key, supplied at build time
 /// (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`), and where Dropbox answers.
@@ -37,25 +36,22 @@ class DropboxApp {
   final Uri api;
   final Uri content;
 
-  /// How long one call may take before Dropbox counts as unreachable.
-  final Duration requestTimeout;
-
-  final http.Client client;
+  /// How Dropbox is called, and what its failures mean.
+  final SyncLocationHttp _http;
 
   DropboxApp({
     required this.key,
     Uri? authorizePage,
     Uri? api,
     Uri? content,
-    this.requestTimeout = const Duration(minutes: 2),
+    Duration requestTimeout = SyncLocationHttp.defaultRequestTimeout,
     http.Client? client,
   })  : authorizePage = authorizePage ??
             Uri.parse('https://www.dropbox.com/oauth2/authorize'),
         api = api ?? Uri.parse('https://api.dropboxapi.com'),
         content = content ?? Uri.parse('https://content.dropboxapi.com'),
-        client = client ??
-            IOClient(
-                HttpClient()..connectionTimeout = const Duration(seconds: 20));
+        _http = SyncLocationHttp('Dropbox',
+            requestTimeout: requestTimeout, client: client);
 
   /// The app this build was given a key for, or null for a build without
   /// one, which does not offer Dropbox.
@@ -96,25 +92,11 @@ class DropboxApp {
 
   Uri get _tokenEndpoint => api.resolve('/oauth2/token');
 
-  /// Sends [request] to Dropbox, reporting a failure to reach it as
-  /// [SyncLocationUnavailable].
-  Future<http.Response> _send(Future<http.Response> Function() request) async {
-    try {
-      return await request().timeout(requestTimeout);
-    } on TimeoutException {
-      throw const SyncLocationUnavailable('Dropbox did not answer in time.');
-    } on IOException catch (error) {
-      throw SyncLocationUnavailable('Dropbox cannot be reached: $error');
-    } on http.ClientException catch (error) {
-      throw SyncLocationUnavailable('Dropbox cannot be reached: $error');
-    }
-  }
-
   /// Asks the token endpoint with [form]. Only a refused grant (a code or
   /// refresh token Dropbox does not accept, as once revoked) means the owner
   /// must sign in again; any other refusal is reported as it is.
   Future<Map<String, Object?>> _token(Map<String, String> form) async {
-    final response = await _send(() => client.post(_tokenEndpoint, body: form));
+    final response = await _http.post(_tokenEndpoint, body: form);
     if (response.statusCode == 200) {
       try {
         if (jsonDecode(response.body) case final Map<String, Object?> answer) {
@@ -131,6 +113,11 @@ class DropboxApp {
     }
     throw _unexpected(response);
   }
+
+  /// What a Dropbox answer that is not a success means (see
+  /// [SyncLocationHttp.unexpected]).
+  SyncLocationException _unexpected(http.Response response) =>
+      _http.unexpected(response.statusCode, ': ${_describe(response)}');
 }
 
 /// One sign-in under way on this Device, by the authorisation-code flow with
@@ -167,7 +154,8 @@ class DropboxSignIn {
 /// It holds the sign-in's refresh token and renews the short-lived access
 /// token from it as needed, also when Dropbox says it expired. Dropbox makes
 /// an uploaded file visible only once the whole upload has arrived, so a
-/// reader sees the previous file or the new one, never part of it.
+/// reader sees the previous file or the new one, never part of it. Failures
+/// are reported as [SyncLocationHttp] says.
 class DropboxSyncLocation implements SyncLocation {
   /// How long before its stated expiry an access token is renewed.
   static const renewalMargin = Duration(minutes: 5);
@@ -214,7 +202,7 @@ class DropboxSyncLocation implements SyncLocation {
   @override
   Future<Uint8List?> read(String path) async {
     final response = await _call((token) =>
-        app.client.post(app.content.resolve('/2/files/download'), headers: {
+        app._http.post(app.content.resolve('/2/files/download'), headers: {
           HttpHeaders.authorizationHeader: 'Bearer $token',
           'Dropbox-API-Arg': _headerArg({'path': _dropboxPath(path)}),
         }));
@@ -227,7 +215,7 @@ class DropboxSyncLocation implements SyncLocation {
   @override
   Future<void> write(String path, List<int> bytes) async {
     _ok(await _call(
-        (token) => app.client.post(app.content.resolve('/2/files/upload'),
+        (token) => app._http.post(app.content.resolve('/2/files/upload'),
             headers: {
               HttpHeaders.authorizationHeader: 'Bearer $token',
               HttpHeaders.contentTypeHeader: 'application/octet-stream',
@@ -260,7 +248,7 @@ class DropboxSyncLocation implements SyncLocation {
 
   /// Ends this sign-in on Dropbox, so that its refresh token stops working.
   Future<void> signOut() async {
-    _ok(await _call((token) => app.client.post(
+    _ok(await _call((token) => app._http.post(
         app.api.resolve('/2/auth/token/revoke'),
         headers: {HttpHeaders.authorizationHeader: 'Bearer $token'})));
     _accessToken = null;
@@ -270,7 +258,7 @@ class DropboxSyncLocation implements SyncLocation {
       '/${syncPathSegments(path).join('/')}';
 
   Future<http.Response> _rpc(String endpoint, Map<String, Object?> argument) =>
-      _call((token) => app.client.post(app.api.resolve(endpoint),
+      _call((token) => app._http.post(app.api.resolve(endpoint),
           headers: {
             HttpHeaders.authorizationHeader: 'Bearer $token',
             HttpHeaders.contentTypeHeader: 'application/json',
@@ -283,7 +271,7 @@ class DropboxSyncLocation implements SyncLocation {
       Future<http.Response> Function(String token) request) async {
     for (var attempt = 0;; attempt++) {
       final token = await _validAccessToken();
-      final response = await app._send(() => request(token));
+      final response = await request(token);
       if (response.statusCode != 401) return response;
       if (identical(_accessToken, token)) _accessToken = null;
       if (attempt > 0) {
@@ -319,9 +307,9 @@ class DropboxSyncLocation implements SyncLocation {
   }
 
   /// [response] when it succeeded; otherwise what it means as an exception.
-  static http.Response _ok(http.Response response) {
+  http.Response _ok(http.Response response) {
     if (response.statusCode == 200) return response;
-    throw _unexpected(response);
+    throw app._unexpected(response);
   }
 
   static bool _isNotFound(http.Response response, String tag) =>
@@ -337,18 +325,6 @@ class DropboxSyncLocation implements SyncLocation {
           RegExp(r'[^\x00-\x7e]'),
           (match) =>
               '\\u${match[0]!.codeUnitAt(0).toRadixString(16).padLeft(4, '0')}');
-}
-
-/// What a Dropbox answer that is not a success means: Dropbox is busy or
-/// down (try again later), or it refused the operation.
-SyncLocationException _unexpected(http.Response response) {
-  final status = response.statusCode;
-  if (status == 429 || status >= 500) {
-    return SyncLocationUnavailable(
-        'Dropbox is not available now ($status): ${_describe(response)}');
-  }
-  return SyncLocationFailed(
-      'Dropbox refused the operation ($status): ${_describe(response)}');
 }
 
 /// Dropbox's short description of an error answer.

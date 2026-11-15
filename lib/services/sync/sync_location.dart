@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 /// The single place a Device syncs with (see `GLOSSARY.md`).
@@ -61,4 +62,20 @@ List<String> syncPathSegments(String path) {
         path, 'path', 'Not a relative Sync Location path');
   }
   return segments;
+}
+
+/// The hidden temporary files a Sync Location writes into before moving them
+/// into place, where it may otherwise show a file while it arrives:
+/// `.<name>.<random>.partial`, beside the file they become. They are never
+/// listed.
+abstract final class SyncTemporaryFiles {
+  static final Random _random = Random.secure();
+
+  /// Whether [name] is such a temporary file.
+  static bool isTemporary(String name) =>
+      name.startsWith('.') && name.endsWith('.partial');
+
+  /// A new temporary file's name for writing the file [name].
+  static String nameFor(String name) =>
+      '.$name.${_random.nextInt(1 << 32).toRadixString(16)}.partial';
 }
