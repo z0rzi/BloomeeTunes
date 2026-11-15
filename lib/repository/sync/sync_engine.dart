@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:isolate';
 
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/known_device.dart';
@@ -14,8 +15,6 @@ import 'package:Bloomee/services/db/mappers/track_json_mapper.dart';
 import 'package:Bloomee/services/sync/sync_location.dart';
 import 'package:flutter/foundation.dart';
 import 'package:isar_community/isar.dart';
-
-typedef SyncClock = DateTime Function();
 
 /// Keeps this Device's Synced Library in step with the other Devices that
 /// share its Sync Location (see `docs/adr/0001-one-device-state-per-device.md`).
@@ -60,7 +59,7 @@ class SyncEngine {
   final Future<Isar> _database;
   final SyncLocation _location;
   final BackupRepository _backups;
-  final SyncClock _clock;
+  final DateTime Function() _clock;
   final SyncDAO _dao;
   final void Function()? _beforeCommit;
   final SerialExecutor _runs = SerialExecutor();
@@ -74,7 +73,7 @@ class SyncEngine {
     required Future<Isar> database,
     required SyncLocation location,
     required BackupRepository backups,
-    SyncClock? clock,
+    DateTime Function()? clock,
     @visibleForTesting void Function()? beforeCommit,
   })  : _database = database,
         _location = location,
@@ -95,11 +94,8 @@ class SyncEngine {
   Future<List<KnownDevice>> knownDevices() => _runs.run(() async {
         final me = await _identity();
         final others = _othersSeen ??
-            {
-              for (final (deviceId, bytes) in await _readStates())
-                if (deviceId != me.deviceId)
-                  deviceId: DeviceState.summaryOf(bytes)
-            };
+            (await _summarise(await _readStates())
+              ..remove(me.deviceId));
         return [
           KnownDevice(
               deviceId: me.deviceId,
@@ -173,10 +169,9 @@ class SyncEngine {
         others.add((deviceId, bytes));
       }
     }
-    _othersSeen = {
-      for (final (deviceId, bytes) in others)
-        deviceId: DeviceState.summaryOf(bytes)
-    };
+    final summaries =
+        await _summarise([...others, if (own != null) (me.deviceId, own)]);
+    _othersSeen = {...summaries}..remove(me.deviceId);
     final expireBefore = now.subtract(removalMarkerLifetime);
     bool stale(DeviceStateSummary summary) =>
         summary.writtenAt?.isBefore(expireBefore) ?? false;
@@ -186,7 +181,7 @@ class SyncEngine {
     ];
     // The others stopped merging this Device's Device State: it comes back
     // as a Device away too long, even if its last sync is a little later.
-    final ignored = own != null && stale(DeviceState.summaryOf(own));
+    final ignored = own != null && stale(summaries[me.deviceId]!);
 
     var protected = false;
     while (true) {
@@ -204,7 +199,8 @@ class SyncEngine {
       switch (pass) {
         case _NeedsProtection():
           // Failing to protect the library stops the sync before any change.
-          await _backups.createSnapshot(reason: snapshotReason);
+          await _backups.createSnapshot(
+              reason: snapshotReason, keepDaily: true);
           protected = true;
         case _Finished(:final outcome, :final publish):
           if (publish != null) {
@@ -245,7 +241,8 @@ class SyncEngine {
         await _location.delete('$backupDirectory/$name');
       }
     } on Exception catch (error, stack) {
-      log('Location Backup not written', error: error, stackTrace: stack);
+      log('Location Backup not written',
+          name: 'SyncEngine', error: error, stackTrace: stack);
     }
   }
 
@@ -269,6 +266,18 @@ class SyncEngine {
             if (await _location.read('$stateDirectory/$name') case final bytes?)
               (name.substring(0, name.length - '.json'.length), bytes)
       ];
+
+  /// [DeviceState.summaryOf] each of [states] (each with the ID of the
+  /// Device its name gives), by Device ID, decoded off the main isolate
+  /// since a Device State can be large.
+  static Future<Map<String, DeviceStateSummary>> _summarise(
+          List<(String, Uint8List)> states) =>
+      states.isEmpty
+          ? Future.value({})
+          : Isolate.run(() => {
+                for (final (deviceId, bytes) in states)
+                  deviceId: DeviceState.summaryOf(bytes)
+              });
 
   // Static, so the worker closure captures only what it is given.
   static Future<_Pass> _passInBackground(Future<Isar> database, _Inputs inputs,

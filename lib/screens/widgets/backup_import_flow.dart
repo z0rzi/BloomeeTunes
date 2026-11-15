@@ -154,20 +154,26 @@ class BackupImportFlow {
           );
           if (selection == null || !context.mounted) return;
           if (selection.mode == BackupImportMode.replace) {
-            // Replacing the library while syncing removes from the other
+            // Replacing the library of a Device that syncs, or synced and
+            // will again once sync is back on, removes from the other
             // Devices whatever the backup lacks.
-            final reachesOtherDevices =
-                selection.library && context.read<SyncCubit>().state.enabled;
+            final sync = context.read<SyncCubit>().state.setup;
+            String? syncWarning;
+            if (selection.library && sync.enabled) {
+              syncWarning = l10n.backupReplaceSyncWarning;
+            } else if (selection.library && sync.everEnabled) {
+              syncWarning = l10n.backupReplaceSyncOffWarning;
+            }
             final accepted = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
                       title: Text(l10n.storageRestoreConfirmTitle),
-                      content: reachesOtherDevices
+                      content: syncWarning != null
                           ? Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                  Text(l10n.backupReplaceSyncWarning,
+                                  Text(syncWarning,
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 12),

@@ -2113,7 +2113,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get dialogSyncGuardTitle => 'Confirm these removals?';
 
   @override
-  String syncGuardSummary(int removed, int total) {
+  String dialogSyncGuardSummary(int removed, int total) {
     String _temp0 = intl.Intl.pluralLogic(
       removed,
       locale: localeName,
@@ -2124,27 +2124,27 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String syncGuardFrom(String devices) {
+  String dialogSyncGuardFrom(String devices) {
     return 'Made on: $devices';
   }
 
   @override
-  String syncGuardPlaylistDeleted(String name) {
+  String dialogSyncGuardPlaylistDeleted(String name) {
     return 'Playlist “$name” deleted, with its songs';
   }
 
   @override
-  String syncGuardSongRemoved(String title, String playlist) {
+  String dialogSyncGuardSongRemoved(String title, String playlist) {
     return '“$title” taken out of “$playlist”';
   }
 
   @override
-  String syncGuardUnliked(String title) {
+  String dialogSyncGuardUnliked(String title) {
     return '“$title” unliked';
   }
 
   @override
-  String syncGuardOnDevice(String device) {
+  String dialogSyncGuardOnDevice(String device) {
     return 'on $device';
   }
 
@@ -2155,11 +2155,11 @@ class AppLocalizationsKo extends AppLocalizations {
   String get buttonSyncKeepLibrary => 'Keep my library';
 
   @override
-  String get syncGuardDeclineNote =>
+  String get dialogSyncGuardDeclineNote =>
       'If you keep your library, sync pauses until you confirm these removals from the Library Sync settings.';
 
   @override
-  String get syncAnotherDevice => 'another device';
+  String get dialogSyncAnotherDevice => 'another device';
 
   @override
   String get dialogSyncClockTitle => 'A device\'s clock is wrong';
@@ -2220,11 +2220,11 @@ class AppLocalizationsKo extends AppLocalizations {
   String get buttonDropboxOpenPage => 'Open the Dropbox page';
 
   @override
-  String get syncDropboxPageNotOpened =>
+  String get dialogDropboxPageNotOpened =>
       'The browser could not be opened. Open this address yourself:';
 
   @override
-  String get syncDropboxCode => 'Code from Dropbox';
+  String get dialogDropboxCode => 'Code from Dropbox';
 
   @override
   String get buttonDropboxSignIn => 'Sign in';
@@ -2268,6 +2268,10 @@ class AppLocalizationsKo extends AppLocalizations {
       'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
 
   @override
+  String get backupReplaceSyncOffWarning =>
+      'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+
+  @override
   String get syncWebDav => 'WebDAV server';
 
   @override
@@ -2290,13 +2294,13 @@ class AppLocalizationsKo extends AppLocalizations {
       'Enter the address of the folder to sync in, such as https://cloud.example.com/remote.php/dav/files/you/Bloomee, and your user name and password on that server.';
 
   @override
-  String get syncWebDavAddress => 'Folder address';
+  String get dialogWebDavAddress => 'Folder address';
 
   @override
-  String get syncWebDavUser => 'User name';
+  String get dialogWebDavUser => 'User name';
 
   @override
-  String get syncWebDavPassword => 'Password';
+  String get dialogWebDavPassword => 'Password';
 
   @override
   String get buttonWebDavConnect => 'Connect';
@@ -2308,6 +2312,18 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get syncWebDavInsecureAddress =>
       'Bloomee does not send your password unprotected: use an https:// address. Plain http:// is only accepted for localhost.';
+
+  @override
+  String get syncDropboxRefused =>
+      'Dropbox refused what Bloomee asked. Try again later; if it keeps refusing, sign out of Dropbox and sign in again.';
+
+  @override
+  String get syncWebDavRefused =>
+      'The WebDAV server refused what Bloomee asked. Check that this user may write into that folder, and that the server\'s certificate is valid: a self-signed certificate is not accepted.';
+
+  @override
+  String get syncLocationRefused =>
+      'The sync location refused what Bloomee asked.';
 
   @override
   String get syncWebDavNotReachable =>
@@ -2336,4 +2352,15 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get dialogSyncWebDavSignInBody =>
       'The WebDAV server no longer accepts this device\'s user name and password. Sync is stopped on this device until you enter them again in the Library Sync settings.';
+
+  @override
+  String get syncErrorKeyringUnavailable =>
+      'the system keyring, which holds this device\'s sign-in, cannot be read. Unlock it, then restart Bloomee.';
+
+  @override
+  String get dialogSyncKeyringTitle => 'The system keyring cannot be read';
+
+  @override
+  String get dialogSyncKeyringBody =>
+      'Bloomee keeps this device\'s sign-in to its sync location in the system keyring, which cannot be read now, so this device does not sync. Unlock the keyring (on Linux, GNOME Keyring or KWallet), then restart Bloomee.';
 }

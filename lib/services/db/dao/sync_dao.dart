@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
+import 'package:Bloomee/core/constants/setting_keys.dart';
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/synced_library_change.dart';
 import 'package:Bloomee/services/db/dao/library_dao.dart';
@@ -65,8 +66,27 @@ class SyncDAO {
             deviceName: row.deviceName,
             lastSyncAt: row.lastSyncAt?.toUtc(),
             paused: row.syncPaused,
-            enabled: !row.syncOff);
+            enabled: _enabled(isar));
   }
+
+  /// Whether the owner turned sync on for this Device. It is kept in this
+  /// Device's settings ([SettingKeys.librarySyncEnabled]) and nowhere else,
+  /// so that it survives a return from the official build, which drops
+  /// sync's bookkeeping but keeps the settings.
+  Future<bool> enabled() async => _enabled(await _db);
+
+  static bool _enabled(Isar isar) =>
+      isar.appSettingsBoolDBs
+          .filter()
+          .settingNameEqualTo(SettingKeys.librarySyncEnabled)
+          .findFirstSync()
+          ?.settingValue ??
+      false;
+
+  /// Records whether sync is on; inside a write transaction.
+  static Future<void> _setEnabled(Isar isar, bool enabled) =>
+      isar.appSettingsBoolDBs.put(AppSettingsBoolDB(
+          settingName: SettingKeys.librarySyncEnabled, settingValue: enabled));
 
   /// Stores this Device's identity, with sync on; an existing permanent ID
   /// is kept.
@@ -76,10 +96,9 @@ class SyncDAO {
     await isar.writeTxn(() async {
       final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId) ??
           SyncDeviceDB(deviceId: newDeviceId, deviceName: deviceName);
-      row
-        ..deviceName = deviceName
-        ..syncOff = false;
+      row.deviceName = deviceName;
       await isar.syncDeviceDBs.put(row);
+      await _setEnabled(isar, true);
     });
     return (await identity())!;
   }
@@ -99,12 +118,7 @@ class SyncDAO {
   /// go on recording changes until sync is back on.
   Future<void> disable() async {
     final isar = await _db;
-    await isar.writeTxn(() async {
-      final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
-      if (row == null) return;
-      row.syncOff = true;
-      await isar.syncDeviceDBs.put(row);
-    });
+    await isar.writeTxn(() => _setEnabled(isar, false));
   }
 
   Future<void> recordSync(DateTime at) async {
@@ -187,7 +201,7 @@ class SyncDAO {
           isar, RemovalKind.ofSaved(kind), null, mediaId, ChangeStamp(at, me));
       return;
     }
-    if (_isSynced(row) && row.syncId != null) {
+    if (_isPublished(row)) {
       _record(isar, RemovalKind.playlist, row.syncId, null, ChangeStamp(at, me),
           deletedPlaylist:
               deletedPlaylist ?? _deletedPlaylistJsonOf(isar, row, me));
@@ -248,7 +262,7 @@ class SyncDAO {
     if (me == null) return;
     if (_isLiked(row)) {
       _record(isar, RemovalKind.like, null, mediaId, ChangeStamp(at, me));
-    } else if (_isSynced(row) && row.syncId != null) {
+    } else if (_isPublished(row)) {
       _record(isar, RemovalKind.song, row.syncId, mediaId, ChangeStamp(at, me));
     }
   }
@@ -266,7 +280,7 @@ class SyncDAO {
           key: (
             row: row,
             songs: _songsInOrder(isar, row),
-            deletedPlaylist: _isSynced(row) && row.syncId != null
+            deletedPlaylist: _isPublished(row)
                 ? _deletedPlaylistJsonOf(isar, row, me)
                 : null,
           )
@@ -447,7 +461,7 @@ class SyncDAO {
   /// before sync existed, otherwise.
   static int sortOrderForNewPlaylist(Isar isar) {
     final device = isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId);
-    if (device == null || device.syncOff) return 0;
+    if (device == null || !_enabled(isar)) return 0;
     final last = isar.playlistDBs.where().sortBySortOrderDesc().findFirstSync();
     return last == null ? 0 : last.sortOrder + 1;
   }
@@ -529,6 +543,10 @@ class SyncDAO {
       p.type == PlaylistTypeDB.userPlaylist &&
       !DBProvider.standardPlaylists
           .any((name) => name.toLowerCase() == p.name.toLowerCase());
+
+  /// Whether [p] is a synced playlist that was published, so that another
+  /// Device may hold it: it has a sync ID.
+  static bool _isPublished(PlaylistDB p) => _isSynced(p) && p.syncId != null;
 
   static bool _isLiked(PlaylistDB p) =>
       p.type == PlaylistTypeDB.userPlaylist &&
@@ -1044,7 +1062,7 @@ class SyncDAO {
     final rows = _inLibraryOrder(isar);
     final synced = {
       for (final row in rows)
-        if (_isSynced(row) && row.syncId != null) row.syncId!: row
+        if (_isPublished(row)) row.syncId!: row
     };
     final placed = <PlaylistDB>{};
     final queue = [

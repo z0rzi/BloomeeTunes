@@ -54,11 +54,12 @@ class SettingKeys {
   // ── Library Sync ────────────────────────────────────────────────────────────
   // Device-local: never in a portable backup (see BackupSettingsPolicy).
 
-  /// Whether the owner turned Library Sync on for this Device. Stored as bool.
+  /// Whether the owner turned Library Sync on for this Device, the one place
+  /// it is kept (written by `SyncDAO` with the Device's identity). Stored as
+  /// bool.
   static const String librarySyncEnabled = "librarySyncEnabled";
 
-  /// The kind of Sync Location chosen (a `SyncLocationKind` name); a setup
-  /// without it, from before Dropbox was offered, uses the local folder.
+  /// The kind of Sync Location chosen (a `SyncLocationKind` name).
   static const String librarySyncLocationKind = "librarySyncLocationKind";
 
   /// The local folder chosen as the Sync Location.

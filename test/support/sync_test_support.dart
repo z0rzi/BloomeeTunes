@@ -149,6 +149,19 @@ class SyncDevice {
     ]..sort();
   }
 
+  /// The playlists held in each protection snapshot kept on this Device,
+  /// newest first.
+  Future<List<List<String>>> snapshotsPlaylists() async => [
+        for (final snapshot in await backups.recoverySnapshots())
+          [
+            for (final row in (await BackupDAO.readRecoveryFile(
+                    snapshot.path, backups.supportPath, null))
+                .document
+                .rows('playlists'))
+              row['name'] as String
+          ]..sort()
+      ];
+
   /// A full backup of this Device's library, as the backup export makes.
   Future<BackupDocument> backup() => backups.dao.snapshot();
 
@@ -320,7 +333,8 @@ class SyncWorld {
     final backups = BackupRepository(
         dao: BackupDAO(Future.value(isar), clock: deviceClock.call),
         database: Future.value(isar),
-        supportPath: directory.path);
+        supportPath: directory.path,
+        clock: deviceClock.call);
     final engine = SyncEngine(
         database: Future.value(isar),
         location: syncLocation,
@@ -380,4 +394,18 @@ class MemoryKeyring implements CredentialStore {
 
   @override
   Future<void> delete(String key) async => values.remove(key);
+}
+
+/// A system keyring that cannot be read, as when it is locked.
+class LockedKeyring implements CredentialStore {
+  static const _locked = CredentialStoreUnavailable('The keyring is locked.');
+
+  @override
+  Future<String?> read(String key) async => throw _locked;
+
+  @override
+  Future<void> write(String key, String value) async => throw _locked;
+
+  @override
+  Future<void> delete(String key) async => throw _locked;
 }

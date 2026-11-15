@@ -11,8 +11,8 @@ import 'package:intl/intl.dart';
 
 /// Shows, wherever the owner is in the app, what Library Sync needs them to
 /// see: the Removal Guard's question and the alerts for a refused clock, an
-/// unreadable Device State, a needed update or a refused sign-in (to
-/// Dropbox, or to a WebDAV server).
+/// unreadable Device State, a needed update, a refused sign-in (to Dropbox,
+/// or to a WebDAV server) or an unreadable system keyring.
 class SyncAlertListener extends StatefulWidget {
   final Widget child;
   final GlobalKey<NavigatorState> navigatorKey;
@@ -51,7 +51,7 @@ class _SyncAlertListenerState extends State<SyncAlertListener> {
         ),
       UpdateNeededAlert(:final deviceName) => (
           l10n.dialogSyncUpdateTitle,
-          l10n.dialogSyncUpdateBody(deviceName ?? l10n.syncAnotherDevice)
+          l10n.dialogSyncUpdateBody(deviceName ?? l10n.dialogSyncAnotherDevice)
         ),
       SignInNeededAlert(kind: SyncLocationKind.webDav) => (
           l10n.dialogSyncWebDavSignInTitle,
@@ -60,6 +60,10 @@ class _SyncAlertListenerState extends State<SyncAlertListener> {
       SignInNeededAlert() => (
           l10n.dialogSyncSignInTitle,
           l10n.dialogSyncSignInBody
+        ),
+      KeyringUnavailableAlert() => (
+          l10n.dialogSyncKeyringTitle,
+          l10n.dialogSyncKeyringBody
         ),
     };
     await showBloomeeDialog<void>(
@@ -122,10 +126,10 @@ Future<bool?> showRemovalGuardDialog(
   String song(HeldRemoval removal) => removal.title ?? removal.mediaId ?? '';
   String describe(HeldRemoval removal) => switch (removal.kind) {
         RemovalKind.playlist =>
-          l10n.syncGuardPlaylistDeleted(removal.playlistName ?? ''),
-        RemovalKind.song =>
-          l10n.syncGuardSongRemoved(song(removal), removal.playlistName ?? ''),
-        RemovalKind.like => l10n.syncGuardUnliked(song(removal)),
+          l10n.dialogSyncGuardPlaylistDeleted(removal.playlistName ?? ''),
+        RemovalKind.song => l10n.dialogSyncGuardSongRemoved(
+            song(removal), removal.playlistName ?? ''),
+        RemovalKind.like => l10n.dialogSyncGuardUnliked(song(removal)),
         // Unsaves are not held by the Removal Guard.
         RemovalKind.album || RemovalKind.artist => song(removal),
       };
@@ -134,8 +138,8 @@ Future<bool?> showRemovalGuardDialog(
     context: context,
     title: l10n.dialogSyncGuardTitle,
     subtitle:
-        '${l10n.syncGuardSummary(hold.songsRemoved, hold.songsInLibrary)}\n'
-        '${l10n.syncGuardFrom(hold.deviceNames.join(', '))}',
+        '${l10n.dialogSyncGuardSummary(hold.songsRemoved, hold.songsInLibrary)}\n'
+        '${l10n.dialogSyncGuardFrom(hold.deviceNames.join(', '))}',
     icon: Icons.warning_amber_rounded,
     barrierDismissible: false,
     body: ConstrainedBox(
@@ -151,12 +155,13 @@ Future<bool?> showRemovalGuardDialog(
                     text: describe(removal),
                     style: const TextStyle(color: Default_Theme.primaryColor1)),
                 TextSpan(
-                    text: '  ${l10n.syncGuardOnDevice(removal.deviceName)}',
+                    text:
+                        '  ${l10n.dialogSyncGuardOnDevice(removal.deviceName)}',
                     style: TextStyle(color: secondary, fontSize: 12)),
               ])),
             ),
           const SizedBox(height: 12),
-          Text(l10n.syncGuardDeclineNote,
+          Text(l10n.dialogSyncGuardDeclineNote,
               style: TextStyle(color: secondary, fontSize: 12)),
         ],
       ),

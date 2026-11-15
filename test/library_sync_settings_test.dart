@@ -5,6 +5,7 @@ import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/repository/sync/sync_engine.dart';
 import 'package:Bloomee/repository/sync/sync_repository.dart';
 import 'package:Bloomee/repository/sync/sync_scheduler.dart';
+import 'package:Bloomee/services/db/global_db.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -84,7 +85,9 @@ void main() {
     final app = appOn(laptop);
     await laptop.add('Road trip', [song('yt::1'), song('yt::2')]);
 
-    expect(await app.enable(folder: world.locationPath, deviceName: 'laptop'),
+    expect(
+        await app.enable(SyncLocationChoice.folder(world.locationPath),
+            deviceName: 'laptop'),
         isNull);
     await app.syncNow();
     await phone.sync();
@@ -102,7 +105,8 @@ void main() {
     final app = appOn(laptop);
     expect((await app.setup()).deviceName, 'workstation');
 
-    await app.enable(folder: world.locationPath, deviceName: 'workstation');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'workstation');
     await app.syncNow();
     await app.renameDevice('Kitchen laptop');
     await app.syncNow();
@@ -120,7 +124,8 @@ void main() {
 
     expect(
         await app.enable(
-            folder: p.join(world.root.path, 'unmounted drive'),
+            SyncLocationChoice.folder(
+                p.join(world.root.path, 'unmounted drive')),
             deviceName: 'laptop'),
         SyncLocationProblem.notFound);
     expect((await app.setup()).enabled, isFalse);
@@ -135,7 +140,9 @@ void main() {
     await Process.run('chmod', ['555', readOnly.path]);
     addTearDown(() => Process.run('chmod', ['755', readOnly.path]));
 
-    expect(await app.enable(folder: readOnly.path, deviceName: 'laptop'),
+    expect(
+        await app.enable(SyncLocationChoice.folder(readOnly.path),
+            deviceName: 'laptop'),
         SyncLocationProblem.notWritable);
     expect((await app.setup()).enabled, isFalse);
     expect(readOnly.listSync(), isEmpty);
@@ -154,7 +161,8 @@ void main() {
     final laptop = await world.device('laptop', enabled: false);
     final phone = await world.device('phone');
     final app = appOn(laptop, debounce: const Duration(milliseconds: 200));
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
 
     world.clock.advance(const Duration(minutes: 1));
@@ -172,7 +180,8 @@ void main() {
     final laptop = await world.device('laptop', enabled: false);
     final phone = await world.device('phone');
     final app = appOn(laptop);
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
 
     world.clock.advance(const Duration(minutes: 1));
@@ -193,7 +202,8 @@ void main() {
     final laptop = await world.device('laptop', enabled: false);
     final phone = await world.device('phone');
     final app = appOn(laptop);
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
     await app.close();
 
@@ -212,7 +222,8 @@ void main() {
       () async {
     final laptop = await world.device('laptop', enabled: false);
     final app = appOn(laptop);
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
     final syncedAt = laptop.clock();
     expect(app.status.lastSyncedAt, syncedAt);
@@ -232,7 +243,8 @@ void main() {
     final laptop = await world.device('laptop', enabled: false);
     final phone = await world.device('phone');
     final app = appOn(laptop, debounce: const Duration(milliseconds: 100));
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
 
     await app.disable();
@@ -255,7 +267,8 @@ void main() {
     await phone.add('Road trip', [song('yt::1')]);
     await phone.sync();
     final app = appOn(laptop);
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
 
     final devices = await app.knownDevices();
@@ -280,7 +293,8 @@ void main() {
     final app = appOn(laptop);
     await phone.add('Road trip', [song('yt::1'), song('yt::2'), song('yt::3')]);
     await phone.sync();
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
 
     await app.disable();
@@ -290,7 +304,8 @@ void main() {
     expect(await laptop.libraryOrder(), ['Focus', 'Road trip'],
         reason: 'with sync off, a new playlist goes first, as without sync');
     world.clock.advance(const Duration(days: 30));
-    await app.enable(folder: world.locationPath, deviceName: 'laptop');
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
     await app.syncNow();
     await phone.sync();
 
@@ -310,7 +325,8 @@ void main() {
       await phone.add('Road trip', [song('yt::1')]);
       await phone.sync();
       app = appOn(laptop);
-      await app.enable(folder: world.locationPath, deviceName: 'laptop');
+      await app.enable(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
       await app.syncNow();
       await app.disable();
     });
@@ -324,7 +340,12 @@ void main() {
 
     test('also when a build before this one left sync on in its bookkeeping',
         () async {
-      await laptop.enable();
+      // Earlier builds kept on and off in the Device's bookkeeping too,
+      // which an interrupted setup could leave on.
+      await laptop.isar.writeTxn(() async {
+        final row = await laptop.isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
+        await laptop.isar.syncDeviceDBs.put(row!..syncOff = false);
+      });
       await app.close();
       await appOn(laptop).start();
       await laptop.add('Focus', [song('yt::2')]);
@@ -341,13 +362,14 @@ void main() {
       final phone = await world.device('phone');
       final app = appOn(laptop);
       await laptop.add('Road trip', [song('yt::1')]);
-      await app.enable(folder: world.locationPath, deviceName: 'laptop');
+      await app.enable(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
       await app.syncNow();
       await phone.sync();
       final old = await filesIn(world.locationPath);
       final server = await world.otherLocation('server');
 
-      expect(await app.moveTo(server), isNull);
+      expect(await app.moveTo(SyncLocationChoice.folder(server)), isNull);
       await app.syncNow();
       final desktop = await world.device('desktop', location: server);
       await desktop.sync();
@@ -367,10 +389,13 @@ void main() {
       final laptop = await world.device('laptop', enabled: false);
       final phone = await world.device('phone');
       final app = appOn(laptop);
-      await app.enable(folder: world.locationPath, deviceName: 'laptop');
+      await app.enable(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
       await app.syncNow();
 
-      expect(await app.moveTo(p.join(world.root.path, 'unmounted drive')),
+      expect(
+          await app.moveTo(SyncLocationChoice.folder(
+              p.join(world.root.path, 'unmounted drive'))),
           SyncLocationProblem.notFound);
       world.clock.advance(const Duration(minutes: 5));
       await laptop.add('Road trip', [song('yt::1')]);
@@ -402,7 +427,8 @@ void main() {
       final screen = await screenOn(laptop);
       expect(screen.state.devices, isEmpty);
 
-      await screen.enable(world.locationPath, deviceName: 'laptop');
+      await screen.choose(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
       await screen.syncNow();
       await eventually(() async => screen.state.devices
           .any((d) => d.isThisDevice && d.lastSyncedAt != null));
@@ -425,7 +451,8 @@ void main() {
       final phone = await world.device('phone');
       await phone.sync();
       final screen = await screenOn(laptop);
-      await screen.enable(world.locationPath, deviceName: 'laptop');
+      await screen.choose(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
       await screen.syncNow();
       await eventually(() async => names(screen).contains('phone'));
       final states = p.join(world.locationPath, 'sync');
@@ -443,14 +470,15 @@ void main() {
     test('changing the folder while sync is on moves sync there', () async {
       final laptop = await world.device('laptop', enabled: false);
       final screen = await screenOn(laptop);
-      await screen.enable(world.locationPath, deviceName: 'laptop');
+      await screen.choose(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
       final server = await world.otherLocation('server');
 
-      await screen.changeFolder(server);
+      await screen.choose(SyncLocationChoice.folder(server));
       await screen.syncNow();
 
-      expect(screen.state.folder, server);
-      expect(screen.state.enabled, isTrue);
+      expect(screen.state.setup.folder, server);
+      expect(screen.state.setup.enabled, isTrue);
       expect(Directory(p.join(server, 'sync')).listSync(), isNotEmpty);
     });
 
@@ -458,17 +486,17 @@ void main() {
       final laptop = await world.device('laptop', enabled: false);
       await laptop.add('Road trip', [song('yt::1')]);
       final screen = await screenOn(laptop);
-      expect(screen.state.enabled, isFalse);
+      expect(screen.state.setup.enabled, isFalse);
 
-      await screen.changeFolder(world.locationPath,
+      await screen.choose(SyncLocationChoice.folder(world.locationPath),
           deviceName: 'Kitchen laptop');
       await screen.syncNow();
 
       expect(screen.state.setupProblem, isNull);
-      expect(screen.state.enabled, isTrue);
-      expect(screen.state.locationKind, SyncLocationKind.localFolder);
-      expect(screen.state.folder, world.locationPath);
-      expect(screen.state.deviceName, 'Kitchen laptop');
+      expect(screen.state.setup.enabled, isTrue);
+      expect(screen.state.setup.locationKind, SyncLocationKind.localFolder);
+      expect(screen.state.setup.folder, world.locationPath);
+      expect(screen.state.setup.deviceName, 'Kitchen laptop');
       final phone = await world.device('phone');
       await phone.sync();
       expect(await phone.songsOf('Road trip'), ['yt::1']);
@@ -482,10 +510,11 @@ void main() {
       final laptop = await world.device('laptop', enabled: false);
       final screen = await screenOn(laptop);
 
-      await screen.changeFolder(p.join(world.root.path, 'unmounted drive'));
+      await screen.choose(SyncLocationChoice.folder(
+          p.join(world.root.path, 'unmounted drive')));
 
       expect(screen.state.setupProblem, SyncLocationProblem.notFound);
-      expect(screen.state.enabled, isFalse);
+      expect(screen.state.setup.enabled, isFalse);
       expect((await appOn(laptop).setup()).enabled, isFalse);
     });
 
@@ -494,33 +523,49 @@ void main() {
         () async {
       final laptop = await world.device('laptop', enabled: false);
       final screen = await screenOn(laptop);
-      await screen.changeFolder(world.locationPath);
+      await screen.choose(SyncLocationChoice.folder(world.locationPath));
       await screen.disable();
-      expect(screen.state.enabled, isFalse);
+      expect(screen.state.setup.enabled, isFalse);
 
       final restarted = appOn(laptop);
       await restarted.start();
       final again = SyncCubit(restarted);
       addTearDown(again.close);
       await again.load();
-      expect(again.state.enabled, isFalse);
+      expect(again.state.setup.enabled, isFalse);
 
       final server = await world.otherLocation('server');
-      await again.changeFolder(server);
-      expect(again.state.enabled, isTrue);
-      expect(again.state.folder, server);
+      await again.choose(SyncLocationChoice.folder(server));
+      expect(again.state.setup.enabled, isTrue);
+      expect(again.state.setup.folder, server);
+    });
+
+    test(
+        'turned off, sync stays set up, as the replace-restore warning needs to know',
+        () async {
+      final laptop = await world.device('laptop', enabled: false);
+      final screen = await screenOn(laptop);
+      expect(screen.state.setup.everEnabled, isFalse);
+
+      await screen.choose(SyncLocationChoice.folder(world.locationPath));
+      await screen.disable();
+
+      expect(screen.state.setup.enabled, isFalse);
+      expect(screen.state.setup.everEnabled, isTrue);
     });
 
     test('changing to a folder that cannot be used says why', () async {
       final laptop = await world.device('laptop', enabled: false);
       final screen = await screenOn(laptop);
-      await screen.enable(world.locationPath, deviceName: 'laptop');
+      await screen.choose(SyncLocationChoice.folder(world.locationPath),
+          deviceName: 'laptop');
 
-      await screen.changeFolder(p.join(world.root.path, 'unmounted drive'));
+      await screen.choose(SyncLocationChoice.folder(
+          p.join(world.root.path, 'unmounted drive')));
 
       expect(screen.state.setupProblem, SyncLocationProblem.notFound);
-      expect(screen.state.folder, world.locationPath);
-      expect(screen.state.enabled, isTrue);
+      expect(screen.state.setup.folder, world.locationPath);
+      expect(screen.state.setup.enabled, isTrue);
     });
   });
 }

@@ -60,8 +60,9 @@ void main() {
       expect(l10n.backupImportResult(2, 3, 4, 5),
           allOf(contains('2'), contains('3'), contains('4'), contains('5')));
       expect(l10n.backupNewCopyDetails, isNot(l10n.backupMergeDetails));
-      expect(l10n.syncGuardSummary(3, 8), allOf(contains('3'), contains('8')));
-      expect(l10n.syncGuardSongRemoved('Song title', 'Road trip'),
+      expect(l10n.dialogSyncGuardSummary(3, 8),
+          allOf(contains('3'), contains('8')));
+      expect(l10n.dialogSyncGuardSongRemoved('Song title', 'Road trip'),
           allOf(contains('Song title'), contains('Road trip')));
       expect(l10n.dialogSyncClockBody('Phone', '2 Jan'),
           allOf(contains('Phone'), contains('2 Jan')));

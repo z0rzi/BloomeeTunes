@@ -237,8 +237,9 @@ class SyncDeviceDB {
   /// paused until they confirm it.
   bool syncPaused = false;
 
-  /// Whether the owner turned sync off on this Device. Its bookkeeping goes
-  /// on being kept, but it does not sync until sync is turned back on.
+  /// No longer used: whether sync is on is kept in the settings alone
+  /// (`SettingKeys.librarySyncEnabled`). Kept in the schema for the
+  /// databases earlier builds wrote it in.
   bool syncOff = false;
 
   SyncDeviceDB({

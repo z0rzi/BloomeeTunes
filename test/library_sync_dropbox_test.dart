@@ -82,7 +82,7 @@ void main() {
     final cubit = screenOn(appOn(device, keyring));
     await cubit.load();
     expect(await signIn(cubit), isNull);
-    await cubit.enableDropbox();
+    await cubit.choose(const SyncLocationChoice.dropbox());
     expect(cubit.state.setupProblem, isNull);
     await cubit.syncNow();
     await pumpEventQueue();
@@ -123,7 +123,7 @@ void main() {
 
     expect(await phone.songsOf('Road trip'), ['yt::1', 'yt::2']);
     expect(onLaptop.state.dropboxSignedIn, isTrue);
-    expect(onPhone.state.locationKind, SyncLocationKind.dropbox);
+    expect(onPhone.state.setup.locationKind, SyncLocationKind.dropbox);
     expect(
         dropbox.paths
             .where((p) => p.startsWith('/${SyncEngine.stateDirectory}/')),
@@ -160,7 +160,32 @@ void main() {
         SyncLocationProblem.signInRefused);
 
     expect(cubit.state.dropboxSignedIn, isFalse);
-    expect(cubit.state.enabled, isFalse);
+    expect(cubit.state.setup.enabled, isFalse);
+  });
+
+  test(
+      'Dropbox refusing this app, rather than the code, is told apart from a refused code',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final repository = SyncRepository(
+      database: Future.value(laptop.isar),
+      backups: laptop.backups,
+      machineName: () => laptop.name,
+      credentials: MemoryKeyring(),
+      dropbox: DropboxApp(
+          key: 'another app',
+          authorizePage: dropbox.authorizePage,
+          api: dropbox.base,
+          content: dropbox.base),
+    );
+    repositories.add(repository);
+    final cubit = screenOn(repository);
+    await cubit.load();
+
+    cubit.beginDropboxSignIn();
+    expect(await cubit.finishDropboxSignIn('the code Dropbox showed'),
+        SyncLocationProblem.refused);
+    expect(cubit.state.dropboxSignedIn, isFalse);
   });
 
   test(
@@ -234,7 +259,7 @@ void main() {
     await syncingThroughDropbox(phone, MemoryKeyring());
 
     expect(await phone.songsOf('Road trip'), ['yt::1']);
-    expect(cubit.state.enabled, isTrue);
+    expect(cubit.state.setup.enabled, isTrue);
   });
 
   test('signing out removes the sign-in from the Device and ends it on Dropbox',
@@ -249,7 +274,7 @@ void main() {
     expect(keyring.values, isEmpty);
     expect(dropbox.isValid(refreshToken), isFalse);
     expect(cubit.state.dropboxSignedIn, isFalse);
-    expect(cubit.state.enabled, isFalse,
+    expect(cubit.state.setup.enabled, isFalse,
         reason: 'sync cannot go on through Dropbox once signed out');
   });
 
@@ -262,13 +287,14 @@ void main() {
     await cubit.load();
 
     expect(await signIn(cubit), isNull);
-    await cubit.chooseDropbox(deviceName: 'Kitchen laptop');
+    await cubit.choose(const SyncLocationChoice.dropbox(),
+        deviceName: 'Kitchen laptop');
     await cubit.syncNow();
 
     expect(cubit.state.setupProblem, isNull);
-    expect(cubit.state.enabled, isTrue);
-    expect(cubit.state.locationKind, SyncLocationKind.dropbox);
-    expect(cubit.state.deviceName, 'Kitchen laptop');
+    expect(cubit.state.setup.enabled, isTrue);
+    expect(cubit.state.setup.locationKind, SyncLocationKind.dropbox);
+    expect(cubit.state.setup.deviceName, 'Kitchen laptop');
     final state = dropbox.paths.singleWhere((p) => p.startsWith('/sync/'));
     expect(utf8.decode(dropbox.file(state)!), contains('yt::1'));
   });
@@ -282,10 +308,10 @@ void main() {
 
     expect(await signIn(cubit), isNull);
     dropbox.revokeAll();
-    await cubit.chooseDropbox();
+    await cubit.choose(const SyncLocationChoice.dropbox());
 
     expect(cubit.state.setupProblem, SyncLocationProblem.signInRefused);
-    expect(cubit.state.enabled, isFalse);
+    expect(cubit.state.setup.enabled, isFalse);
     expect(dropbox.paths, isEmpty);
   });
 
@@ -296,15 +322,15 @@ void main() {
     final cubit = screenOn(appOn(laptop, MemoryKeyring()));
     await laptop.add('Road trip', [song('yt::1')]);
     await cubit.load();
-    await cubit.enable(world.locationPath);
+    await cubit.choose(SyncLocationChoice.folder(world.locationPath));
     await cubit.syncNow();
     final inFolder = await filesIn(world.locationPath);
 
     expect(await signIn(cubit), isNull);
-    await cubit.chooseDropbox();
+    await cubit.choose(const SyncLocationChoice.dropbox());
     await cubit.syncNow();
 
-    expect(cubit.state.locationKind, SyncLocationKind.dropbox);
+    expect(cubit.state.setup.locationKind, SyncLocationKind.dropbox);
     expect(await filesIn(world.locationPath), inFolder);
     expect(dropbox.paths.where((p) => p.startsWith('/sync/')), hasLength(1));
   });

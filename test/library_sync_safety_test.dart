@@ -39,6 +39,46 @@ void main() {
     expect(await b.protectionSnapshots(), 1);
   });
 
+  test(
+      'a protection snapshot taken before a sync lasts at least a day, however many syncs follow, and they do not pile up',
+      () async {
+    final a = await world.device('laptop');
+    final b = await world.device('phone');
+    await a.add('Road trip', [song('yt::1')]);
+    await a.sync();
+    await b.sync();
+    expect(await b.snapshotsPlaylists(), [
+      ['Liked']
+    ]);
+
+    // Another Device changes the library before each of the phone's syncs:
+    // twenty times two minutes apart, then every two hours, until 23 hours
+    // after the first.
+    var round = 0;
+    Future<void> changeAndSync(Duration after) async {
+      world.clock.advance(after);
+      round++;
+      await a.add('Playlist $round', [song('yt::$round')]);
+      await a.sync();
+      await b.sync();
+    }
+
+    for (var i = 0; i < 20; i++) {
+      await changeAndSync(const Duration(minutes: 2));
+    }
+    for (var i = 0; i < 11; i++) {
+      await changeAndSync(const Duration(hours: 2));
+    }
+    expect(await b.snapshotsPlaylists(), contains(equals(['Liked'])),
+        reason: 'the snapshot from before the first sync is still there');
+
+    for (var i = 0; i < 18; i++) {
+      await changeAndSync(const Duration(hours: 4));
+    }
+    expect(await b.protectionSnapshots(), lessThanOrEqualTo(9),
+        reason: 'the latest seven, and the first of today and of yesterday');
+  });
+
   List<String> ids(int from, int to) =>
       [for (var i = from; i <= to; i++) 'yt::$i'];
 

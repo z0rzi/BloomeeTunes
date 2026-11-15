@@ -59,7 +59,7 @@ No layer may import from a layer above it. No layer may skip more than one step 
 | 7 | **One DAO per entity concern.** `PlaylistDAO` = user-playlist CRUD; `LibraryDAO` = saved remote collections. |
 | 8 | **All Bloc/Cubit classes live under `lib/blocs/`**. Screen-scoped cubits that do not touch DAOs may live under `lib/screens/`. |
 | 9 | **Plugins (`lib/plugins/`) must not access the DB layer directly.** They communicate through repositories or cubits. |
-| 10 | **Services (`lib/services/`) are application-lifetime singletons** registered in `ServiceLocator`. Screens do not instantiate services. |
+| 10 | **Services (`lib/services/`) are application-lifetime singletons** registered in `ServiceLocator`. Screens do not instantiate services. Exception: the Sync Location adapters (`lib/services/sync/`) are made by `SyncRepository` for the Sync Location set up, and replaced when it changes. |
 
 ---
 
@@ -120,8 +120,9 @@ protected atomic merge, including download mappings. Recovery models are grouped
 `recovery_copy.dart`; file resolution belongs to `DownloadDAO`. Pre-v3 database
 schemas and migration runners remain removed.
 Library Sync's `SyncEngine` (`lib/repository/sync/`) takes its protection snapshot
-through `BackupRepository.createSnapshot` (reason `before_sync`) before applying any
-merge that changes the library. After each sync it writes the day's Location Backup,
+through `BackupRepository.createSnapshot` (reason `before_sync`, `keepDaily`) before
+applying any merge that changes the library; the latest seven are kept, and the first
+of today and of yesterday (UTC), so that one predating any sync stays at least a day. After each sync it writes the day's Location Backup,
 the export's full JSON backup (`BackupRepository.exportFullBackup`), to
 `backups/<UTC date>_<Device ID>.json` in the Sync Location unless it is there, and
 deletes its own beyond the latest seven; a failure there leaves the sync as it ended and is
@@ -129,21 +130,31 @@ retried at the next sync. A replace-restore in `BackupDAO` records,
 through `SyncDAO`, Removal Markers for what the backup lacks and stamps what it
 restores as changed now, so it reaches the other Devices as the Latest Change.
 `SyncRepository` (`lib/repository/sync/`) is what the app uses: it keeps the Device's
-sync setup (on/off, the kind of Sync Location, the local folder, the WebDAV address
-and user name, the Device name) in device-local settings that never travel in a
-backup, tests a Sync Location before enabling or moving sync, owns the engine for the
-chosen Sync Location, and runs syncs through `SyncScheduler` (startup, return to the
+sync setup (the kind of Sync Location, the local folder, the WebDAV address and user
+name, the Device name) in device-local settings that never travel in a backup, and so
+is sync on/off (`librarySyncEnabled`, written only by `SyncDAO` with the Device's
+identity, and kept when a return to the official build drops sync's collections). It
+enables or moves sync with one path for every kind of Sync Location
+(`SyncLocationChoice`), testing the Sync Location first, owns the engine for the
+chosen Sync Location and its adapter, which it makes for that setup, and runs syncs through `SyncScheduler` (startup, return to the
 foreground, a debounced change to the Synced Library seen through
 `SyncDAO.watchSyncedLibrary`, every two minutes in the foreground, sync now; one at a
 time; quiet retries with backoff). `SyncCubit` turns its status and outcomes into the
 settings screen's state and the alerts `SyncAlertListener` shows app-wide. The Sync
-Location adapters live in `lib/services/sync/`: `LocalFolderSyncLocation` (Linux
-only), `DropboxSyncLocation`, which calls the Dropbox HTTP API directly through
-`package:http` in the app's own folder, and `WebDavSyncLocation`, which uses basic
-authentication, refuses an address other than `https` unless it is `localhost` (so the
-password is never sent unprotected), creates its folders with `MKCOL` when missing,
-and writes each file to a hidden temporary name that it then `MOVE`s into place, since
-a WebDAV server may show an upload while it arrives. Dropbox sign-in
+Location adapters live in `lib/services/sync/`, beside the `SyncLocation` interface
+(`sync_location.dart`, which also names the hidden temporary files writes go through,
+`SyncTemporaryFiles`): `LocalFolderSyncLocation` (Linux only), `DropboxSyncLocation`,
+which calls the Dropbox HTTP API directly in the app's own folder, and
+`WebDavSyncLocation`, which uses basic authentication, refuses an address other than
+`https` unless it is `localhost` (so the password is never sent unprotected), creates
+its folders with `MKCOL` when missing, and writes each file to a hidden temporary name
+that it then `MOVE`s into place, since a WebDAV server may show an upload while it
+arrives. The two HTTP adapters share `SyncLocationHttp` (`sync_location_http.dart`):
+the `package:http` client, the request timeout, and what failures mean, the same for
+both: unreachable, a dropped connection, a timeout, HTTP 408, 429 and 5xx are
+`SyncLocationUnavailable` (retried quietly); a refused secure connection and any other
+refusal are `SyncLocationFailed`, which setting up a Sync Location reports as
+`SyncLocationProblem.refused`. Dropbox sign-in
 (`DropboxApp.beginSignIn`) is the authorisation-code flow with PKCE, no client secret,
 offline access and no redirect: the owner pastes back the code Dropbox shows. The
 refresh token and the WebDAV password are kept only in the system keyring through
@@ -153,7 +164,10 @@ comes from the build (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`); a build with
 does not offer Dropbox. When Dropbox or the WebDAV server refuses the sign-in, sync
 stops (`SyncSignInNeeded`, alerted each time sync stops for it, including at a start
 without a sign-in) until the owner signs in again; a refused Dropbox sign-in is
-forgotten, a refused WebDAV password is kept until the owner enters another.
+forgotten, a refused WebDAV password is kept until the owner enters another. A keyring
+that cannot be read at startup also stops sync with an alert (`SyncKeyringUnavailable`).
+A Device is named after its machine until its owner names it: the host name, or on
+Android the phone's name from its settings, else its model (`machine_name.dart`).
 
 ### DAOs
 
@@ -170,7 +184,7 @@ forgotten, a refused WebDAV password is kept until the owner enters another.
 | `NotificationDAO` | Notification persistence |
 | `LyricsDAO` | Lyrics cache keyed by media ID |
 | `PluginStorageDAO` | Per-plugin key-value persistent storage |
-| `SyncDAO` | Library Sync bookkeeping (including the Removal Markers and arrangements other DAOs record in their own transactions), reading the Synced Library, applying a merge in one transaction |
+| `SyncDAO` | Library Sync bookkeeping (including the Removal Markers and arrangements other DAOs record in their own transactions), reading the Synced Library, applying a merge in one transaction; also sync on/off, a setting it writes in the transaction that keeps the Device's identity |
 
 **Constructor pattern** — `const` constructors accept `Future<Isar>`:
 

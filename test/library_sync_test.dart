@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/src/rust/api/plugin/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -15,6 +16,45 @@ void main() {
   setUpAll(initializeTestIsar);
   setUp(() async => world = await SyncWorld.create());
   tearDown(() => world.dispose());
+
+  test(
+      'a Device that never turned sync on works as without sync: new playlists first, no Removal Markers, nothing written anywhere',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final phone = await world.device('phone');
+    await phone.add('From the phone', [song('yt::9')]);
+    await phone.sync();
+    final location = await filesIn(world.locationPath);
+    const album = AlbumSummary(id: 'yt::album', title: 'For Emma', artists: []);
+
+    await laptop.add('Road trip', [song('yt::1'), song('yt::2')]);
+    await laptop.add('Focus', [song('yt::3')]);
+    await laptop.add('Old', [song('yt::4')]);
+    await laptop.remove('Road trip', 'yt::1');
+    await laptop.rename('Focus', 'Deep focus');
+    await laptop.arrange('Road trip', ['yt::2']);
+    await laptop.playlists.deletePlaylist(await laptop.rowId('Old'));
+    await laptop.playlists.setTrackLiked(song('yt::5'), true);
+    await laptop.playlists.setTrackLiked(song('yt::5'), false);
+    await laptop.library.saveAlbum(album, sourceName: 'YouTube');
+    await laptop.library.removeByMediaId('yt::album', PlaylistTypeDB.album);
+    await laptop.arrangeLibrary(['Road trip', 'Deep focus']);
+    await laptop.add('Running', [song('yt::6')]);
+
+    // Without sync, a new playlist takes the first place in the library's
+    // order, which it shares with the playlist there (with sync on, it
+    // would go last).
+    expect(await laptop.libraryOrder(), ['Road trip', 'Running', 'Deep focus']);
+    expect(await laptop.songsOf('Road trip'), ['yt::2']);
+    expect(await laptop.isar.syncRemovalDBs.count(), 0,
+        reason: 'no Removal Marker is left');
+    expect(await laptop.isar.syncDeviceDBs.count(), 0,
+        reason: 'no sync bookkeeping is kept');
+    expect(await laptop.protectionSnapshots(), 0);
+    expect(await filesIn(world.locationPath), location,
+        reason: 'nothing is written to the Sync Location');
+    expect(await phone.playlistNames(), ['From the phone', 'Liked']);
+  });
 
   test('a playlist created on one Device exists on another with its songs',
       () async {

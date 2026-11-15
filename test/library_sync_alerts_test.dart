@@ -6,6 +6,7 @@ import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/repository/sync/sync_repository.dart';
+import 'package:Bloomee/services/sync/machine_name.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -43,7 +44,7 @@ void main() {
     final cubit = SyncCubit(repository);
     cubits.add(cubit);
     await cubit.load();
-    await cubit.enable(world.locationPath);
+    await cubit.choose(SyncLocationChoice.folder(world.locationPath));
     await cubit.syncNow();
     await pumpEventQueue();
     return cubit;
@@ -71,10 +72,26 @@ void main() {
 
     await cubit.load();
 
-    expect(cubit.state.enabled, isFalse);
-    expect(cubit.state.deviceName, 'workstation');
+    expect(cubit.state.setup.enabled, isFalse);
+    expect(cubit.state.setup.deviceName, 'workstation');
     expect(cubit.state.locationKinds,
         [SyncLocationKind.webDav, SyncLocationKind.localFolder]);
+  });
+
+  test(
+      'on Android, the Device is named after the phone, never after its host name',
+      () async {
+    expect(androidMachineName(name: 'Baptiste\'s phone', model: 'DN2103'),
+        'Baptiste\'s phone');
+    expect(androidMachineName(name: ' ', model: 'DN2103'), 'DN2103');
+
+    final phone = await world.device('phone', enabled: false);
+    final repository = SyncRepository(
+        database: Future.value(phone.isar),
+        backups: phone.backups,
+        machineName: () => 'localhost');
+    repositories.add(repository);
+    expect((await repository.setup()).deviceName, 'Bloomee');
   });
 
   test('the local folder is offered on Linux and not on Android', () {
@@ -98,10 +115,11 @@ void main() {
     cubits.add(cubit);
     await cubit.load();
 
-    await cubit.enable(p.join(world.root.path, 'missing'));
+    await cubit
+        .choose(SyncLocationChoice.folder(p.join(world.root.path, 'missing')));
 
     expect(cubit.state.setupProblem, SyncLocationProblem.notFound);
-    expect(cubit.state.enabled, isFalse);
+    expect(cubit.state.setup.enabled, isFalse);
     expect(cubit.state.settingUp, isFalse);
   });
 

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/sync/known_device.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
@@ -31,22 +33,19 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   /// whether sync really is on (turning it on may be refused).
   int _switchKey = 0;
 
-  /// The kind of Sync Location the owner last tried to set up, which a
-  /// setup problem is about.
-  SyncLocationKind? _attempted;
-
   @override
   void initState() {
     super.initState();
     _cubit = context.read<SyncCubit>();
-    _deviceName.text = _cubit.state.deviceName;
+    _deviceName.text = _cubit.state.setup.deviceName;
     _cubit.load().then((_) {
       if (mounted && !_deviceNameFocus.hasFocus) {
-        _deviceName.text = _cubit.state.deviceName;
+        _deviceName.text = _cubit.state.setup.deviceName;
       }
     },
-        onError: (Object error) =>
-            debugPrint('Library Sync settings could not load: $error'));
+        onError: (Object error) => log(
+            'Library Sync settings could not load: $error',
+            name: 'LibrarySyncSettings'));
     _deviceNameFocus.addListener(() {
       if (!_deviceNameFocus.hasFocus) _saveDeviceName();
     });
@@ -64,8 +63,8 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   void _saveDeviceName() {
     final name = _deviceName.text.trim();
     if (name.isEmpty) {
-      if (mounted) _deviceName.text = _cubit.state.deviceName;
-    } else if (name != _cubit.state.deviceName) {
+      if (mounted) _deviceName.text = _cubit.state.setup.deviceName;
+    } else if (name != _cubit.state.setup.deviceName) {
       _cubit.renameDevice(name);
     }
   }
@@ -86,33 +85,13 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   Future<void> _turn(bool on) async {
     final cubit = _cubit;
     if (on) {
-      final chosen = cubit.state.locationKind;
+      final chosen = cubit.state.setup.locationKind;
       // A choice this build no longer offers (a build without the Dropbox
       // app key, say) is asked again.
       final kind = chosen != null && cubit.state.locationKinds.contains(chosen)
           ? chosen
           : await _askLocation();
-      if (!mounted) return;
-      switch (kind) {
-        case SyncLocationKind.dropbox:
-          _attempted = SyncLocationKind.dropbox;
-          if (cubit.state.dropboxSignedIn || await _signInToDropbox()) {
-            await cubit.chooseDropbox(deviceName: _deviceName.text);
-          }
-        case SyncLocationKind.webDav:
-          _attempted = SyncLocationKind.webDav;
-          if (cubit.state.webDavSignedIn || await _signInToWebDav()) {
-            await cubit.chooseWebDav(deviceName: _deviceName.text);
-          }
-        case SyncLocationKind.localFolder:
-          final folder = cubit.state.folder ?? await _pickFolder();
-          if (folder != null) {
-            _attempted = SyncLocationKind.localFolder;
-            await cubit.changeFolder(folder, deviceName: _deviceName.text);
-          }
-        case null:
-          break;
-      }
+      if (kind != null && mounted) await _choose(kind, again: false);
     } else {
       await cubit.disable();
     }
@@ -146,23 +125,36 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
         SyncLocationKind.localFolder => l10n.syncLocalFolder,
       };
 
-  /// Makes the folder the owner picks the Sync Location: while sync is on,
-  /// this moves sync there; while it is off, it turns sync on.
-  Future<void> _chooseFolder() async {
-    final folder = await _pickFolder();
-    if (folder != null && mounted) {
-      _attempted = SyncLocationKind.localFolder;
-      await _cubit.changeFolder(folder, deviceName: _deviceName.text);
+  /// Makes a Sync Location of [kind] the Sync Location: while sync is on,
+  /// this moves sync there; while it is off, it turns sync on. First the
+  /// owner signs in, or picks the folder, unless this Device is signed in
+  /// already or has a folder chosen and they are not choosing [again]. Signing
+  /// in to the WebDAV server sync is on with already goes on with it.
+  Future<void> _choose(SyncLocationKind kind, {required bool again}) async {
+    final state = _cubit.state;
+    final SyncLocationChoice? choice = switch (kind) {
+      SyncLocationKind.dropbox =>
+        state.dropboxSignedIn || await _signInToDropbox()
+            ? const SyncLocationChoice.dropbox()
+            : null,
+      SyncLocationKind.webDav =>
+        (state.webDavSignedIn && !again) || await _signInToWebDav()
+            ? const SyncLocationChoice.webDav()
+            : null,
+      SyncLocationKind.localFolder => switch (
+            (again ? null : state.setup.folder) ?? await _pickFolder()) {
+          final folder? => SyncLocationChoice.folder(folder),
+          null => null,
+        },
+    };
+    if (choice == null || !mounted) return;
+    final setup = _cubit.state.setup;
+    if (kind == SyncLocationKind.webDav &&
+        setup.enabled &&
+        setup.locationKind == SyncLocationKind.webDav) {
+      return;
     }
-  }
-
-  /// Makes Dropbox the Sync Location, signing in first if needed; while
-  /// sync is on, this moves sync there; while it is off, it turns sync on.
-  Future<void> _chooseDropbox() async {
-    if (!_cubit.state.dropboxSignedIn && !await _signInToDropbox()) return;
-    if (!mounted) return;
-    _attempted = SyncLocationKind.dropbox;
-    await _cubit.chooseDropbox(deviceName: _deviceName.text);
+    await _cubit.choose(choice, deviceName: _deviceName.text);
   }
 
   /// Signs this Device in to Dropbox; completes with whether it is.
@@ -173,18 +165,6 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
         builder: (_) => _DropboxSignInDialog(cubit: _cubit),
       ) ??
       false;
-
-  /// Signs in to a WebDAV server, or to another one, and makes it the Sync
-  /// Location; while sync is on, this moves sync there (or, on the same
-  /// server, goes on with the password entered); while it is off, it turns
-  /// sync on.
-  Future<void> _chooseWebDav() async {
-    _attempted = SyncLocationKind.webDav;
-    if (!await _signInToWebDav() || !mounted) return;
-    final state = _cubit.state;
-    if (state.enabled && state.locationKind == SyncLocationKind.webDav) return;
-    await _cubit.chooseWebDav(deviceName: _deviceName.text);
-  }
 
   /// Asks for the WebDAV server's address, user name and password, and
   /// signs in with them; completes with whether this Device is signed in.
@@ -260,14 +240,14 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                       icon: Icons.sync_rounded,
                       title: l10n.syncEnableTitle,
                       subtitle: l10n.syncEnableSubtitle,
-                      value: state.enabled,
+                      value: state.setup.enabled,
                       onChanged: _turn,
                     ),
                     if (state.setupProblem case final problem?) ...[
                       const SettingDivider(),
                       SettingInfoText(
-                        text: problemText(
-                            l10n, problem, _attempted ?? state.locationKind),
+                        text:
+                            problemText(l10n, problem, state.setupProblemKind),
                         color: Colors.redAccent,
                       ),
                     ],
@@ -280,7 +260,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                       if (index > 0) const SettingDivider(),
                       ..._locationTiles(l10n, state, kind),
                     ],
-                    if (state.enabled)
+                    if (state.setup.enabled)
                       SettingInfoText(text: l10n.syncLocationMoveNote),
                   ]),
                   const SizedBox(height: 28),
@@ -304,7 +284,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                     ),
                     SettingInfoText(text: l10n.syncDeviceNameSubtitle),
                   ]),
-                  if (state.enabled && state.devices.isNotEmpty) ...[
+                  if (state.setup.enabled && state.devices.isNotEmpty) ...[
                     const SizedBox(height: 28),
                     SettingSectionHeader(label: l10n.syncDevicesHeader),
                     SettingCard(children: [
@@ -318,7 +298,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                       SettingInfoText(text: l10n.syncDevicesNote),
                     ]),
                   ],
-                  if (state.enabled) ...[
+                  if (state.setup.enabled) ...[
                     const SizedBox(height: 28),
                     SettingSectionHeader(label: l10n.syncStatusHeader),
                     SettingCard(children: [
@@ -366,9 +346,10 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   /// Sync Location (signing in first where needed), and its note.
   List<Widget> _locationTiles(
       AppLocalizations l10n, SyncState state, SyncLocationKind kind) {
-    final inUse = state.locationKinds.length > 1 && state.locationKind == kind
-        ? l10n.syncLocationInUse
-        : null;
+    final inUse =
+        state.locationKinds.length > 1 && state.setup.locationKind == kind
+            ? l10n.syncLocationInUse
+            : null;
     return switch (kind) {
       SyncLocationKind.dropbox => [
           SettingNavTile(
@@ -378,7 +359,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                 ? l10n.syncDropboxSignedIn
                 : l10n.syncDropboxSignedOut,
             badge: inUse,
-            onTap: _chooseDropbox,
+            onTap: () => _choose(kind, again: false),
           ),
           SettingInfoText(text: l10n.syncDropboxNote),
           if (state.dropboxSignedIn)
@@ -398,13 +379,16 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           SettingNavTile(
             icon: Icons.dns_outlined,
             title: l10n.syncWebDav,
-            subtitle: switch ((state.webDavUser, state.webDavAddress)) {
+            subtitle: switch ((
+              state.setup.webDavUser,
+              state.setup.webDavAddress
+            )) {
               (final user?, final address?) when state.webDavSignedIn =>
                 l10n.syncWebDavAccount(user, address),
               _ => l10n.syncWebDavNotSetUp,
             },
             badge: inUse,
-            onTap: _chooseWebDav,
+            onTap: () => _choose(kind, again: true),
           ),
           SettingInfoText(text: l10n.syncWebDavNote),
         ],
@@ -412,9 +396,9 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           SettingNavTile(
             icon: Icons.folder_outlined,
             title: l10n.syncLocalFolder,
-            subtitle: state.folder ?? l10n.syncNoFolder,
+            subtitle: state.setup.folder ?? l10n.syncNoFolder,
             badge: inUse,
-            onTap: _chooseFolder,
+            onTap: () => _choose(kind, again: true),
           ),
           SettingInfoText(text: l10n.syncLocalFolderNote),
         ],
@@ -442,6 +426,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
         SyncSignInNeeded(kind: SyncLocationKind.webDav) =>
           l10n.syncErrorWebDavSignInNeeded,
         SyncSignInNeeded() => l10n.syncErrorSignInNeeded,
+        SyncKeyringUnavailable() => l10n.syncErrorKeyringUnavailable,
         SyncFailed(:final detail) => l10n.syncErrorFailed(detail),
         SyncNeedsOwner(:final outcome) => switch (outcome) {
             SyncHeld(declined: true) => l10n.syncErrorPaused,
@@ -478,6 +463,11 @@ String problemText(AppLocalizations l10n, SyncLocationProblem problem,
       (SyncLocationProblem.invalidAddress, _) => l10n.syncWebDavInvalidAddress,
       (SyncLocationProblem.insecureAddress, _) =>
         l10n.syncWebDavInsecureAddress,
+      (SyncLocationProblem.refused, SyncLocationKind.dropbox) =>
+        l10n.syncDropboxRefused,
+      (SyncLocationProblem.refused, SyncLocationKind.webDav) =>
+        l10n.syncWebDavRefused,
+      (SyncLocationProblem.refused, _) => l10n.syncLocationRefused,
     };
 
 /// Signing in to Dropbox: the owner opens the Dropbox page, allows Bloomee,
@@ -510,7 +500,8 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
     try {
       opened = await launchUrl(_page, mode: LaunchMode.externalApplication);
     } catch (error) {
-      debugPrint('The Dropbox page could not be opened: $error');
+      log('The Dropbox page could not be opened: $error',
+          name: 'LibrarySyncSettings');
     }
     if (mounted) setState(() => _pageNotOpened = !opened);
   }
@@ -526,7 +517,7 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
     try {
       problem = await widget.cubit.finishDropboxSignIn(code);
     } catch (error) {
-      debugPrint('Dropbox sign-in failed: $error');
+      log('Dropbox sign-in failed: $error', name: 'LibrarySyncSettings');
       problem = SyncLocationProblem.signInRefused;
     }
     if (!mounted) return;
@@ -558,7 +549,7 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
               label: Text(l10n.buttonDropboxOpenPage),
             ),
             if (_pageNotOpened) ...[
-              Text(l10n.syncDropboxPageNotOpened,
+              Text(l10n.dialogDropboxPageNotOpened,
                   style: TextStyle(color: secondary, fontSize: 13)),
               const SizedBox(height: 4),
               SelectableText(_page.toString(),
@@ -574,7 +565,7 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
               style: const TextStyle(
                   color: Default_Theme.primaryColor2, fontSize: 15),
               decoration: InputDecoration(
-                labelText: l10n.syncDropboxCode,
+                labelText: l10n.dialogDropboxCode,
                 labelStyle: TextStyle(color: secondary),
               ),
             ),
@@ -629,9 +620,9 @@ class _WebDavSignInDialog extends StatefulWidget {
 
 class _WebDavSignInDialogState extends State<_WebDavSignInDialog> {
   late final TextEditingController _address =
-      TextEditingController(text: widget.cubit.state.webDavAddress ?? '');
+      TextEditingController(text: widget.cubit.state.setup.webDavAddress ?? '');
   late final TextEditingController _user =
-      TextEditingController(text: widget.cubit.state.webDavUser ?? '');
+      TextEditingController(text: widget.cubit.state.setup.webDavUser ?? '');
   final TextEditingController _password = TextEditingController();
   bool _signingIn = false;
   SyncLocationProblem? _problem;
@@ -660,7 +651,7 @@ class _WebDavSignInDialogState extends State<_WebDavSignInDialog> {
       problem = await widget.cubit.signInToWebDav(
           address: _address.text, user: _user.text, password: _password.text);
     } catch (error) {
-      debugPrint('WebDAV sign-in failed: $error');
+      log('WebDAV sign-in failed: $error', name: 'LibrarySyncSettings');
       problem = SyncLocationProblem.notFound;
     }
     if (!mounted) return;
@@ -698,7 +689,7 @@ class _WebDavSignInDialogState extends State<_WebDavSignInDialog> {
                 keyboardType: TextInputType.url,
                 autofillHints: const [AutofillHints.url],
                 style: fieldStyle,
-                decoration: decoration(l10n.syncWebDavAddress),
+                decoration: decoration(l10n.dialogWebDavAddress),
               ),
               TextField(
                 controller: _user,
@@ -706,7 +697,7 @@ class _WebDavSignInDialogState extends State<_WebDavSignInDialog> {
                 autocorrect: false,
                 autofillHints: const [AutofillHints.username],
                 style: fieldStyle,
-                decoration: decoration(l10n.syncWebDavUser),
+                decoration: decoration(l10n.dialogWebDavUser),
               ),
               TextField(
                 controller: _password,
@@ -717,7 +708,7 @@ class _WebDavSignInDialogState extends State<_WebDavSignInDialog> {
                 autofillHints: const [AutofillHints.password],
                 onSubmitted: (_) => _finish(),
                 style: fieldStyle,
-                decoration: decoration(l10n.syncWebDavPassword),
+                decoration: decoration(l10n.dialogWebDavPassword),
               ),
               if (_problem case final problem?) ...[
                 const SizedBox(height: 8),

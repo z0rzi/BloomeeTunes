@@ -3986,41 +3986,41 @@ abstract class AppLocalizations {
   /// **'Confirm these removals?'**
   String get dialogSyncGuardTitle;
 
-  /// No description provided for @syncGuardSummary.
+  /// No description provided for @dialogSyncGuardSummary.
   ///
   /// In en, this message translates to:
   /// **'{removed, plural, =1{This sync would remove {removed} of your {total} songs.} other{This sync would remove {removed} of your {total} songs.}}'**
-  String syncGuardSummary(int removed, int total);
+  String dialogSyncGuardSummary(int removed, int total);
 
-  /// No description provided for @syncGuardFrom.
+  /// No description provided for @dialogSyncGuardFrom.
   ///
   /// In en, this message translates to:
   /// **'Made on: {devices}'**
-  String syncGuardFrom(String devices);
+  String dialogSyncGuardFrom(String devices);
 
-  /// No description provided for @syncGuardPlaylistDeleted.
+  /// No description provided for @dialogSyncGuardPlaylistDeleted.
   ///
   /// In en, this message translates to:
   /// **'Playlist “{name}” deleted, with its songs'**
-  String syncGuardPlaylistDeleted(String name);
+  String dialogSyncGuardPlaylistDeleted(String name);
 
-  /// No description provided for @syncGuardSongRemoved.
+  /// No description provided for @dialogSyncGuardSongRemoved.
   ///
   /// In en, this message translates to:
   /// **'“{title}” taken out of “{playlist}”'**
-  String syncGuardSongRemoved(String title, String playlist);
+  String dialogSyncGuardSongRemoved(String title, String playlist);
 
-  /// No description provided for @syncGuardUnliked.
+  /// No description provided for @dialogSyncGuardUnliked.
   ///
   /// In en, this message translates to:
   /// **'“{title}” unliked'**
-  String syncGuardUnliked(String title);
+  String dialogSyncGuardUnliked(String title);
 
-  /// No description provided for @syncGuardOnDevice.
+  /// No description provided for @dialogSyncGuardOnDevice.
   ///
   /// In en, this message translates to:
   /// **'on {device}'**
-  String syncGuardOnDevice(String device);
+  String dialogSyncGuardOnDevice(String device);
 
   /// No description provided for @buttonSyncRemove.
   ///
@@ -4034,17 +4034,17 @@ abstract class AppLocalizations {
   /// **'Keep my library'**
   String get buttonSyncKeepLibrary;
 
-  /// No description provided for @syncGuardDeclineNote.
+  /// No description provided for @dialogSyncGuardDeclineNote.
   ///
   /// In en, this message translates to:
   /// **'If you keep your library, sync pauses until you confirm these removals from the Library Sync settings.'**
-  String get syncGuardDeclineNote;
+  String get dialogSyncGuardDeclineNote;
 
-  /// No description provided for @syncAnotherDevice.
+  /// No description provided for @dialogSyncAnotherDevice.
   ///
   /// In en, this message translates to:
   /// **'another device'**
-  String get syncAnotherDevice;
+  String get dialogSyncAnotherDevice;
 
   /// No description provided for @dialogSyncClockTitle.
   ///
@@ -4142,17 +4142,17 @@ abstract class AppLocalizations {
   /// **'Open the Dropbox page'**
   String get buttonDropboxOpenPage;
 
-  /// No description provided for @syncDropboxPageNotOpened.
+  /// No description provided for @dialogDropboxPageNotOpened.
   ///
   /// In en, this message translates to:
   /// **'The browser could not be opened. Open this address yourself:'**
-  String get syncDropboxPageNotOpened;
+  String get dialogDropboxPageNotOpened;
 
-  /// No description provided for @syncDropboxCode.
+  /// No description provided for @dialogDropboxCode.
   ///
   /// In en, this message translates to:
   /// **'Code from Dropbox'**
-  String get syncDropboxCode;
+  String get dialogDropboxCode;
 
   /// No description provided for @buttonDropboxSignIn.
   ///
@@ -4220,6 +4220,12 @@ abstract class AppLocalizations {
   /// **'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.'**
   String get backupReplaceSyncWarning;
 
+  /// No description provided for @backupReplaceSyncOffWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Library Sync is set up on this device, though turned off: once it is back on, this replacement will reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.'**
+  String get backupReplaceSyncOffWarning;
+
   /// No description provided for @syncWebDav.
   ///
   /// In en, this message translates to:
@@ -4256,23 +4262,23 @@ abstract class AppLocalizations {
   /// **'Enter the address of the folder to sync in, such as https://cloud.example.com/remote.php/dav/files/you/Bloomee, and your user name and password on that server.'**
   String get dialogWebDavBody;
 
-  /// No description provided for @syncWebDavAddress.
+  /// No description provided for @dialogWebDavAddress.
   ///
   /// In en, this message translates to:
   /// **'Folder address'**
-  String get syncWebDavAddress;
+  String get dialogWebDavAddress;
 
-  /// No description provided for @syncWebDavUser.
+  /// No description provided for @dialogWebDavUser.
   ///
   /// In en, this message translates to:
   /// **'User name'**
-  String get syncWebDavUser;
+  String get dialogWebDavUser;
 
-  /// No description provided for @syncWebDavPassword.
+  /// No description provided for @dialogWebDavPassword.
   ///
   /// In en, this message translates to:
   /// **'Password'**
-  String get syncWebDavPassword;
+  String get dialogWebDavPassword;
 
   /// No description provided for @buttonWebDavConnect.
   ///
@@ -4291,6 +4297,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bloomee does not send your password unprotected: use an https:// address. Plain http:// is only accepted for localhost.'**
   String get syncWebDavInsecureAddress;
+
+  /// No description provided for @syncDropboxRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox refused what Bloomee asked. Try again later; if it keeps refusing, sign out of Dropbox and sign in again.'**
+  String get syncDropboxRefused;
+
+  /// No description provided for @syncWebDavRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV server refused what Bloomee asked. Check that this user may write into that folder, and that the server\'s certificate is valid: a self-signed certificate is not accepted.'**
+  String get syncWebDavRefused;
+
+  /// No description provided for @syncLocationRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The sync location refused what Bloomee asked.'**
+  String get syncLocationRefused;
 
   /// No description provided for @syncWebDavNotReachable.
   ///
@@ -4333,6 +4357,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The WebDAV server no longer accepts this device\'s user name and password. Sync is stopped on this device until you enter them again in the Library Sync settings.'**
   String get dialogSyncWebDavSignInBody;
+
+  /// No description provided for @syncErrorKeyringUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'the system keyring, which holds this device\'s sign-in, cannot be read. Unlock it, then restart Bloomee.'**
+  String get syncErrorKeyringUnavailable;
+
+  /// No description provided for @dialogSyncKeyringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The system keyring cannot be read'**
+  String get dialogSyncKeyringTitle;
+
+  /// No description provided for @dialogSyncKeyringBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee keeps this device\'s sign-in to its sync location in the system keyring, which cannot be read now, so this device does not sync. Unlock the keyring (on Linux, GNOME Keyring or KWallet), then restart Bloomee.'**
+  String get dialogSyncKeyringBody;
 }
 
 class _AppLocalizationsDelegate

@@ -59,27 +59,26 @@ final class SignInNeededAlert extends SyncAlert {
   List<Object?> get props => [kind];
 }
 
+/// The system keyring, which holds this Device's sign-in, cannot be read:
+/// sync does not start until it can.
+final class KeyringUnavailableAlert extends SyncAlert {
+  const KeyringUnavailableAlert();
+
+  @override
+  List<Object?> get props => const [];
+}
+
 class SyncState extends Equatable {
   /// The kinds of Sync Location this Device offers; none means sync cannot
   /// be set up here yet.
   final List<SyncLocationKind> locationKinds;
   final bool loaded;
-  final bool enabled;
 
-  /// The kind of Sync Location chosen, if one was.
-  final SyncLocationKind? locationKind;
-
-  /// The local folder chosen, if one was.
-  final String? folder;
-  final String deviceName;
+  /// How sync is set up on this Device, as last read.
+  final SyncSetup setup;
 
   /// Whether this Device is signed in to Dropbox.
   final bool dropboxSignedIn;
-
-  /// The WebDAV server set up, if one was: its folder's address and the
-  /// user name signed in with.
-  final String? webDavAddress;
-  final String? webDavUser;
 
   /// Whether this Device has a WebDAV server set up, with its password.
   final bool webDavSignedIn;
@@ -87,8 +86,9 @@ class SyncState extends Equatable {
   /// Setting sync up is in progress (the Sync Location being tested).
   final bool settingUp;
 
-  /// Why the folder chosen last could not be used.
+  /// Why the Sync Location chosen last could not be used, and its kind.
   final SyncLocationProblem? setupProblem;
+  final SyncLocationKind? setupProblemKind;
   final SyncStatus status;
 
   /// A merge the Removal Guard holds that the owner must be asked about now.
@@ -107,16 +107,12 @@ class SyncState extends Equatable {
   const SyncState({
     this.locationKinds = const [],
     this.loaded = false,
-    this.enabled = false,
-    this.locationKind,
-    this.folder,
-    this.deviceName = '',
+    this.setup = const SyncSetup(),
     this.dropboxSignedIn = false,
-    this.webDavAddress,
-    this.webDavUser,
     this.webDavSignedIn = false,
     this.settingUp = false,
     this.setupProblem,
+    this.setupProblemKind,
     this.status = const SyncStatus(),
     this.askAboutHold,
     this.declinedHold,
@@ -126,56 +122,47 @@ class SyncState extends Equatable {
 
   SyncState copyWith({
     bool? loaded,
-    bool? enabled,
-    SyncLocationKind? locationKind,
-    String? folder,
-    String? deviceName,
+    SyncSetup? setup,
     bool? dropboxSignedIn,
-    String? webDavAddress,
-    String? webDavUser,
     bool? webDavSignedIn,
     bool? settingUp,
-    SyncLocationProblem? Function()? setupProblem,
+    (SyncLocationProblem?, SyncLocationKind?) Function()? setupProblem,
     SyncStatus? status,
     RemovalGuardHold? Function()? askAboutHold,
     RemovalGuardHold? Function()? declinedHold,
     List<SyncAlert>? alerts,
     List<KnownDevice>? devices,
-  }) =>
-      SyncState(
-        locationKinds: locationKinds,
-        loaded: loaded ?? this.loaded,
-        enabled: enabled ?? this.enabled,
-        locationKind: locationKind ?? this.locationKind,
-        folder: folder ?? this.folder,
-        deviceName: deviceName ?? this.deviceName,
-        dropboxSignedIn: dropboxSignedIn ?? this.dropboxSignedIn,
-        webDavAddress: webDavAddress ?? this.webDavAddress,
-        webDavUser: webDavUser ?? this.webDavUser,
-        webDavSignedIn: webDavSignedIn ?? this.webDavSignedIn,
-        settingUp: settingUp ?? this.settingUp,
-        setupProblem: setupProblem != null ? setupProblem() : this.setupProblem,
-        status: status ?? this.status,
-        askAboutHold: askAboutHold != null ? askAboutHold() : this.askAboutHold,
-        declinedHold: declinedHold != null ? declinedHold() : this.declinedHold,
-        alerts: alerts ?? this.alerts,
-        devices: devices ?? this.devices,
-      );
+  }) {
+    final (problem, problemKind) = setupProblem == null
+        ? (this.setupProblem, setupProblemKind)
+        : setupProblem();
+    return SyncState(
+      locationKinds: locationKinds,
+      loaded: loaded ?? this.loaded,
+      setup: setup ?? this.setup,
+      dropboxSignedIn: dropboxSignedIn ?? this.dropboxSignedIn,
+      webDavSignedIn: webDavSignedIn ?? this.webDavSignedIn,
+      settingUp: settingUp ?? this.settingUp,
+      setupProblem: problem,
+      setupProblemKind: problemKind,
+      status: status ?? this.status,
+      askAboutHold: askAboutHold != null ? askAboutHold() : this.askAboutHold,
+      declinedHold: declinedHold != null ? declinedHold() : this.declinedHold,
+      alerts: alerts ?? this.alerts,
+      devices: devices ?? this.devices,
+    );
+  }
 
   @override
   List<Object?> get props => [
         locationKinds,
         loaded,
-        enabled,
-        locationKind,
-        folder,
-        deviceName,
+        setup,
         dropboxSignedIn,
-        webDavAddress,
-        webDavUser,
         webDavSignedIn,
         settingUp,
         setupProblem,
+        setupProblemKind,
         status,
         askAboutHold,
         declinedHold,
@@ -187,14 +174,15 @@ class SyncState extends Equatable {
 /// Library Sync for the settings screen and the app-wide alerts: its setup,
 /// the status line, the Removal Guard's question and the alerts the owner
 /// must see. Each problem is alerted once, until a sync no longer meets it;
-/// a refused sign-in is alerted each time sync stops for it.
+/// a refused sign-in and an unreadable keyring are alerted each time sync
+/// stops for them.
 class SyncCubit extends Cubit<SyncState> {
   final SyncRepository _repository;
   final List<StreamSubscription<Object>> _subscriptions = [];
   Set<SyncAlert> _problems = {};
 
-  /// The refused sign-in alerted last.
-  SyncError? _signInAlerted;
+  /// The refused sign-in or unreadable keyring alerted last.
+  SyncError? _stopAlerted;
 
   SyncCubit(this._repository)
       : super(SyncState(
@@ -213,42 +201,36 @@ class SyncCubit extends Cubit<SyncState> {
     if (isClosed) return;
     emit(state.copyWith(
         loaded: true,
-        enabled: setup.enabled,
-        locationKind: setup.locationKind,
-        folder: setup.folder,
-        deviceName: setup.deviceName,
+        setup: setup,
         dropboxSignedIn: signedIn,
-        webDavAddress: setup.webDavAddress,
-        webDavUser: setup.webDavUser,
         webDavSignedIn: webDavSignedIn,
         status: _repository.status));
     await _readDevices();
   }
 
-  /// Notes [folder] as the one to sync with when sync is turned on.
-  void chooseFolder(String folder) => emit(state.copyWith(
-      locationKind: SyncLocationKind.localFolder,
-      folder: folder,
-      setupProblem: () => null));
-
-  /// Makes Dropbox the Sync Location, as [changeFolder] does a folder:
-  /// while sync is on, moves sync there; while it is off, turns it on with
-  /// Dropbox, under [deviceName] if given. This Device must be signed in
-  /// ([finishDropboxSignIn]).
-  Future<void> chooseDropbox({String? deviceName}) async {
-    if (!state.enabled) {
-      emit(state.copyWith(locationKind: SyncLocationKind.dropbox));
-      return enableDropbox(deviceName: deviceName);
-    }
-    await _settingUp(_repository.moveToDropbox);
-  }
-
-  /// Turns sync on with Dropbox, under [deviceName] if given, as [enable]
-  /// does with a folder.
-  Future<void> enableDropbox({String? deviceName}) {
+  /// Makes [choice] the Sync Location, once it passes its test: while sync
+  /// is on, moves sync there; while it is off, turns it on with [choice],
+  /// under [deviceName] if given. Otherwise [SyncState.setupProblem] says
+  /// why it cannot be used, and sync stays as it was. Dropbox and WebDAV
+  /// need this Device signed in ([finishDropboxSignIn], [signInToWebDav]).
+  Future<void> choose(SyncLocationChoice choice, {String? deviceName}) async {
     final name = deviceName?.trim() ?? '';
-    return _settingUp(() => _repository.enableDropbox(
-        deviceName: name.isEmpty ? state.deviceName : name));
+    emit(state.copyWith(settingUp: true, setupProblem: () => (null, null)));
+    SyncLocationProblem? problem;
+    try {
+      problem = state.setup.enabled
+          ? await _repository.moveTo(choice)
+          : await _repository.enable(choice,
+              deviceName: name.isEmpty ? state.setup.deviceName : name);
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(
+            settingUp: false,
+            setupProblem: () =>
+                (problem, problem == null ? null : choice.kind)));
+      }
+    }
+    await load();
   }
 
   /// Starts signing in to Dropbox, returning the Dropbox page the owner
@@ -257,44 +239,23 @@ class SyncCubit extends Cubit<SyncState> {
 
   /// Finishes the sign-in with the [code] the owner pasted from that page;
   /// completes with why it failed, or null once signed in.
-  Future<SyncLocationProblem?> finishDropboxSignIn(String code) async {
-    final problem = await _repository.finishDropboxSignIn(code);
-    try {
-      await load();
-    } catch (error) {
-      log('Library Sync setup could not be read: $error', name: 'SyncCubit');
-    }
-    return problem;
-  }
-
-  /// Makes the WebDAV server the Sync Location, as [chooseDropbox] does
-  /// Dropbox: while sync is off, turns it on under [deviceName] if given.
-  /// This Device must be signed in ([signInToWebDav]).
-  Future<void> chooseWebDav({String? deviceName}) async {
-    if (!state.enabled) {
-      emit(state.copyWith(locationKind: SyncLocationKind.webDav));
-      return enableWebDav(deviceName: deviceName);
-    }
-    await _settingUp(_repository.moveToWebDav);
-  }
-
-  /// Turns sync on with the WebDAV server, under [deviceName] if given, as
-  /// [enable] does with a folder.
-  Future<void> enableWebDav({String? deviceName}) {
-    final name = deviceName?.trim() ?? '';
-    return _settingUp(() => _repository.enableWebDav(
-        deviceName: name.isEmpty ? state.deviceName : name));
-  }
+  Future<SyncLocationProblem?> finishDropboxSignIn(String code) =>
+      _reloadingAfter(() => _repository.finishDropboxSignIn(code));
 
   /// Signs in to the WebDAV folder at [address] as [user] with [password],
   /// once it passes its test; completes with why it cannot be used, or null
   /// once signed in.
   Future<SyncLocationProblem?> signInToWebDav(
-      {required String address,
-      required String user,
-      required String password}) async {
-    final problem = await _repository.signInToWebDav(
-        address: address, user: user, password: password);
+          {required String address,
+          required String user,
+          required String password}) =>
+      _reloadingAfter(() => _repository.signInToWebDav(
+          address: address, user: user, password: password));
+
+  /// Runs [signIn], then reads the setup again.
+  Future<SyncLocationProblem?> _reloadingAfter(
+      Future<SyncLocationProblem?> Function() signIn) async {
+    final problem = await signIn();
     try {
       await load();
     } catch (error) {
@@ -318,36 +279,6 @@ class SyncCubit extends Cubit<SyncState> {
     }
   }
 
-  /// Runs [change] to the setup, showing it under way, then what problem
-  /// it met.
-  Future<void> _settingUp(
-      Future<SyncLocationProblem?> Function() change) async {
-    emit(state.copyWith(settingUp: true, setupProblem: () => null));
-    SyncLocationProblem? problem;
-    try {
-      problem = await change();
-    } finally {
-      if (!isClosed) {
-        emit(state.copyWith(settingUp: false, setupProblem: () => problem));
-      }
-    }
-    await load();
-  }
-
-  /// Makes [folder] the Sync Location, once it passes its test: while sync
-  /// is on, moves sync there; while it is off, turns it on with [folder],
-  /// under [deviceName] if given, as [enable] does. Otherwise
-  /// [SyncState.setupProblem] says why it cannot be used, and sync stays as
-  /// it was; while it is off, [folder] stays noted, as [chooseFolder] does,
-  /// for when sync is turned on.
-  Future<void> changeFolder(String folder, {String? deviceName}) async {
-    if (!state.enabled) {
-      chooseFolder(folder);
-      return enable(folder, deviceName: deviceName);
-    }
-    await _settingUp(() => _repository.moveTo(folder));
-  }
-
   /// Forgets the Device [deviceId], once the owner confirmed it. Completes
   /// with whether it was forgotten: it is not when the Sync Location cannot
   /// be changed now.
@@ -361,15 +292,6 @@ class SyncCubit extends Cubit<SyncState> {
     } finally {
       await _readDevices();
     }
-  }
-
-  /// Turns sync on with [folder], under [deviceName] if given, once the
-  /// folder passes its test; otherwise [SyncState.setupProblem] says why it
-  /// cannot be used.
-  Future<void> enable(String folder, {String? deviceName}) {
-    final name = deviceName?.trim() ?? '';
-    return _settingUp(() => _repository.enable(
-        folder: folder, deviceName: name.isEmpty ? state.deviceName : name));
   }
 
   Future<void> disable() async {
@@ -405,17 +327,23 @@ class SyncCubit extends Cubit<SyncState> {
 
   void _onStatus(SyncStatus status) {
     final error = status.lastError;
-    final signInRefused =
-        error is SyncSignInNeeded && !identical(error, _signInAlerted);
-    if (signInRefused) _signInAlerted = error;
-    final kind = error is SyncSignInNeeded ? error.kind : null;
-    final alert = SignInNeededAlert(kind);
+    // Each time sync stops for one of these, it is alerted.
+    final alert = identical(error, _stopAlerted)
+        ? null
+        : switch (error) {
+            SyncSignInNeeded(:final kind) => SignInNeededAlert(kind),
+            SyncKeyringUnavailable() => const KeyringUnavailableAlert(),
+            _ => null,
+          };
+    if (alert != null) _stopAlerted = error;
     emit(state.copyWith(
         status: status,
         // A refused Dropbox sign-in is forgotten; a WebDAV password is kept.
         dropboxSignedIn:
-            signInRefused && kind == SyncLocationKind.dropbox ? false : null,
-        alerts: signInRefused && !state.alerts.contains(alert)
+            alert == const SignInNeededAlert(SyncLocationKind.dropbox)
+                ? false
+                : null,
+        alerts: alert != null && !state.alerts.contains(alert)
             ? [...state.alerts, alert]
             : null));
   }

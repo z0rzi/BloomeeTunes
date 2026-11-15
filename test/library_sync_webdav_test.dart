@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/repository/sync/sync_repository.dart';
+import 'package:Bloomee/services/sync/credential_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/isar_test_support.dart';
@@ -44,7 +45,7 @@ void main() {
   String folder() => server.address('/dav/bloomee').toString();
 
   /// The app on [device], keeping its credentials in [keyring].
-  SyncRepository appOn(SyncDevice device, MemoryKeyring keyring) {
+  SyncRepository appOn(SyncDevice device, CredentialStore keyring) {
     final repository = SyncRepository(
       database: Future.value(device.isar),
       backups: device.backups,
@@ -79,7 +80,7 @@ void main() {
     final cubit = screenOn(appOn(device, keyring));
     await cubit.load();
     expect(await signIn(cubit), isNull);
-    await cubit.enableWebDav();
+    await cubit.choose(const SyncLocationChoice.webDav());
     expect(cubit.state.setupProblem, isNull);
     await cubit.syncNow();
     await pumpEventQueue();
@@ -108,9 +109,9 @@ void main() {
 
     expect(await phone.songsOf('Road trip'), ['yt::1', 'yt::2']);
     expect(onLaptop.state.webDavSignedIn, isTrue);
-    expect(onPhone.state.locationKind, SyncLocationKind.webDav);
-    expect(onPhone.state.webDavAddress, folder());
-    expect(onPhone.state.webDavUser, server.user);
+    expect(onPhone.state.setup.locationKind, SyncLocationKind.webDav);
+    expect(onPhone.state.setup.webDavAddress, folder());
+    expect(onPhone.state.setup.webDavUser, server.user);
     expect(server.paths.where((p) => p.startsWith('/dav/bloomee/sync/')),
         hasLength(2));
   });
@@ -136,6 +137,23 @@ void main() {
   });
 
   test(
+      'a keyring that cannot be read at startup raises an alert, as well as the status line',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final onLaptop = await syncingThroughWebDav(laptop, MemoryKeyring());
+    await onLaptop.close();
+    await repositories.removeLast().close();
+
+    final restarted = appOn(laptop, LockedKeyring());
+    final screen = screenOn(restarted);
+    await restarted.start();
+    await pumpEventQueue();
+
+    expect(restarted.status.lastError, isA<SyncKeyringUnavailable>());
+    expect(screen.state.alerts, [const KeyringUnavailableAlert()]);
+  });
+
+  test(
       'a plain http address on another machine is refused before the password is sent anywhere',
       () async {
     final laptop = await world.device('laptop', enabled: false);
@@ -150,7 +168,7 @@ void main() {
 
     expect(keyring.values, isEmpty);
     expect(cubit.state.webDavSignedIn, isFalse);
-    expect(cubit.state.enabled, isFalse);
+    expect(cubit.state.setup.enabled, isFalse);
   });
 
   test('a wrong password is refused at setup, and sync stays off', () async {
@@ -164,7 +182,22 @@ void main() {
 
     expect(keyring.values, isEmpty);
     expect(cubit.state.webDavSignedIn, isFalse);
-    expect(cubit.state.enabled, isFalse);
+    expect(cubit.state.setup.enabled, isFalse);
+  });
+
+  test(
+      'a server whose secure connection is refused at setup says so, apart from one that cannot be reached',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final cubit = screenOn(appOn(laptop, MemoryKeyring()));
+    await cubit.load();
+
+    // Speaking TLS to the plain stand-in fails the handshake, as an
+    // untrusted or expired certificate does.
+    final https = server.base.replace(scheme: 'https', path: '/dav/bloomee');
+    expect(await signIn(cubit, address: https.toString()),
+        SyncLocationProblem.refused);
+    expect(cubit.state.webDavSignedIn, isFalse);
   });
 
   test('a server that cannot be reached at setup says so', () async {
@@ -232,7 +265,7 @@ void main() {
     await syncingThroughWebDav(phone, MemoryKeyring());
 
     expect(await phone.songsOf('Road trip'), ['yt::1']);
-    expect(cubit.state.enabled, isTrue);
+    expect(cubit.state.setup.enabled, isTrue);
   });
 
   test('a server that cannot be reached for now is retried quietly', () async {
@@ -248,7 +281,7 @@ void main() {
 
     expect(cubit.state.status.lastError, isA<SyncLocationUnreachable>());
     expect(cubit.state.alerts, isEmpty);
-    expect(cubit.state.enabled, isTrue);
+    expect(cubit.state.setup.enabled, isTrue);
 
     server.answerEverythingWith = null;
     await cubit.syncNow();
@@ -266,13 +299,14 @@ void main() {
     await cubit.load();
 
     expect(await signIn(cubit), isNull);
-    await cubit.chooseWebDav(deviceName: 'Kitchen laptop');
+    await cubit.choose(const SyncLocationChoice.webDav(),
+        deviceName: 'Kitchen laptop');
     await cubit.syncNow();
 
     expect(cubit.state.setupProblem, isNull);
-    expect(cubit.state.enabled, isTrue);
-    expect(cubit.state.locationKind, SyncLocationKind.webDav);
-    expect(cubit.state.deviceName, 'Kitchen laptop');
+    expect(cubit.state.setup.enabled, isTrue);
+    expect(cubit.state.setup.locationKind, SyncLocationKind.webDav);
+    expect(cubit.state.setup.deviceName, 'Kitchen laptop');
     final state =
         server.paths.singleWhere((p) => p.startsWith('/dav/bloomee/sync/'));
     expect(utf8.decode(server.file(state)!), contains('yt::1'));
@@ -287,10 +321,10 @@ void main() {
 
     expect(await signIn(cubit), isNull);
     server.answerEverythingWith = 503;
-    await cubit.chooseWebDav();
+    await cubit.choose(const SyncLocationChoice.webDav());
 
     expect(cubit.state.setupProblem, SyncLocationProblem.notFound);
-    expect(cubit.state.enabled, isFalse);
+    expect(cubit.state.setup.enabled, isFalse);
   });
 
   test(
@@ -312,15 +346,15 @@ void main() {
     final cubit = screenOn(repository);
     await laptop.add('Road trip', [song('yt::1')]);
     await cubit.load();
-    await cubit.enable(world.locationPath);
+    await cubit.choose(SyncLocationChoice.folder(world.locationPath));
     await cubit.syncNow();
     final inFolder = await filesIn(world.locationPath);
 
     expect(await signIn(cubit), isNull);
-    await cubit.chooseWebDav();
+    await cubit.choose(const SyncLocationChoice.webDav());
     await cubit.syncNow();
 
-    expect(cubit.state.locationKind, SyncLocationKind.webDav);
+    expect(cubit.state.setup.locationKind, SyncLocationKind.webDav);
     expect(await filesIn(world.locationPath), inFolder);
     expect(server.paths.where((p) => p.startsWith('/dav/bloomee/sync/')),
         hasLength(1));

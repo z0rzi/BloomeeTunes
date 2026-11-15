@@ -24,14 +24,19 @@ class BackupRepository {
   final SerialExecutor _operations = SerialExecutor();
   final Random _random = Random.secure();
 
+  /// When protection snapshots are taken, as their names record it.
+  final DateTime Function() _clock;
+
   BackupRepository(
       {required this.dao,
       required this.database,
       required this.supportPath,
-      this.documentsPath});
+      this.documentsPath,
+      DateTime Function() clock = DateTime.now})
+      : _clock = clock;
 
   String _id() =>
-      '${DateTime.now().toUtc().microsecondsSinceEpoch}_${List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
+      '${_clock().toUtc().microsecondsSinceEpoch}_${List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
   String get snapshotDirectory => p.join(supportPath, 'backups');
 
   Future<void> runMaintenance(Future<void> Function() maintenance) =>
@@ -278,10 +283,16 @@ class BackupRepository {
     }
   }
 
-  Future<String> createSnapshot({String reason = 'automatic'}) =>
+  /// Takes a protection snapshot kept under [reason], then deletes that
+  /// reason's older ones beyond the latest seven. With [keepDaily], the
+  /// first of today and the first of yesterday (UTC) are kept as well, so
+  /// that, however many follow it, a snapshot is there for at least a day
+  /// that predates anything done since: storage stays bounded at nine.
+  Future<String> createSnapshot(
+          {String reason = 'automatic', bool keepDaily = false}) =>
       _operations.run(() async {
         final path = await _snapshot(reason);
-        await _rotate(reason, keep: 7);
+        await _rotate(reason, keep: 7, keepDaily: keepDaily);
         return path;
       });
 
@@ -358,13 +369,11 @@ class BackupRepository {
         final copies = <RecoveryCopy>[];
         for (final f in files) {
           final name = p.basename(f.path);
-          final match = RegExp(r'_(\d+)_([a-f0-9]+)\.isar$').firstMatch(name);
-          final timestamp = int.tryParse(match?.group(1) ?? '');
-          if (timestamp == null) continue;
+          final createdAt = _takenAt(name);
+          if (createdAt == null) continue;
           copies.add(RecoveryCopy(
               path: f.path,
-              createdAt:
-                  DateTime.fromMicrosecondsSinceEpoch(timestamp, isUtc: true),
+              createdAt: createdAt,
               reason: name.startsWith('before_import_')
                   ? RecoveryReason.beforeImport
                   : name.startsWith('before_reset_')
@@ -375,7 +384,19 @@ class BackupRepository {
         return copies;
       });
 
-  Future<void> _rotate(String reason, {required int keep}) async {
+  /// When the snapshot named [name] was taken, as its name records it.
+  static DateTime? _takenAt(String name) {
+    final match = RegExp(r'_(\d+)_([a-f0-9]+)\.isar$').firstMatch(name);
+    final timestamp = int.tryParse(match?.group(1) ?? '');
+    return timestamp == null
+        ? null
+        : DateTime.fromMicrosecondsSinceEpoch(timestamp, isUtc: true);
+  }
+
+  /// Deletes the snapshots kept under [reason] beyond the latest [keep]; with
+  /// [keepDaily], also keeps the first one of today and of yesterday (UTC).
+  Future<void> _rotate(String reason,
+      {required int keep, bool keepDaily = false}) async {
     try {
       final dir = Directory(snapshotDirectory);
       final files = await dir
@@ -387,8 +408,23 @@ class BackupRepository {
           .cast<File>()
           .toList();
       files.sort((a, b) => b.path.compareTo(a.path));
-      for (final file in files.skip(keep)) {
-        await file.delete();
+      final kept = {...files.take(keep).map((f) => f.path)};
+      if (keepDaily) {
+        final today = _clock().toUtc();
+        final days = {
+          for (final day in [today, today.subtract(const Duration(days: 1))])
+            day.toIso8601String().substring(0, 10)
+        };
+        // Oldest first, so that each day's first is met first.
+        for (final file in files.reversed) {
+          final day = _takenAt(p.basename(file.path))
+              ?.toIso8601String()
+              .substring(0, 10);
+          if (days.remove(day)) kept.add(file.path);
+        }
+      }
+      for (final file in files) {
+        if (!kept.contains(file.path)) await file.delete();
       }
     } on FileSystemException {
       // Retention failure must never turn a committed import into a reported failure.
