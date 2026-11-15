@@ -3818,12 +3818,6 @@ abstract class AppLocalizations {
   /// **'The folder picker could not open: {error}'**
   String snackbarSyncFolderPickerFailed(String error);
 
-  /// No description provided for @snackbarSyncFolderLocked.
-  ///
-  /// In en, this message translates to:
-  /// **'Turn sync off to choose another folder.'**
-  String get snackbarSyncFolderLocked;
-
   /// No description provided for @syncFolderNotFound.
   ///
   /// In en, this message translates to:
@@ -3853,6 +3847,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'How your other devices name this one. Renaming changes nothing about what syncs.'**
   String get syncDeviceNameSubtitle;
+
+  /// No description provided for @syncFolderMoveNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Choosing another folder moves sync there. Nothing in the old folder is changed or deleted.'**
+  String get syncFolderMoveNote;
+
+  /// No description provided for @syncDevicesHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Devices'**
+  String get syncDevicesHeader;
+
+  /// No description provided for @syncDevicesNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Every device that syncs through this sync location. A device you no longer use stays here until you forget it.'**
+  String get syncDevicesNote;
+
+  /// No description provided for @syncThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get syncThisDevice;
+
+  /// No description provided for @syncDeviceLastSyncUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Last sync unknown'**
+  String get syncDeviceLastSyncUnknown;
+
+  /// No description provided for @syncForgetDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get syncForgetDevice;
+
+  /// No description provided for @dialogSyncForgetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget {device}?'**
+  String dialogSyncForgetTitle(String device);
+
+  /// No description provided for @dialogSyncForgetBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What {device} published is deleted from the sync location. Nothing is removed from your libraries, on this device or any other. If {device} syncs again, it comes back in this list.'**
+  String dialogSyncForgetBody(String device);
+
+  /// No description provided for @buttonSyncForget.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget device'**
+  String get buttonSyncForget;
+
+  /// No description provided for @snackbarSyncForgetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} could not be forgotten: the sync location cannot be reached.'**
+  String snackbarSyncForgetFailed(String device);
 
   /// No description provided for @syncStatusHeader.
   ///

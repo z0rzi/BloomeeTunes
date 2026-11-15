@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:Bloomee/core/constants/setting_keys.dart';
+import 'package:Bloomee/core/models/sync/known_device.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/repository/backup/backup_repository.dart';
@@ -100,12 +101,18 @@ class SyncRepository {
         final setup = await this.setup();
         final identity = await _dao.identity();
         _publish(SyncStatus(lastSyncedAt: identity?.lastSyncAt));
+        // Sync was turned off by a build that kept that in the settings only.
+        if (!setup.enabled && (identity?.enabled ?? false)) {
+          await _dao.disable();
+        }
         if (_closed || !setup.enabled || setup.folder == null) return null;
         final engine = _engineFor(setup.folder!);
         // Sync is on but this Device's bookkeeping is gone, as after running
         // the official build: enabling again makes it a new Device, whose
         // First Sync only adds.
-        if (identity == null) {
+        // Sync was also turned back on if it was left off in the database
+        // only, as when the app stopped while turning it off.
+        if (identity == null || !identity.enabled) {
           await engine.enable(deviceName: setup.deviceName);
         }
         return _begin(engine);
@@ -145,11 +152,35 @@ class SyncRepository {
     return null;
   }
 
-  /// Stops syncing. The library, this Device's identity and its Device State
-  /// stay as they are.
+  /// Moves sync to [folder], once it passes [testFolder]: this Device's
+  /// Device State is published there with the sync that starts at once, and
+  /// nothing in the old Sync Location is touched. Otherwise says why
+  /// [folder] cannot be used, and sync goes on where it was.
+  Future<SyncLocationProblem?> moveTo(String folder) async =>
+      enable(folder: folder, deviceName: (await setup()).deviceName);
+
+  /// Stops syncing. The library and the Device State published stay as they
+  /// are, and this Device keeps its identity and bookkeeping, so that turning
+  /// sync back on resumes where it left off.
   Future<void> disable() => _setupChanges.run(() async {
+        final engine = _engine;
         await _end();
+        // Through the engine, so that answering the Removal Guard, if it is
+        // under way, finishes first.
+        await (engine?.disable() ?? _dao.disable());
         await _settings.putSettingBool(SettingKeys.librarySyncEnabled, false);
+      });
+
+  /// The Devices known in the Sync Location, this one included; none while
+  /// sync is off. See [SyncEngine.knownDevices].
+  Future<List<KnownDevice>> knownDevices() async =>
+      await _engine?.knownDevices() ?? const [];
+
+  /// Forgets the Device [deviceId], which the owner confirmed: see
+  /// [SyncEngine.forgetDevice]. Does nothing while sync is off. Throws
+  /// [SyncLocationException] when the Sync Location cannot be changed.
+  Future<void> forgetDevice(String deviceId) => _setupChanges.run(() async {
+        await _engine?.forgetDevice(deviceId);
       });
 
   /// Renames this Device; it stays the same Device, publishing under its
@@ -159,10 +190,7 @@ class SyncRepository {
         if (trimmed.isEmpty) return;
         await _settings.putSettingStr(
             SettingKeys.librarySyncDeviceName, trimmed);
-        if (await _dao.identity() != null) {
-          await _dao.enable(
-              deviceName: trimmed, newDeviceId: SyncDAO.newSyncId());
-        }
+        await _dao.rename(trimmed);
         _scheduler?.libraryChanged();
       });
 

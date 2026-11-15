@@ -63,20 +63,47 @@ class SyncDAO {
             deviceId: row.deviceId,
             deviceName: row.deviceName,
             lastSyncAt: row.lastSyncAt?.toUtc(),
-            paused: row.syncPaused);
+            paused: row.syncPaused,
+            enabled: !row.syncOff);
   }
 
-  /// Stores this Device's identity; an existing permanent ID is kept.
+  /// Stores this Device's identity, with sync on; an existing permanent ID
+  /// is kept.
   Future<SyncIdentity> enable(
       {required String deviceName, required String newDeviceId}) async {
     final isar = await _db;
     await isar.writeTxn(() async {
       final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId) ??
           SyncDeviceDB(deviceId: newDeviceId, deviceName: deviceName);
-      row.deviceName = deviceName;
+      row
+        ..deviceName = deviceName
+        ..syncOff = false;
       await isar.syncDeviceDBs.put(row);
     });
     return (await identity())!;
+  }
+
+  /// Renames this Device, if sync was ever enabled; on or off, it stays.
+  Future<void> rename(String deviceName) async {
+    final isar = await _db;
+    await isar.writeTxn(() async {
+      final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
+      if (row == null) return;
+      row.deviceName = deviceName;
+      await isar.syncDeviceDBs.put(row);
+    });
+  }
+
+  /// Turns sync off, keeping this Device's identity and bookkeeping, which
+  /// go on recording changes until sync is back on.
+  Future<void> disable() async {
+    final isar = await _db;
+    await isar.writeTxn(() async {
+      final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
+      if (row == null) return;
+      row.syncOff = true;
+      await isar.syncDeviceDBs.put(row);
+    });
   }
 
   Future<void> recordSync(DateTime at) async {
@@ -249,10 +276,11 @@ class SyncDAO {
   }
 
   /// Where a playlist made now goes in the library: after the others while
-  /// sync is enabled, so it stays where sync will put it; at the start, as
+  /// sync is on, so it stays where sync will put it; at the start, as
   /// before sync existed, otherwise.
   static int sortOrderForNewPlaylist(Isar isar) {
-    if (_ownId(isar) == null) return 0;
+    final device = isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId);
+    if (device == null || device.syncOff) return 0;
     final last = isar.playlistDBs.where().sortBySortOrderDesc().findFirstSync();
     return last == null ? 0 : last.sortOrder + 1;
   }

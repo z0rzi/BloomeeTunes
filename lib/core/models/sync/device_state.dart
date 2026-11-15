@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 /// When a change to the Synced Library was made, and by which Device: the
@@ -373,6 +375,9 @@ class SyncedLibrary {
   });
 }
 
+/// What can be told of a Device State without reading it whole.
+typedef DeviceStateSummary = ({String? deviceName, DateTime? writtenAt});
+
 /// The file a Device publishes in the Sync Location; only it writes it.
 class DeviceState {
   static const format = 'bloomee-device-state';
@@ -456,6 +461,23 @@ class DeviceState {
     }
     if (library.order case final o?) consider(o.arranged.at);
     return latest;
+  }
+
+  /// The name and writing time the Device State in [bytes] gives, as far
+  /// as they can be read: whatever its format version, damaged or not.
+  static DeviceStateSummary summaryOf(List<int> bytes) {
+    try {
+      final json = jsonDecode(utf8.decode(bytes));
+      final name = json is Map<String, dynamic> ? json['deviceName'] : null;
+      final writtenAt = json is Map<String, dynamic> ? json['writtenAt'] : null;
+      return (
+        deviceName: name is String && name.isNotEmpty ? name : null,
+        writtenAt:
+            writtenAt is String ? DateTime.tryParse(writtenAt)?.toUtc() : null,
+      );
+    } on FormatException {
+      return (deviceName: null, writtenAt: null);
+    }
   }
 
   factory DeviceState.fromJson(Map<String, dynamic> json) {
@@ -550,10 +572,15 @@ class SyncIdentity {
   /// paused until they confirm it.
   final bool paused;
 
+  /// Whether sync is on: off, this Device keeps its bookkeeping but does
+  /// not sync.
+  final bool enabled;
+
   const SyncIdentity({
     required this.deviceId,
     required this.deviceName,
     this.lastSyncAt,
     this.paused = false,
+    this.enabled = true,
   });
 }

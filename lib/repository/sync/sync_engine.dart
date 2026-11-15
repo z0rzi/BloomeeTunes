@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:Bloomee/core/models/sync/device_state.dart';
+import 'package:Bloomee/core/models/sync/known_device.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
 import 'package:Bloomee/core/models/sync/synced_library_change.dart';
 import 'package:Bloomee/repository/backup/backup_repository.dart';
@@ -38,6 +39,11 @@ class SyncEngine {
   /// sync is older performs a First Sync, as one that never synced does.
   static const removalMarkerLifetime = Duration(days: 183);
 
+  /// How old this Device's published Device State may grow before a sync
+  /// rewrites it unchanged, so that the other Devices see when it last
+  /// synced without it being rewritten at every sync.
+  static const stateRefreshInterval = Duration(hours: 1);
+
   final Future<Isar> _database;
   final SyncLocation _location;
   final BackupRepository _backups;
@@ -45,6 +51,9 @@ class SyncEngine {
   final SyncDAO _dao;
   final void Function()? _beforeCommit;
   final SerialExecutor _runs = SerialExecutor();
+
+  /// The other Devices whose Device State the latest sync read, by ID.
+  Map<String, DeviceStateSummary>? _othersSeen;
 
   /// [beforeCommit] runs as a merge's write transaction is about to commit;
   /// tests throw from it to make applying fail.
@@ -65,6 +74,54 @@ class SyncEngine {
   /// permanent ID is made the first time and kept afterwards.
   Future<SyncIdentity> enable({required String deviceName}) =>
       _dao.enable(deviceName: deviceName, newDeviceId: SyncDAO.newSyncId());
+
+  /// Every Device known in the Sync Location: this one, and each one whose
+  /// Device State is there, readable or not, as this Device's latest sync
+  /// found them (read now if it has not synced since starting). Other
+  /// Devices are listed with the time their Device State was last written.
+  Future<List<KnownDevice>> knownDevices() => _runs.run(() async {
+        final me = await _identity();
+        final others = _othersSeen ??
+            {
+              for (final (deviceId, bytes) in await _readStates())
+                if (deviceId != me.deviceId)
+                  deviceId: DeviceState.summaryOf(bytes)
+            };
+        return [
+          KnownDevice(
+              deviceId: me.deviceId,
+              deviceName: me.deviceName,
+              lastSyncedAt: me.lastSyncAt,
+              isThisDevice: true),
+          for (final MapEntry(key: deviceId, value: summary) in others.entries)
+            KnownDevice(
+                deviceId: deviceId,
+                deviceName: summary.deviceName ?? deviceId,
+                lastSyncedAt: summary.writtenAt,
+                isThisDevice: false),
+        ];
+      });
+
+  /// Forgets the Device [deviceId], at the owner's explicit request: deletes
+  /// its Device State from the Sync Location. Nothing leaves any library,
+  /// since every Device keeps what it took in; should that Device sync
+  /// again, it publishes again and is known once more. This Device cannot
+  /// forget itself.
+  Future<void> forgetDevice(String deviceId) => _runs.run(() async {
+        if (deviceId == (await _identity()).deviceId) {
+          throw ArgumentError.value(
+              deviceId, 'deviceId', 'This Device cannot forget itself');
+        }
+        await _location.delete(_statePath(deviceId));
+        _othersSeen?.remove(deviceId);
+      });
+
+  /// Turns Library Sync off for this Device, once a sync running now has
+  /// finished. The library and the Device State published stay as they are,
+  /// and this Device's identity and bookkeeping are kept: what changes
+  /// while sync is off syncs when [enable] turns it back on, normally
+  /// unless that is more than [removalMarkerLifetime] after its last sync.
+  Future<void> disable() => _runs.run(_dao.disable);
 
   /// Takes in what the other Devices published, then publishes this Device's
   /// Synced Library. One sync runs at a time. While sync is paused, only
@@ -89,24 +146,24 @@ class SyncEngine {
   /// Syncs, applying a merge the Removal Guard would hold only when it
   /// removes nothing beyond [confirmed] (removal keys).
   Future<SyncOutcome> _sync(Set<String> confirmed) async {
-    final me = await _dao.identity();
-    if (me == null) throw StateError('Library Sync is not enabled.');
+    final me = await _identity();
+    if (!me.enabled) throw StateError('Library Sync is turned off.');
     final now = _clock().toUtc();
     await _location.checkReachable();
 
-    final ownName = '${me.deviceId}.json';
     final others = <(String, Uint8List)>[];
     Uint8List? own;
-    for (final name in await _location.list(stateDirectory)) {
-      if (!name.endsWith('.json')) continue;
-      final bytes = await _location.read('$stateDirectory/$name');
-      if (bytes == null) continue;
-      if (name == ownName) {
+    for (final (deviceId, bytes) in await _readStates()) {
+      if (deviceId == me.deviceId) {
         own = bytes;
       } else {
-        others.add((name.substring(0, name.length - '.json'.length), bytes));
+        others.add((deviceId, bytes));
       }
     }
+    _othersSeen = {
+      for (final (deviceId, bytes) in others)
+        deviceId: DeviceState.summaryOf(bytes)
+    };
 
     var protected = false;
     while (true) {
@@ -128,13 +185,29 @@ class SyncEngine {
         case _Finished(:final outcome, :final publish):
           if (publish != null) {
             await _location.write(
-                '$stateDirectory/$ownName', utf8.encode(publish));
+                _statePath(me.deviceId), utf8.encode(publish));
           }
           if (outcome is SyncCompleted) await _dao.recordSync(now);
           return outcome;
       }
     }
   }
+
+  /// This Device's identity; sync must have been enabled.
+  Future<SyncIdentity> _identity() async =>
+      await _dao.identity() ??
+      (throw StateError('Library Sync is not enabled.'));
+
+  static String _statePath(String deviceId) => '$stateDirectory/$deviceId.json';
+
+  /// Every Device State in the Sync Location, with the ID of the Device
+  /// its name gives.
+  Future<List<(String, Uint8List)>> _readStates() async => [
+        for (final name in await _location.list(stateDirectory))
+          if (name.endsWith('.json'))
+            if (await _location.read('$stateDirectory/$name') case final bytes?)
+              (name.substring(0, name.length - '.json'.length), bytes)
+      ];
 
   // Static, so the worker closure captures only what it is given.
   static Future<_Pass> _passInBackground(Future<Isar> database, _Inputs inputs,
@@ -209,7 +282,7 @@ class SyncEngine {
         writtenAt: inputs.now,
         library: library);
     final outcome = SyncCompleted(changed: changesLibrary, skipped: skipped);
-    if (inputs.own case final own? when _sameContent(own, state)) {
+    if (inputs.own case final own? when _isCurrent(own, state)) {
       return _Finished(outcome);
     }
     return _Finished(outcome, publish: jsonEncode(state.toJson()));
@@ -268,11 +341,15 @@ class SyncEngine {
     }
   }
 
-  static bool _sameContent(Uint8List published, DeviceState state) {
+  /// Whether [published] says what [state] does, and was written recently
+  /// enough to show when this Device last synced.
+  static bool _isCurrent(Uint8List published, DeviceState state) {
     try {
       final old = DeviceState.fromJson(
           jsonDecode(utf8.decode(published)) as Map<String, dynamic>);
-      return jsonEncode(old.contentJson()) == jsonEncode(state.contentJson());
+      return !old.writtenAt
+              .isBefore(state.writtenAt.subtract(stateRefreshInterval)) &&
+          jsonEncode(old.contentJson()) == jsonEncode(state.contentJson());
     } on Exception {
       return false;
     } on TypeError {

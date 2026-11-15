@@ -2002,10 +2002,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get snackbarSyncFolderLocked =>
-      'Turn sync off to choose another folder.';
-
-  @override
   String get syncFolderNotFound =>
       'This folder cannot be found. Check that it exists and that its drive is connected.';
 
@@ -2022,6 +2018,44 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get syncDeviceNameSubtitle =>
       'How your other devices name this one. Renaming changes nothing about what syncs.';
+
+  @override
+  String get syncFolderMoveNote =>
+      'Choosing another folder moves sync there. Nothing in the old folder is changed or deleted.';
+
+  @override
+  String get syncDevicesHeader => 'Devices';
+
+  @override
+  String get syncDevicesNote =>
+      'Every device that syncs through this sync location. A device you no longer use stays here until you forget it.';
+
+  @override
+  String get syncThisDevice => 'This device';
+
+  @override
+  String get syncDeviceLastSyncUnknown => 'Last sync unknown';
+
+  @override
+  String get syncForgetDevice => 'Forget';
+
+  @override
+  String dialogSyncForgetTitle(String device) {
+    return 'Forget $device?';
+  }
+
+  @override
+  String dialogSyncForgetBody(String device) {
+    return 'What $device published is deleted from the sync location. Nothing is removed from your libraries, on this device or any other. If $device syncs again, it comes back in this list.';
+  }
+
+  @override
+  String get buttonSyncForget => 'Forget device';
+
+  @override
+  String snackbarSyncForgetFailed(String device) {
+    return '$device could not be forgotten: the sync location cannot be reached.';
+  }
 
   @override
   String get syncStatusHeader => 'Status';

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:developer';
 
+import 'package:Bloomee/core/models/sync/known_device.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/repository/sync/sync_repository.dart';
@@ -70,6 +72,10 @@ class SyncState extends Equatable {
   /// Alerts to show, oldest first.
   final List<SyncAlert> alerts;
 
+  /// The Devices known in the Sync Location, this one included, as last
+  /// read; none while sync is off.
+  final List<KnownDevice> devices;
+
   const SyncState({
     this.locationKinds = const [],
     this.loaded = false,
@@ -82,6 +88,7 @@ class SyncState extends Equatable {
     this.askAboutHold,
     this.declinedHold,
     this.alerts = const [],
+    this.devices = const [],
   });
 
   SyncState copyWith({
@@ -95,6 +102,7 @@ class SyncState extends Equatable {
     RemovalGuardHold? Function()? askAboutHold,
     RemovalGuardHold? Function()? declinedHold,
     List<SyncAlert>? alerts,
+    List<KnownDevice>? devices,
   }) =>
       SyncState(
         locationKinds: locationKinds,
@@ -108,6 +116,7 @@ class SyncState extends Equatable {
         askAboutHold: askAboutHold != null ? askAboutHold() : this.askAboutHold,
         declinedHold: declinedHold != null ? declinedHold() : this.declinedHold,
         alerts: alerts ?? this.alerts,
+        devices: devices ?? this.devices,
       );
 
   @override
@@ -123,6 +132,7 @@ class SyncState extends Equatable {
         askAboutHold,
         declinedHold,
         alerts,
+        devices,
       ];
 }
 
@@ -153,11 +163,45 @@ class SyncCubit extends Cubit<SyncState> {
         folder: setup.folder,
         deviceName: setup.deviceName,
         status: _repository.status));
+    await _readDevices();
   }
 
   /// Notes [folder] as the one to sync with when sync is turned on.
   void chooseFolder(String folder) =>
       emit(state.copyWith(folder: folder, setupProblem: () => null));
+
+  /// Makes [folder] the Sync Location: while sync is on, moves sync there
+  /// once the folder passes its test (otherwise [SyncState.setupProblem]
+  /// says why it cannot be used and sync stays where it was); while it is
+  /// off, notes it as [chooseFolder] does.
+  Future<void> changeFolder(String folder) async {
+    if (!state.enabled) return chooseFolder(folder);
+    emit(state.copyWith(settingUp: true, setupProblem: () => null));
+    SyncLocationProblem? problem;
+    try {
+      problem = await _repository.moveTo(folder);
+    } finally {
+      if (!isClosed) {
+        emit(state.copyWith(settingUp: false, setupProblem: () => problem));
+      }
+    }
+    await load();
+  }
+
+  /// Forgets the Device [deviceId], once the owner confirmed it. Completes
+  /// with whether it was forgotten: it is not when the Sync Location cannot
+  /// be changed now.
+  Future<bool> forgetDevice(String deviceId) async {
+    try {
+      await _repository.forgetDevice(deviceId);
+      return true;
+    } catch (error) {
+      log('Could not forget a Device: $error', name: 'SyncCubit');
+      return false;
+    } finally {
+      await _readDevices();
+    }
+  }
 
   /// Turns sync on with [folder], under [deviceName] if given, once the
   /// folder passes its test; otherwise [SyncState.setupProblem] says why it
@@ -241,6 +285,18 @@ class SyncCubit extends Cubit<SyncState> {
         askAboutHold: () => ask,
         declinedHold: () => declined,
         alerts: [...state.alerts, ...fresh]));
+    unawaited(_readDevices());
+  }
+
+  /// Reads the known Devices again; when the Sync Location cannot be read,
+  /// those read last stay, the status line telling what is wrong.
+  Future<void> _readDevices() async {
+    try {
+      final devices = await _repository.knownDevices();
+      if (!isClosed) emit(state.copyWith(devices: devices));
+    } catch (error) {
+      log('Could not list the Devices: $error', name: 'SyncCubit');
+    }
   }
 
   @override

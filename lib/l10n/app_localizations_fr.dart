@@ -2153,10 +2153,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get snackbarSyncFolderLocked =>
-      'Désactivez la synchronisation pour choisir un autre dossier.';
-
-  @override
   String get syncFolderNotFound =>
       'Ce dossier est introuvable. Vérifiez qu\'il existe et que son disque est connecté.';
 
@@ -2173,6 +2169,44 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get syncDeviceNameSubtitle =>
       'Le nom sous lequel vos autres appareils voient celui-ci. Le changer ne modifie rien à ce qui est synchronisé.';
+
+  @override
+  String get syncFolderMoveNote =>
+      'Choisir un autre dossier y déplace la synchronisation. Rien n\'est modifié ni supprimé dans l\'ancien dossier.';
+
+  @override
+  String get syncDevicesHeader => 'Appareils';
+
+  @override
+  String get syncDevicesNote =>
+      'Chaque appareil qui se synchronise par cet emplacement de synchronisation. Un appareil que vous n\'utilisez plus reste ici jusqu\'à ce que vous l\'oubliiez.';
+
+  @override
+  String get syncThisDevice => 'Cet appareil';
+
+  @override
+  String get syncDeviceLastSyncUnknown => 'Dernière synchronisation inconnue';
+
+  @override
+  String get syncForgetDevice => 'Oublier';
+
+  @override
+  String dialogSyncForgetTitle(String device) {
+    return 'Oublier $device ?';
+  }
+
+  @override
+  String dialogSyncForgetBody(String device) {
+    return 'Ce que $device a publié est supprimé de l\'emplacement de synchronisation. Rien n\'est retiré de vos bibliothèques, ni sur cet appareil ni sur aucun autre. Si $device se synchronise de nouveau, il revient dans cette liste.';
+  }
+
+  @override
+  String get buttonSyncForget => 'Oublier l\'appareil';
+
+  @override
+  String snackbarSyncForgetFailed(String device) {
+    return '$device n\'a pas pu être oublié : l\'emplacement de synchronisation est inaccessible.';
+  }
 
   @override
   String get syncStatusHeader => 'État';

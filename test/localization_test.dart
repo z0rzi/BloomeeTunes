@@ -67,6 +67,9 @@ void main() {
           allOf(contains('Phone'), contains('2 Jan')));
       expect(l10n.syncLastError('10:02', 'Detail'),
           allOf(contains('10:02'), contains('Detail')));
+      expect(l10n.dialogSyncForgetTitle('Old phone'), contains('Old phone'));
+      expect(l10n.dialogSyncForgetBody('Old phone'), contains('Old phone'));
+      expect(l10n.snackbarSyncForgetFailed('Old phone'), contains('Old phone'));
       expect(equalizerPresetLabel(l10n, 'Bass Boost'), isNotEmpty);
       expect(equalizerPresetLabel(l10n, 'User preset'), 'User preset');
       for (final count in [0, 1, 2]) {

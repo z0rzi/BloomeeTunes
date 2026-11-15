@@ -75,9 +75,9 @@ class SyncDevice {
   final TrackDAO tracks;
   final PlaylistDAO playlists;
   final LibraryDAO library;
-  final RecordingSyncLocation location;
+  RecordingSyncLocation location;
   final BackupRepository backups;
-  final SyncEngine engine;
+  SyncEngine engine;
   final _DeviceClock _clock;
 
   /// This Device's permanent ID, which settles changes made at the same time.
@@ -114,6 +114,13 @@ class SyncDevice {
       backups: backups,
       clock: _clock.call,
       beforeCommit: beforeCommit);
+
+  /// Changes this Device's Sync Location to the folder [path], as the
+  /// settings do: the same database and bookkeeping, a new place to sync.
+  void moveTo(String path) {
+    location = RecordingSyncLocation(LocalFolderSyncLocation(path));
+    engine = restartedEngine();
+  }
 
   /// The protection snapshots kept on this Device.
   Future<int> protectionSnapshots() async =>
@@ -263,10 +270,17 @@ class SyncWorld {
 
   String get locationPath => p.join(root.path, 'location');
 
+  /// Another folder to serve as a Sync Location, named [name].
+  Future<String> otherLocation(String name) async =>
+      (await Directory(p.join(root.path, 'locations', name))
+              .create(recursive: true))
+          .path;
+
   /// A new Device, with sync enabled unless [enabled] is false. [database]
   /// seeds it with an existing database file instead of an empty library.
+  /// It syncs through [location], a folder, or [locationPath].
   Future<SyncDevice> device(String name,
-      {File? database, bool enabled = true}) async {
+      {File? database, bool enabled = true, String? location}) async {
     final directory = await Directory(p.join(root.path, 'devices', name))
         .create(recursive: true);
     await Directory(locationPath).create(recursive: true);
@@ -276,8 +290,8 @@ class SyncWorld {
     }
     final isar = await Isar.open(DBProvider.schemas,
         directory: directory.path, name: instance, inspector: false);
-    final location =
-        RecordingSyncLocation(LocalFolderSyncLocation(locationPath));
+    final syncLocation = RecordingSyncLocation(
+        LocalFolderSyncLocation(location ?? locationPath));
     final backups = BackupRepository(
         dao: BackupDAO(Future.value(isar)),
         database: Future.value(isar),
@@ -285,11 +299,11 @@ class SyncWorld {
     final deviceClock = _DeviceClock(clock);
     final engine = SyncEngine(
         database: Future.value(isar),
-        location: location,
+        location: syncLocation,
         backups: backups,
         clock: deviceClock.call);
     final device =
-        SyncDevice._(name, isar, location, backups, engine, deviceClock);
+        SyncDevice._(name, isar, syncLocation, backups, engine, deviceClock);
     await PlaylistDAO(Future.value(isar), TrackDAO(Future.value(isar)))
         .ensurePlaylist(DBProvider.likedPlaylist);
     if (enabled) await device.enable();
@@ -308,6 +322,14 @@ class SyncWorld {
     await root.delete(recursive: true);
   }
 }
+
+/// Every file under [folder], with its content, by path inside it.
+Future<Map<String, List<int>>> filesIn(String folder) async => {
+      await for (final entry
+          in Directory(folder).list(recursive: true, followLinks: false))
+        if (entry is File)
+          p.relative(entry.path, from: folder): await entry.readAsBytes()
+    };
 
 Track song(String id,
         {String? title,

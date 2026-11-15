@@ -208,7 +208,8 @@ class PlaylistEntryDB {
 }
 
 /// This Device's own Library Sync bookkeeping. The single row ([ownId])
-/// exists once sync has been enabled.
+/// exists once sync has been enabled, and stays while sync is turned off so
+/// that what changes meanwhile is recorded and syncs when it is back on.
 @collection
 class SyncDeviceDB {
   static const ownId = 1;
@@ -235,6 +236,10 @@ class SyncDeviceDB {
   /// Whether the owner declined a merge the Removal Guard held; sync stays
   /// paused until they confirm it.
   bool syncPaused = false;
+
+  /// Whether the owner turned sync off on this Device. Its bookkeeping goes
+  /// on being kept, but it does not sync until sync is turned back on.
+  bool syncOff = false;
 
   SyncDeviceDB({
     required this.deviceId,

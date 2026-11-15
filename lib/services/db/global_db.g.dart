@@ -7162,8 +7162,13 @@ const SyncDeviceDBSchema = CollectionSchema(
       name: r'libraryArrangement',
       type: IsarType.stringList,
     ),
-    r'syncPaused': PropertySchema(
+    r'syncOff': PropertySchema(
       id: 6,
+      name: r'syncOff',
+      type: IsarType.bool,
+    ),
+    r'syncPaused': PropertySchema(
+      id: 7,
       name: r'syncPaused',
       type: IsarType.bool,
     )
@@ -7223,7 +7228,8 @@ void _syncDeviceDBSerialize(
   writer.writeDateTime(offsets[3], object.libraryArrangedAt);
   writer.writeString(offsets[4], object.libraryArrangedBy);
   writer.writeStringList(offsets[5], object.libraryArrangement);
-  writer.writeBool(offsets[6], object.syncPaused);
+  writer.writeBool(offsets[6], object.syncOff);
+  writer.writeBool(offsets[7], object.syncPaused);
 }
 
 SyncDeviceDB _syncDeviceDBDeserialize(
@@ -7241,7 +7247,8 @@ SyncDeviceDB _syncDeviceDBDeserialize(
   object.libraryArrangedAt = reader.readDateTimeOrNull(offsets[3]);
   object.libraryArrangedBy = reader.readStringOrNull(offsets[4]);
   object.libraryArrangement = reader.readStringList(offsets[5]);
-  object.syncPaused = reader.readBool(offsets[6]);
+  object.syncOff = reader.readBool(offsets[6]);
+  object.syncPaused = reader.readBool(offsets[7]);
   return object;
 }
 
@@ -7265,6 +7272,8 @@ P _syncDeviceDBDeserializeProp<P>(
     case 5:
       return (reader.readStringList(offset)) as P;
     case 6:
+      return (reader.readBool(offset)) as P;
+    case 7:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -8238,6 +8247,16 @@ extension SyncDeviceDBQueryFilter
   }
 
   QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      syncOffEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'syncOff',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
       syncPausedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -8319,6 +8338,18 @@ extension SyncDeviceDBQuerySortBy
       sortByLibraryArrangedByDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'libraryArrangedBy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> sortBySyncOff() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncOff', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> sortBySyncOffDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncOff', Sort.desc);
     });
   }
 
@@ -8416,6 +8447,18 @@ extension SyncDeviceDBQuerySortThenBy
     });
   }
 
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> thenBySyncOff() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncOff', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> thenBySyncOffDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncOff', Sort.desc);
+    });
+  }
+
   QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> thenBySyncPaused() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'syncPaused', Sort.asc);
@@ -8474,6 +8517,12 @@ extension SyncDeviceDBQueryWhereDistinct
     });
   }
 
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct> distinctBySyncOff() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'syncOff');
+    });
+  }
+
   QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct> distinctBySyncPaused() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'syncPaused');
@@ -8525,6 +8574,12 @@ extension SyncDeviceDBQueryProperty
       libraryArrangementProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'libraryArrangement');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, bool, QQueryOperations> syncOffProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'syncOff');
     });
   }
 

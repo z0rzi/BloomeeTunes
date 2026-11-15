@@ -1,9 +1,11 @@
 import 'package:Bloomee/blocs/sync/sync_cubit.dart';
+import 'package:Bloomee/core/models/sync/known_device.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/core/theme/app_theme.dart';
 import 'package:Bloomee/l10n/app_localizations.dart';
 import 'package:Bloomee/screens/screen/home_views/setting_views/setting_shared_widgets.dart';
+import 'package:Bloomee/screens/widgets/bloomee_ui_kit/bloomee_dialog.dart';
 import 'package:Bloomee/screens/widgets/snackbar.dart';
 import 'package:Bloomee/screens/widgets/sync_alert_listener.dart';
 import 'package:file_picker/file_picker.dart';
@@ -90,15 +92,29 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     if (mounted) setState(() => _switchKey++);
   }
 
-  Future<void> _chooseFolder(SyncState state) async {
-    final l10n = AppLocalizations.of(context)!;
-    if (state.enabled) {
-      SnackbarService.showMessage(l10n.snackbarSyncFolderLocked);
-      return;
-    }
+  /// While sync is on, choosing another folder moves sync there.
+  Future<void> _chooseFolder() async {
     final folder = await _pickFolder();
-    if (folder != null && mounted) {
-      context.read<SyncCubit>().chooseFolder(folder);
+    if (folder != null && mounted) await _cubit.changeFolder(folder);
+  }
+
+  Future<void> _forget(KnownDevice device) async {
+    final l10n = AppLocalizations.of(context)!;
+    var confirmed = false;
+    await showBloomeeDialog<void>(
+      context: context,
+      title: l10n.dialogSyncForgetTitle(device.deviceName),
+      subtitle: l10n.dialogSyncForgetBody(device.deviceName),
+      icon: Icons.phonelink_erase_rounded,
+      actions: [
+        BloomeeDialogAction.text(l10n.buttonCancel),
+        BloomeeDialogAction.filled(l10n.buttonSyncForget,
+            isDestructive: true, onPressed: () => confirmed = true),
+      ],
+    );
+    if (confirmed && !await _cubit.forgetDevice(device.deviceId)) {
+      SnackbarService.showMessage(
+          l10n.snackbarSyncForgetFailed(device.deviceName));
     }
   }
 
@@ -163,9 +179,11 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                         icon: Icons.folder_outlined,
                         title: l10n.syncLocalFolder,
                         subtitle: state.folder ?? l10n.syncNoFolder,
-                        onTap: () => _chooseFolder(state),
+                        onTap: _chooseFolder,
                       ),
                       SettingInfoText(text: l10n.syncLocalFolderNote),
+                      if (state.enabled)
+                        SettingInfoText(text: l10n.syncFolderMoveNote),
                     ],
                   ]),
                   const SizedBox(height: 28),
@@ -189,6 +207,20 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                     ),
                     SettingInfoText(text: l10n.syncDeviceNameSubtitle),
                   ]),
+                  if (state.enabled && state.devices.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    SettingSectionHeader(label: l10n.syncDevicesHeader),
+                    SettingCard(children: [
+                      for (final device in state.devices)
+                        _KnownDeviceTile(
+                          device: device,
+                          onForget: device.isThisDevice
+                              ? null
+                              : () => _forget(device),
+                        ),
+                      SettingInfoText(text: l10n.syncDevicesNote),
+                    ]),
+                  ],
                   if (state.enabled) ...[
                     const SizedBox(height: 28),
                     SettingSectionHeader(label: l10n.syncStatusHeader),
@@ -260,4 +292,58 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
               l10n.syncErrorSkipped(skipped.length),
           },
       };
+}
+
+/// A known Device: its name, when it last synced, and the way to forget it
+/// ([onForget]; null for this Device).
+class _KnownDeviceTile extends StatelessWidget {
+  final KnownDevice device;
+  final VoidCallback? onForget;
+
+  const _KnownDeviceTile({required this.device, this.onForget});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final secondary = Default_Theme.primaryColor2.withValues(alpha: 0.5);
+    final lastSynced = switch (device.lastSyncedAt) {
+      final at? => l10n.syncLastSynced(formatSyncTime(l10n, at)),
+      null when device.isThisDevice => l10n.syncNeverSynced,
+      null => l10n.syncDeviceLastSyncUnknown,
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+      child: Row(children: [
+        SettingIconBox(
+            icon: device.isThisDevice
+                ? Icons.smartphone_rounded
+                : Icons.devices_other_rounded),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                device.isThisDevice
+                    ? '${device.deviceName} · ${l10n.syncThisDevice}'
+                    : device.deviceName,
+                style: Default_Theme.secondoryTextStyleMedium.copyWith(
+                  color: Default_Theme.primaryColor2,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(lastSynced,
+                  style: Default_Theme.secondoryTextStyle
+                      .copyWith(color: secondary, fontSize: 13)),
+            ],
+          ),
+        ),
+        if (onForget case final forget?)
+          TextButton(onPressed: forget, child: Text(l10n.syncForgetDevice)),
+      ]),
+    );
+  }
 }
