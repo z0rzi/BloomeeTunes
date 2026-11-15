@@ -4219,6 +4219,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.'**
   String get backupReplaceSyncWarning;
+
+  /// No description provided for @syncWebDav.
+  ///
+  /// In en, this message translates to:
+  /// **'WebDAV server'**
+  String get syncWebDav;
+
+  /// No description provided for @syncWebDavNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own server, such as Nextcloud. Bloomee syncs in the folder you give, and creates it if needed. The password is kept in the system keyring.'**
+  String get syncWebDavNote;
+
+  /// No description provided for @syncWebDavNotSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up'**
+  String get syncWebDavNotSetUp;
+
+  /// No description provided for @syncWebDavAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'{user} on {address}'**
+  String syncWebDavAccount(String user, String address);
+
+  /// No description provided for @dialogWebDavTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a WebDAV server'**
+  String get dialogWebDavTitle;
+
+  /// No description provided for @dialogWebDavBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the address of the folder to sync in, such as https://cloud.example.com/remote.php/dav/files/you/Bloomee, and your user name and password on that server.'**
+  String get dialogWebDavBody;
+
+  /// No description provided for @syncWebDavAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder address'**
+  String get syncWebDavAddress;
+
+  /// No description provided for @syncWebDavUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User name'**
+  String get syncWebDavUser;
+
+  /// No description provided for @syncWebDavPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get syncWebDavPassword;
+
+  /// No description provided for @buttonWebDavConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get buttonWebDavConnect;
+
+  /// No description provided for @syncWebDavInvalidAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'This is not a server address. Enter one such as https://cloud.example.com/dav/Bloomee.'**
+  String get syncWebDavInvalidAddress;
+
+  /// No description provided for @syncWebDavInsecureAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee does not send your password unprotected: use an https:// address. Plain http:// is only accepted for localhost.'**
+  String get syncWebDavInsecureAddress;
+
+  /// No description provided for @syncWebDavNotReachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV server cannot be reached. Check the address and your connection and try again.'**
+  String get syncWebDavNotReachable;
+
+  /// No description provided for @syncWebDavNotWritable.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee cannot write into this folder on the WebDAV server.'**
+  String get syncWebDavNotWritable;
+
+  /// No description provided for @syncWebDavSignInRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV server did not accept this user name and password.'**
+  String get syncWebDavSignInRefused;
+
+  /// No description provided for @syncWebDavKeyringUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The password could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.'**
+  String get syncWebDavKeyringUnavailable;
+
+  /// No description provided for @syncErrorWebDavSignInNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV server no longer accepts this device\'s user name and password. Enter them again to keep syncing.'**
+  String get syncErrorWebDavSignInNeeded;
+
+  /// No description provided for @dialogSyncWebDavSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV server refused the password'**
+  String get dialogSyncWebDavSignInTitle;
+
+  /// No description provided for @dialogSyncWebDavSignInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The WebDAV server no longer accepts this device\'s user name and password. Sync is stopped on this device until you enter them again in the Library Sync settings.'**
+  String get dialogSyncWebDavSignInBody;
 }
 
 class _AppLocalizationsDelegate

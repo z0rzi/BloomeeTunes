@@ -64,6 +64,11 @@ class SettingKeys {
   /// The local folder chosen as the Sync Location.
   static const String librarySyncFolder = "librarySyncFolder";
 
+  /// The address of the WebDAV folder set up as a Sync Location, and the
+  /// user name signed in with; the password is kept in the system keyring.
+  static const String librarySyncWebDavAddress = "librarySyncWebDavAddress";
+  static const String librarySyncWebDavUser = "librarySyncWebDavUser";
+
   /// The Device name the owner chose, kept so that sync can be turned back
   /// on under it when its bookkeeping is lost.
   static const String librarySyncDeviceName = "librarySyncDeviceName";

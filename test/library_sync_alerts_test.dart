@@ -73,7 +73,8 @@ void main() {
 
     expect(cubit.state.enabled, isFalse);
     expect(cubit.state.deviceName, 'workstation');
-    expect(cubit.state.locationKinds, [SyncLocationKind.localFolder]);
+    expect(cubit.state.locationKinds,
+        [SyncLocationKind.webDav, SyncLocationKind.localFolder]);
   });
 
   test('the local folder is offered on Linux and not on Android', () {

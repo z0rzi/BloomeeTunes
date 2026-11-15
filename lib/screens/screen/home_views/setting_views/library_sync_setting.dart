@@ -99,6 +99,11 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           if (cubit.state.dropboxSignedIn || await _signInToDropbox()) {
             await cubit.enableDropbox(deviceName: _deviceName.text);
           }
+        case SyncLocationKind.webDav:
+          _attempted = SyncLocationKind.webDav;
+          if (cubit.state.webDavSignedIn || await _signInToWebDav()) {
+            await cubit.enableWebDav(deviceName: _deviceName.text);
+          }
         case SyncLocationKind.localFolder:
           final folder = cubit.state.folder ?? await _pickFolder();
           if (folder != null) {
@@ -138,6 +143,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   static String _kindName(AppLocalizations l10n, SyncLocationKind kind) =>
       switch (kind) {
         SyncLocationKind.dropbox => l10n.syncDropbox,
+        SyncLocationKind.webDav => l10n.syncWebDav,
         SyncLocationKind.localFolder => l10n.syncLocalFolder,
       };
 
@@ -165,6 +171,27 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
         context: context,
         barrierColor: Colors.black54,
         builder: (_) => _DropboxSignInDialog(cubit: _cubit),
+      ) ??
+      false;
+
+  /// Signs in to a WebDAV server, or to another one, and makes it the Sync
+  /// Location; while sync is on, this moves sync there (or, on the same
+  /// server, goes on with the password entered).
+  Future<void> _chooseWebDav() async {
+    _attempted = SyncLocationKind.webDav;
+    if (!await _signInToWebDav() || !mounted) return;
+    final state = _cubit.state;
+    if (state.enabled && state.locationKind == SyncLocationKind.webDav) return;
+    await _cubit.chooseWebDav();
+  }
+
+  /// Asks for the WebDAV server's address, user name and password, and
+  /// signs in with them; completes with whether this Device is signed in.
+  Future<bool> _signInToWebDav() async =>
+      await showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (_) => _WebDavSignInDialog(cubit: _cubit),
       ) ??
       false;
 
@@ -247,48 +274,10 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
                   const SizedBox(height: 28),
                   SettingSectionHeader(label: l10n.syncLocationHeader),
                   SettingCard(children: [
-                    if (state.locationKinds
-                        .contains(SyncLocationKind.dropbox)) ...[
-                      SettingNavTile(
-                        icon: Icons.cloud_outlined,
-                        title: l10n.syncDropbox,
-                        subtitle: state.dropboxSignedIn
-                            ? l10n.syncDropboxSignedIn
-                            : l10n.syncDropboxSignedOut,
-                        badge: state.locationKind == SyncLocationKind.dropbox
-                            ? l10n.syncLocationInUse
-                            : null,
-                        onTap: _chooseDropbox,
-                      ),
-                      SettingInfoText(text: l10n.syncDropboxNote),
-                      if (state.dropboxSignedIn)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: _signOutOfDropbox,
-                              icon: const Icon(Icons.logout_rounded),
-                              label: Text(l10n.buttonDropboxSignOut),
-                            ),
-                          ),
-                        ),
-                    ],
-                    if (state.locationKinds.length > 1) const SettingDivider(),
-                    if (state.locationKinds
-                        .contains(SyncLocationKind.localFolder)) ...[
-                      SettingNavTile(
-                        icon: Icons.folder_outlined,
-                        title: l10n.syncLocalFolder,
-                        subtitle: state.folder ?? l10n.syncNoFolder,
-                        badge: state.locationKinds.length > 1 &&
-                                state.locationKind ==
-                                    SyncLocationKind.localFolder
-                            ? l10n.syncLocationInUse
-                            : null,
-                        onTap: _chooseFolder,
-                      ),
-                      SettingInfoText(text: l10n.syncLocalFolderNote),
+                    for (final (index, kind)
+                        in state.locationKinds.indexed) ...[
+                      if (index > 0) const SettingDivider(),
+                      ..._locationTiles(l10n, state, kind),
                     ],
                     if (state.enabled)
                       SettingInfoText(text: l10n.syncLocationMoveNote),
@@ -372,6 +361,65 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     );
   }
 
+  /// The choice of a Sync Location of [kind]: its tile, which makes it the
+  /// Sync Location (signing in first where needed), and its note.
+  List<Widget> _locationTiles(
+      AppLocalizations l10n, SyncState state, SyncLocationKind kind) {
+    final inUse = state.locationKinds.length > 1 && state.locationKind == kind
+        ? l10n.syncLocationInUse
+        : null;
+    return switch (kind) {
+      SyncLocationKind.dropbox => [
+          SettingNavTile(
+            icon: Icons.cloud_outlined,
+            title: l10n.syncDropbox,
+            subtitle: state.dropboxSignedIn
+                ? l10n.syncDropboxSignedIn
+                : l10n.syncDropboxSignedOut,
+            badge: inUse,
+            onTap: _chooseDropbox,
+          ),
+          SettingInfoText(text: l10n.syncDropboxNote),
+          if (state.dropboxSignedIn)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _signOutOfDropbox,
+                  icon: const Icon(Icons.logout_rounded),
+                  label: Text(l10n.buttonDropboxSignOut),
+                ),
+              ),
+            ),
+        ],
+      SyncLocationKind.webDav => [
+          SettingNavTile(
+            icon: Icons.dns_outlined,
+            title: l10n.syncWebDav,
+            subtitle: switch ((state.webDavUser, state.webDavAddress)) {
+              (final user?, final address?) when state.webDavSignedIn =>
+                l10n.syncWebDavAccount(user, address),
+              _ => l10n.syncWebDavNotSetUp,
+            },
+            badge: inUse,
+            onTap: _chooseWebDav,
+          ),
+          SettingInfoText(text: l10n.syncWebDavNote),
+        ],
+      SyncLocationKind.localFolder => [
+          SettingNavTile(
+            icon: Icons.folder_outlined,
+            title: l10n.syncLocalFolder,
+            subtitle: state.folder ?? l10n.syncNoFolder,
+            badge: inUse,
+            onTap: _chooseFolder,
+          ),
+          SettingInfoText(text: l10n.syncLocalFolderNote),
+        ],
+    };
+  }
+
   static String _statusLine(AppLocalizations l10n, SyncState state) {
     final status = state.status;
     final lines = [
@@ -390,6 +438,8 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
   static String _describe(AppLocalizations l10n, SyncError error) =>
       switch (error) {
         SyncLocationUnreachable() => l10n.syncErrorUnreachable,
+        SyncSignInNeeded(kind: SyncLocationKind.webDav) =>
+          l10n.syncErrorWebDavSignInNeeded,
         SyncSignInNeeded() => l10n.syncErrorSignInNeeded,
         SyncFailed(:final detail) => l10n.syncErrorFailed(detail),
         SyncNeedsOwner(:final outcome) => switch (outcome) {
@@ -406,15 +456,27 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
 /// owner.
 String problemText(AppLocalizations l10n, SyncLocationProblem problem,
         SyncLocationKind? kind) =>
-    switch (problem) {
-      SyncLocationProblem.notFound => kind == SyncLocationKind.dropbox
-          ? l10n.syncDropboxNotReachable
-          : l10n.syncFolderNotFound,
-      SyncLocationProblem.notWritable => kind == SyncLocationKind.dropbox
-          ? l10n.syncDropboxNotWritable
-          : l10n.syncFolderNotWritable,
-      SyncLocationProblem.signInRefused => l10n.syncSignInRefused,
-      SyncLocationProblem.keyringUnavailable => l10n.syncKeyringUnavailable,
+    switch ((problem, kind)) {
+      (SyncLocationProblem.notFound, SyncLocationKind.dropbox) =>
+        l10n.syncDropboxNotReachable,
+      (SyncLocationProblem.notFound, SyncLocationKind.webDav) =>
+        l10n.syncWebDavNotReachable,
+      (SyncLocationProblem.notFound, _) => l10n.syncFolderNotFound,
+      (SyncLocationProblem.notWritable, SyncLocationKind.dropbox) =>
+        l10n.syncDropboxNotWritable,
+      (SyncLocationProblem.notWritable, SyncLocationKind.webDav) =>
+        l10n.syncWebDavNotWritable,
+      (SyncLocationProblem.notWritable, _) => l10n.syncFolderNotWritable,
+      (SyncLocationProblem.signInRefused, SyncLocationKind.webDav) =>
+        l10n.syncWebDavSignInRefused,
+      (SyncLocationProblem.signInRefused, _) => l10n.syncSignInRefused,
+      (SyncLocationProblem.keyringUnavailable, SyncLocationKind.webDav) =>
+        l10n.syncWebDavKeyringUnavailable,
+      (SyncLocationProblem.keyringUnavailable, _) =>
+        l10n.syncKeyringUnavailable,
+      (SyncLocationProblem.invalidAddress, _) => l10n.syncWebDavInvalidAddress,
+      (SyncLocationProblem.insecureAddress, _) =>
+        l10n.syncWebDavInsecureAddress,
     };
 
 /// Signing in to Dropbox: the owner opens the Dropbox page, allows Bloomee,
@@ -546,6 +608,148 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Signing in to a WebDAV server: the owner enters the address of the folder
+/// to sync in, their user name and password; Bloomee tests the folder before
+/// keeping them. Pops with whether this Device is signed in.
+class _WebDavSignInDialog extends StatefulWidget {
+  final SyncCubit cubit;
+
+  const _WebDavSignInDialog({required this.cubit});
+
+  @override
+  State<_WebDavSignInDialog> createState() => _WebDavSignInDialogState();
+}
+
+class _WebDavSignInDialogState extends State<_WebDavSignInDialog> {
+  late final TextEditingController _address =
+      TextEditingController(text: widget.cubit.state.webDavAddress ?? '');
+  late final TextEditingController _user =
+      TextEditingController(text: widget.cubit.state.webDavUser ?? '');
+  final TextEditingController _password = TextEditingController();
+  bool _signingIn = false;
+  SyncLocationProblem? _problem;
+
+  @override
+  void dispose() {
+    _address.dispose();
+    _user.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  bool get _complete =>
+      _address.text.trim().isNotEmpty &&
+      _user.text.trim().isNotEmpty &&
+      _password.text.isNotEmpty;
+
+  Future<void> _finish() async {
+    if (!_complete || _signingIn) return;
+    setState(() {
+      _signingIn = true;
+      _problem = null;
+    });
+    SyncLocationProblem? problem;
+    try {
+      problem = await widget.cubit.signInToWebDav(
+          address: _address.text, user: _user.text, password: _password.text);
+    } catch (error) {
+      debugPrint('WebDAV sign-in failed: $error');
+      problem = SyncLocationProblem.notFound;
+    }
+    if (!mounted) return;
+    if (problem == null) return Navigator.of(context).pop(true);
+    setState(() {
+      _signingIn = false;
+      _problem = problem;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final secondary = Default_Theme.primaryColor2.withValues(alpha: 0.7);
+    InputDecoration decoration(String label) => InputDecoration(
+        labelText: label, labelStyle: TextStyle(color: secondary));
+    const fieldStyle =
+        TextStyle(color: Default_Theme.primaryColor2, fontSize: 15);
+    return BloomeeDialogSurface(
+      title: l10n.dialogWebDavTitle,
+      icon: Icons.dns_outlined,
+      body: SingleChildScrollView(
+        child: AutofillGroup(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.dialogWebDavBody,
+                  style: TextStyle(color: secondary, fontSize: 14)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _address,
+                enabled: !_signingIn,
+                autocorrect: false,
+                keyboardType: TextInputType.url,
+                autofillHints: const [AutofillHints.url],
+                style: fieldStyle,
+                decoration: decoration(l10n.syncWebDavAddress),
+              ),
+              TextField(
+                controller: _user,
+                enabled: !_signingIn,
+                autocorrect: false,
+                autofillHints: const [AutofillHints.username],
+                style: fieldStyle,
+                decoration: decoration(l10n.syncWebDavUser),
+              ),
+              TextField(
+                controller: _password,
+                enabled: !_signingIn,
+                autocorrect: false,
+                obscureText: true,
+                enableSuggestions: false,
+                autofillHints: const [AutofillHints.password],
+                onSubmitted: (_) => _finish(),
+                style: fieldStyle,
+                decoration: decoration(l10n.syncWebDavPassword),
+              ),
+              if (_problem case final problem?) ...[
+                const SizedBox(height: 8),
+                Text(problemText(l10n, problem, SyncLocationKind.webDav),
+                    style:
+                        const TextStyle(color: Colors.redAccent, fontSize: 13)),
+              ],
+              const SizedBox(height: 12),
+              // Wraps on a narrow screen rather than overflowing.
+              OverflowBar(
+                alignment: MainAxisAlignment.end,
+                spacing: 8,
+                overflowAlignment: OverflowBarAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(l10n.buttonCancel),
+                  ),
+                  ListenableBuilder(
+                    listenable: Listenable.merge([_address, _user, _password]),
+                    builder: (context, _) => FilledButton(
+                      onPressed: _signingIn || !_complete ? null : _finish,
+                      child: _signingIn
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(l10n.buttonWebDavConnect),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -2400,4 +2400,74 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get backupReplaceSyncWarning =>
       'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
+
+  @override
+  String get syncWebDav => 'WebDAV server';
+
+  @override
+  String get syncWebDavNote =>
+      'Your own server, such as Nextcloud. Bloomee syncs in the folder you give, and creates it if needed. The password is kept in the system keyring.';
+
+  @override
+  String get syncWebDavNotSetUp => 'Not set up';
+
+  @override
+  String syncWebDavAccount(String user, String address) {
+    return '$user on $address';
+  }
+
+  @override
+  String get dialogWebDavTitle => 'Connect to a WebDAV server';
+
+  @override
+  String get dialogWebDavBody =>
+      'Enter the address of the folder to sync in, such as https://cloud.example.com/remote.php/dav/files/you/Bloomee, and your user name and password on that server.';
+
+  @override
+  String get syncWebDavAddress => 'Folder address';
+
+  @override
+  String get syncWebDavUser => 'User name';
+
+  @override
+  String get syncWebDavPassword => 'Password';
+
+  @override
+  String get buttonWebDavConnect => 'Connect';
+
+  @override
+  String get syncWebDavInvalidAddress =>
+      'This is not a server address. Enter one such as https://cloud.example.com/dav/Bloomee.';
+
+  @override
+  String get syncWebDavInsecureAddress =>
+      'Bloomee does not send your password unprotected: use an https:// address. Plain http:// is only accepted for localhost.';
+
+  @override
+  String get syncWebDavNotReachable =>
+      'The WebDAV server cannot be reached. Check the address and your connection and try again.';
+
+  @override
+  String get syncWebDavNotWritable =>
+      'Bloomee cannot write into this folder on the WebDAV server.';
+
+  @override
+  String get syncWebDavSignInRefused =>
+      'The WebDAV server did not accept this user name and password.';
+
+  @override
+  String get syncWebDavKeyringUnavailable =>
+      'The password could not be kept in the system keyring. On Linux, check that a keyring such as GNOME Keyring or KWallet is running and unlocked.';
+
+  @override
+  String get syncErrorWebDavSignInNeeded =>
+      'The WebDAV server no longer accepts this device\'s user name and password. Enter them again to keep syncing.';
+
+  @override
+  String get dialogSyncWebDavSignInTitle =>
+      'The WebDAV server refused the password';
+
+  @override
+  String get dialogSyncWebDavSignInBody =>
+      'The WebDAV server no longer accepts this device\'s user name and password. Sync is stopped on this device until you enter them again in the Library Sync settings.';
 }

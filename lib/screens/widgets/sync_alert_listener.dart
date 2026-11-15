@@ -1,6 +1,7 @@
 import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
+import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/core/theme/app_theme.dart';
 import 'package:Bloomee/l10n/app_localizations.dart';
 import 'package:Bloomee/screens/widgets/bloomee_ui_kit/bloomee_dialog.dart';
@@ -10,7 +11,8 @@ import 'package:intl/intl.dart';
 
 /// Shows, wherever the owner is in the app, what Library Sync needs them to
 /// see: the Removal Guard's question and the alerts for a refused clock, an
-/// unreadable Device State, a needed update or a refused sign-in.
+/// unreadable Device State, a needed update or a refused sign-in (to
+/// Dropbox, or to a WebDAV server).
 class SyncAlertListener extends StatefulWidget {
   final Widget child;
   final GlobalKey<NavigatorState> navigatorKey;
@@ -50,6 +52,10 @@ class _SyncAlertListenerState extends State<SyncAlertListener> {
       UpdateNeededAlert(:final deviceName) => (
           l10n.dialogSyncUpdateTitle,
           l10n.dialogSyncUpdateBody(deviceName ?? l10n.syncAnotherDevice)
+        ),
+      SignInNeededAlert(kind: SyncLocationKind.webDav) => (
+          l10n.dialogSyncWebDavSignInTitle,
+          l10n.dialogSyncWebDavSignInBody
         ),
       SignInNeededAlert() => (
           l10n.dialogSyncSignInTitle,

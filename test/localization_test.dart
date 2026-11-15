@@ -70,6 +70,8 @@ void main() {
       expect(l10n.dialogSyncForgetTitle('Old phone'), contains('Old phone'));
       expect(l10n.dialogSyncForgetBody('Old phone'), contains('Old phone'));
       expect(l10n.snackbarSyncForgetFailed('Old phone'), contains('Old phone'));
+      expect(l10n.syncWebDavAccount('owner', 'https://cloud.example.com/dav'),
+          allOf(contains('owner'), contains('https://cloud.example.com/dav')));
       expect(equalizerPresetLabel(l10n, 'Bass Boost'), isNotEmpty);
       expect(equalizerPresetLabel(l10n, 'User preset'), 'User preset');
       for (final count in [0, 1, 2]) {

@@ -17,6 +17,7 @@ import 'package:Bloomee/services/sync/credential_store.dart';
 import 'package:Bloomee/services/sync/dropbox_sync_location.dart';
 import 'package:Bloomee/services/sync/local_folder_sync_location.dart';
 import 'package:Bloomee/services/sync/sync_location.dart';
+import 'package:Bloomee/services/sync/webdav_sync_location.dart';
 import 'package:isar_community/isar.dart';
 
 /// Makes the scheduler that runs [run]; tests shorten its delays.
@@ -34,6 +35,9 @@ class _ChosenLocation {
   const _ChosenLocation.dropbox()
       : kind = SyncLocationKind.dropbox,
         folder = null;
+  const _ChosenLocation.webDav()
+      : kind = SyncLocationKind.webDav,
+        folder = null;
 }
 
 /// Library Sync as the app uses it: its setup on this Device, the sync
@@ -44,10 +48,11 @@ class _ChosenLocation {
 /// syncs run by themselves while the app is open (see [SyncScheduler]), and
 /// what each did is reported through [status] and [outcomes].
 ///
-/// Dropbox is signed in to once per Device; the sign-in is kept in the
-/// system keyring ([CredentialStore]), never in the database or anything
-/// published. When Dropbox stops accepting it, sync stops until the owner
-/// signs in again ([SyncSignInNeeded]).
+/// Dropbox and WebDAV are signed in to once per Device; the Dropbox sign-in
+/// and the WebDAV password are kept in the system keyring
+/// ([CredentialStore]), never in the database or anything published. When
+/// the Sync Location stops accepting them, sync stops until the owner signs
+/// in again ([SyncSignInNeeded]).
 class SyncRepository {
   /// The file written and removed to test a Sync Location, in the area
   /// that holds Device States (which only reads `.json` files).
@@ -55,6 +60,9 @@ class SyncRepository {
 
   /// The keyring entry holding the Dropbox sign-in's refresh token.
   static const dropboxCredential = 'library_sync.dropbox.refresh_token';
+
+  /// The keyring entry holding the WebDAV password.
+  static const webDavCredential = 'library_sync.webdav.password';
 
   final Future<Isar> _database;
   final BackupRepository _backups;
@@ -75,6 +83,9 @@ class SyncRepository {
   final StreamController<SyncOutcome> _outcomes = StreamController.broadcast();
 
   SyncEngine? _engine;
+
+  /// The kind of Sync Location [_engine] syncs with.
+  SyncLocationKind? _engineKind;
 
   /// The Dropbox sign-in under way, waiting for the owner's code.
   DropboxSignIn? _pendingSignIn;
@@ -126,6 +137,10 @@ class SyncRepository {
       locationKind:
           kind ?? (folder != null ? SyncLocationKind.localFolder : null),
       folder: folder,
+      webDavAddress:
+          await _settings.getSettingStr(SettingKeys.librarySyncWebDavAddress),
+      webDavUser:
+          await _settings.getSettingStr(SettingKeys.librarySyncWebDavUser),
       deviceName: identity?.deviceName ??
           await _settings.getSettingStr(SettingKeys.librarySyncDeviceName) ??
           (machine.isEmpty ? 'Bloomee' : machine),
@@ -136,6 +151,7 @@ class SyncRepository {
   /// once the startup sync has run.
   Future<void> start() async {
     final scheduler = await _setupChanges.run(() async {
+      _ChosenLocation? chosen;
       try {
         final setup = await this.setup();
         final identity = await _dao.identity();
@@ -144,7 +160,7 @@ class SyncRepository {
         if (!setup.enabled && (identity?.enabled ?? false)) {
           await _dao.disable();
         }
-        final chosen = _chosenLocationOf(setup);
+        chosen = _chosenLocationOf(setup);
         if (_closed || !setup.enabled || chosen == null) return null;
         final engine = _engineWith(await _locationAt(chosen));
         // Sync is on but this Device's bookkeeping is gone, as after running
@@ -155,9 +171,9 @@ class SyncRepository {
         if (identity == null || !identity.enabled) {
           await engine.enable(deviceName: setup.deviceName);
         }
-        return _begin(engine);
+        return _begin(engine, chosen.kind);
       } catch (error) {
-        _publish(_status.copyWith(lastError: _errorFor(error)));
+        _publish(_status.copyWith(lastError: _errorFor(error, chosen?.kind)));
         return null;
       }
     });
@@ -193,6 +209,15 @@ class SyncRepository {
   Future<SyncLocationProblem?> moveToDropbox() async =>
       enableDropbox(deviceName: (await setup()).deviceName);
 
+  /// Turns sync on with the WebDAV server as the Sync Location, as [enable]
+  /// does with a folder. This Device must be signed in ([signInToWebDav]).
+  Future<SyncLocationProblem?> enableWebDav({required String deviceName}) =>
+      _enableAt(const _ChosenLocation.webDav(), deviceName);
+
+  /// Moves sync to the WebDAV server, as [moveTo] does to a folder.
+  Future<SyncLocationProblem?> moveToWebDav() async =>
+      enableWebDav(deviceName: (await setup()).deviceName);
+
   Future<SyncLocationProblem?> _enableAt(
       _ChosenLocation chosen, String deviceName) async {
     final scheduler = await _setupChanges.run(() async {
@@ -217,7 +242,7 @@ class SyncRepository {
       }
       await _settings.putSettingStr(SettingKeys.librarySyncDeviceName, name);
       await _settings.putSettingBool(SettingKeys.librarySyncEnabled, true);
-      return _closed ? null : _begin(engine);
+      return _closed ? null : _begin(engine, chosen.kind);
     });
     if (scheduler is SyncLocationProblem) return scheduler;
     if (scheduler is SyncScheduler) unawaited(scheduler.start());
@@ -261,30 +286,84 @@ class SyncRepository {
       } on CredentialStoreUnavailable {
         return SyncLocationProblem.keyringUnavailable;
       }
-      final setup = await this.setup();
-      if (_closed ||
-          !setup.enabled ||
-          setup.locationKind != SyncLocationKind.dropbox) {
-        return null;
-      }
-      // Sync goes on with the new sign-in.
-      try {
-        await _end();
-        final engine =
-            _engineWith(await _locationAt(const _ChosenLocation.dropbox()));
-        if ((await _dao.identity())?.enabled != true) {
-          await engine.enable(deviceName: setup.deviceName);
-        }
-        return _begin(engine);
-      } catch (error) {
-        // Signed in all the same; the status tells why sync did not resume.
-        _publish(_status.copyWith(lastError: _errorFor(error)));
-        return null;
-      }
+      return _resumeSignedIn(SyncLocationKind.dropbox);
     });
     if (resumed is SyncLocationProblem) return resumed;
     if (resumed is SyncScheduler) unawaited(resumed.start());
     return null;
+  }
+
+  /// Whether this Device is signed in to a WebDAV server: its address and
+  /// user name are set up and its password is in the keyring. False when
+  /// the keyring cannot be read.
+  Future<bool> webDavSignedIn() async {
+    if (await _settings.getSettingStr(SettingKeys.librarySyncWebDavAddress) ==
+        null) {
+      return false;
+    }
+    try {
+      return await _credentials.read(webDavCredential) != null;
+    } on CredentialStoreUnavailable catch (error) {
+      log('$error', name: 'SyncRepository');
+      return false;
+    }
+  }
+
+  /// Signs this Device in to the WebDAV folder at [address] as [user] with
+  /// [password], once the folder passes its test (it is created when
+  /// missing): the password is kept in the keyring, the address and user
+  /// name in this Device's settings. Otherwise says why it cannot be used,
+  /// and keeps nothing; an address that would send the password unprotected
+  /// is refused before anything is sent. Sync through WebDAV, if on, goes on
+  /// at once with this server and password.
+  Future<SyncLocationProblem?> signInToWebDav(
+      {required String address,
+      required String user,
+      required String password}) async {
+    final url = WebDavSyncLocation.parseAddress(address);
+    if (url == null) return SyncLocationProblem.invalidAddress;
+    if (!WebDavSyncLocation.isProtected(url)) {
+      return SyncLocationProblem.insecureAddress;
+    }
+    final name = user.trim();
+    final location =
+        WebDavSyncLocation(address: url, user: name, password: password);
+    final problem = await _test(location);
+    if (problem != null) return problem;
+    final resumed = await _setupChanges.run(() async {
+      try {
+        await _credentials.write(webDavCredential, password);
+      } on CredentialStoreUnavailable {
+        return SyncLocationProblem.keyringUnavailable;
+      }
+      await _settings.putSettingStr(
+          SettingKeys.librarySyncWebDavAddress, location.address.toString());
+      await _settings.putSettingStr(SettingKeys.librarySyncWebDavUser, name);
+      return _resumeSignedIn(SyncLocationKind.webDav);
+    });
+    if (resumed is SyncLocationProblem) return resumed;
+    if (resumed is SyncScheduler) unawaited(resumed.start());
+    return null;
+  }
+
+  /// After signing in to [kind]: when sync is on through it, sync goes on
+  /// with the new sign-in, returning its scheduler to start.
+  Future<SyncScheduler?> _resumeSignedIn(SyncLocationKind kind) async {
+    final setup = await this.setup();
+    final chosen = _chosenLocationOf(setup);
+    if (_closed || !setup.enabled || setup.locationKind != kind) return null;
+    try {
+      await _end();
+      final engine = _engineWith(await _locationAt(chosen!));
+      if ((await _dao.identity())?.enabled != true) {
+        await engine.enable(deviceName: setup.deviceName);
+      }
+      return _begin(engine, kind);
+    } catch (error) {
+      // Signed in all the same; the status tells why sync did not resume.
+      _publish(_status.copyWith(lastError: _errorFor(error, kind)));
+      return null;
+    }
   }
 
   /// Signs this Device out of Dropbox: the sign-in is ended on Dropbox when
@@ -359,8 +438,8 @@ class SyncRepository {
     final engine = _engine;
     if (engine == null) return;
     try {
-      await _record(
-          engine, () => engine.answerRemovalGuard(hold, confirm: confirm));
+      await _record(engine, _engineKind,
+          () => engine.answerRemovalGuard(hold, confirm: confirm));
     } catch (_) {
       // Reported in the status; the next scheduled sync tries again.
     }
@@ -389,13 +468,14 @@ class SyncRepository {
   static _ChosenLocation? _chosenLocationOf(SyncSetup setup) =>
       switch (setup.locationKind) {
         SyncLocationKind.dropbox => const _ChosenLocation.dropbox(),
+        SyncLocationKind.webDav => const _ChosenLocation.webDav(),
         SyncLocationKind.localFolder when setup.folder != null =>
           _ChosenLocation.folder(setup.folder!),
         _ => null,
       };
 
   /// The Sync Location at [chosen]. Throws [SyncLocationSignInRefused] for
-  /// Dropbox when this Device is not signed in.
+  /// Dropbox or WebDAV when this Device is not signed in.
   Future<SyncLocation> _locationAt(_ChosenLocation chosen) async {
     switch (chosen.kind) {
       case SyncLocationKind.localFolder:
@@ -407,6 +487,22 @@ class SyncRepository {
                 'This Device is not signed in to Dropbox.'));
         return DropboxSyncLocation(
             app: app, refreshToken: refreshToken, clock: _clock);
+      case SyncLocationKind.webDav:
+        final address = WebDavSyncLocation.parseAddress(await _settings
+                .getSettingStr(SettingKeys.librarySyncWebDavAddress) ??
+            '');
+        final user =
+            await _settings.getSettingStr(SettingKeys.librarySyncWebDavUser);
+        final password = await _credentials.read(webDavCredential);
+        if (address == null ||
+            !WebDavSyncLocation.isProtected(address) ||
+            user == null ||
+            password == null) {
+          throw const SyncLocationSignInRefused(
+              'This Device is not signed in to a WebDAV server.');
+        }
+        return WebDavSyncLocation(
+            address: address, user: user, password: password);
     }
   }
 
@@ -419,9 +515,11 @@ class SyncRepository {
       backups: _backups,
       clock: _clock);
 
-  SyncScheduler _begin(SyncEngine engine) {
+  SyncScheduler _begin(SyncEngine engine, SyncLocationKind kind) {
     _engine = engine;
-    final scheduler = _schedulerFor(() => _record(engine, engine.syncNow));
+    _engineKind = kind;
+    final scheduler =
+        _schedulerFor(() => _record(engine, kind, engine.syncNow));
     if (_inBackground) scheduler.moveToBackground();
     _scheduler = scheduler;
     _libraryChanges =
@@ -433,17 +531,19 @@ class SyncRepository {
     final scheduler = _scheduler;
     _scheduler = null;
     _engine = null;
+    _engineKind = null;
     await _libraryChanges?.cancel();
     _libraryChanges = null;
     await scheduler?.stop();
   }
 
-  /// Runs [sync] with [engine], reporting what it did; a failure is
+  /// Runs [sync] with [engine], syncing with a Sync Location of [kind],
+  /// reporting what it did; a failure is
   /// reported, then rethrown for the scheduler to retry. A refused sign-in
-  /// stops sync instead, and forgets that sign-in, until the owner signs in
-  /// again.
-  Future<void> _record(
-      SyncEngine engine, Future<SyncOutcome> Function() sync) async {
+  /// stops sync instead until the owner signs in again (see
+  /// [_signInRefused]).
+  Future<void> _record(SyncEngine engine, SyncLocationKind? kind,
+      Future<SyncOutcome> Function() sync) async {
     _running++;
     _publish(_status.copyWith(running: true));
     try {
@@ -463,18 +563,21 @@ class SyncRepository {
       _publish(SyncStatus(
           running: _running > 0,
           lastSyncedAt: _status.lastSyncedAt,
-          lastError: _errorFor(error)));
+          lastError: _errorFor(error, kind)));
       if (error is SyncLocationSignInRefused) unawaited(_signInRefused(engine));
       rethrow;
     }
   }
 
   /// [engine]'s Sync Location refused this Device's sign-in: its syncs stop,
-  /// and the sign-in is forgotten, unless the owner meanwhile set sync up
-  /// anew.
+  /// unless the owner meanwhile set sync up anew. A refused Dropbox sign-in
+  /// is forgotten, as it can never work again; a WebDAV password is kept,
+  /// for the server may accept it again (an account unlocked, say), until
+  /// the owner enters another.
   Future<void> _signInRefused(SyncEngine engine) => _setupChanges.run(() async {
         if (!identical(_engine, engine)) return;
         await _end();
+        if ((await setup()).locationKind != SyncLocationKind.dropbox) return;
         try {
           await _credentials.delete(dropboxCredential);
         } on CredentialStoreUnavailable catch (error) {
@@ -482,9 +585,11 @@ class SyncRepository {
         }
       });
 
-  SyncError _errorFor(Object error) => switch (error) {
+  /// What [error], met syncing with a Sync Location of [kind], means for
+  /// the status.
+  SyncError _errorFor(Object error, SyncLocationKind? kind) => switch (error) {
         SyncLocationSignInRefused(:final message) =>
-          SyncSignInNeeded(_clock(), message),
+          SyncSignInNeeded(_clock(), message, kind),
         SyncLocationUnavailable(:final message) =>
           SyncLocationUnreachable(_clock(), message),
         _ => SyncFailed(_clock(), '$error'),

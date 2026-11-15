@@ -2420,4 +2420,74 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get backupReplaceSyncWarning =>
       'La synchronisation de la bibliothèque est activée : ce remplacement atteindra aussi vos autres appareils. Les playlists, titres, favoris, albums et artistes enregistrés absents de cette sauvegarde y seront également supprimés.';
+
+  @override
+  String get syncWebDav => 'Serveur WebDAV';
+
+  @override
+  String get syncWebDavNote =>
+      'Votre propre serveur, comme Nextcloud. Bloomee se synchronise dans le dossier indiqué et le crée si besoin. Le mot de passe est conservé dans le trousseau du système.';
+
+  @override
+  String get syncWebDavNotSetUp => 'Non configuré';
+
+  @override
+  String syncWebDavAccount(String user, String address) {
+    return '$user sur $address';
+  }
+
+  @override
+  String get dialogWebDavTitle => 'Se connecter à un serveur WebDAV';
+
+  @override
+  String get dialogWebDavBody =>
+      'Saisissez l\'adresse du dossier où se synchroniser, par exemple https://cloud.example.com/remote.php/dav/files/vous/Bloomee, ainsi que votre nom d\'utilisateur et votre mot de passe sur ce serveur.';
+
+  @override
+  String get syncWebDavAddress => 'Adresse du dossier';
+
+  @override
+  String get syncWebDavUser => 'Nom d\'utilisateur';
+
+  @override
+  String get syncWebDavPassword => 'Mot de passe';
+
+  @override
+  String get buttonWebDavConnect => 'Se connecter';
+
+  @override
+  String get syncWebDavInvalidAddress =>
+      'Ce n\'est pas une adresse de serveur. Saisissez-en une comme https://cloud.example.com/dav/Bloomee.';
+
+  @override
+  String get syncWebDavInsecureAddress =>
+      'Bloomee n\'envoie pas votre mot de passe sans protection : utilisez une adresse https://. Une adresse http:// n\'est acceptée que pour localhost.';
+
+  @override
+  String get syncWebDavNotReachable =>
+      'Le serveur WebDAV est inaccessible. Vérifiez l\'adresse et votre connexion, puis réessayez.';
+
+  @override
+  String get syncWebDavNotWritable =>
+      'Bloomee ne peut pas écrire dans ce dossier du serveur WebDAV.';
+
+  @override
+  String get syncWebDavSignInRefused =>
+      'Le serveur WebDAV n\'a pas accepté ce nom d\'utilisateur et ce mot de passe.';
+
+  @override
+  String get syncWebDavKeyringUnavailable =>
+      'Le mot de passe n\'a pas pu être conservé dans le trousseau du système. Sous Linux, vérifiez qu\'un trousseau comme GNOME Keyring ou KWallet est lancé et déverrouillé.';
+
+  @override
+  String get syncErrorWebDavSignInNeeded =>
+      'Le serveur WebDAV n\'accepte plus le nom d\'utilisateur et le mot de passe de cet appareil. Saisissez-les de nouveau pour continuer à synchroniser.';
+
+  @override
+  String get dialogSyncWebDavSignInTitle =>
+      'Le serveur WebDAV a refusé le mot de passe';
+
+  @override
+  String get dialogSyncWebDavSignInBody =>
+      'Le serveur WebDAV n\'accepte plus le nom d\'utilisateur et le mot de passe de cet appareil. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous les saisissiez de nouveau dans les réglages de synchronisation.';
 }

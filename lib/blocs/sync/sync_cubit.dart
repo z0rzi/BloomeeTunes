@@ -47,13 +47,16 @@ final class UpdateNeededAlert extends SyncAlert {
   List<Object?> get props => [deviceName];
 }
 
-/// The Sync Location no longer accepts this Device's sign-in: sync is
-/// stopped until the owner signs in again.
+/// The Sync Location no longer accepts this Device's sign-in (the Dropbox
+/// sign-in, the WebDAV password): sync is stopped until the owner signs in
+/// again.
 final class SignInNeededAlert extends SyncAlert {
-  const SignInNeededAlert();
+  /// The kind of Sync Location that refused it.
+  final SyncLocationKind? kind;
+  const SignInNeededAlert(this.kind);
 
   @override
-  List<Object?> get props => const [];
+  List<Object?> get props => [kind];
 }
 
 class SyncState extends Equatable {
@@ -72,6 +75,14 @@ class SyncState extends Equatable {
 
   /// Whether this Device is signed in to Dropbox.
   final bool dropboxSignedIn;
+
+  /// The WebDAV server set up, if one was: its folder's address and the
+  /// user name signed in with.
+  final String? webDavAddress;
+  final String? webDavUser;
+
+  /// Whether this Device has a WebDAV server set up, with its password.
+  final bool webDavSignedIn;
 
   /// Setting sync up is in progress (the Sync Location being tested).
   final bool settingUp;
@@ -101,6 +112,9 @@ class SyncState extends Equatable {
     this.folder,
     this.deviceName = '',
     this.dropboxSignedIn = false,
+    this.webDavAddress,
+    this.webDavUser,
+    this.webDavSignedIn = false,
     this.settingUp = false,
     this.setupProblem,
     this.status = const SyncStatus(),
@@ -117,6 +131,9 @@ class SyncState extends Equatable {
     String? folder,
     String? deviceName,
     bool? dropboxSignedIn,
+    String? webDavAddress,
+    String? webDavUser,
+    bool? webDavSignedIn,
     bool? settingUp,
     SyncLocationProblem? Function()? setupProblem,
     SyncStatus? status,
@@ -133,6 +150,9 @@ class SyncState extends Equatable {
         folder: folder ?? this.folder,
         deviceName: deviceName ?? this.deviceName,
         dropboxSignedIn: dropboxSignedIn ?? this.dropboxSignedIn,
+        webDavAddress: webDavAddress ?? this.webDavAddress,
+        webDavUser: webDavUser ?? this.webDavUser,
+        webDavSignedIn: webDavSignedIn ?? this.webDavSignedIn,
         settingUp: settingUp ?? this.settingUp,
         setupProblem: setupProblem != null ? setupProblem() : this.setupProblem,
         status: status ?? this.status,
@@ -151,6 +171,9 @@ class SyncState extends Equatable {
         folder,
         deviceName,
         dropboxSignedIn,
+        webDavAddress,
+        webDavUser,
+        webDavSignedIn,
         settingUp,
         setupProblem,
         status,
@@ -186,6 +209,7 @@ class SyncCubit extends Cubit<SyncState> {
   Future<void> load() async {
     final setup = await _repository.setup();
     final signedIn = await _repository.dropboxSignedIn();
+    final webDavSignedIn = await _repository.webDavSignedIn();
     if (isClosed) return;
     emit(state.copyWith(
         loaded: true,
@@ -194,6 +218,9 @@ class SyncCubit extends Cubit<SyncState> {
         folder: setup.folder,
         deviceName: setup.deviceName,
         dropboxSignedIn: signedIn,
+        webDavAddress: setup.webDavAddress,
+        webDavUser: setup.webDavUser,
+        webDavSignedIn: webDavSignedIn,
         status: _repository.status));
     await _readDevices();
   }
@@ -231,6 +258,41 @@ class SyncCubit extends Cubit<SyncState> {
   /// completes with why it failed, or null once signed in.
   Future<SyncLocationProblem?> finishDropboxSignIn(String code) async {
     final problem = await _repository.finishDropboxSignIn(code);
+    try {
+      await load();
+    } catch (error) {
+      log('Library Sync setup could not be read: $error', name: 'SyncCubit');
+    }
+    return problem;
+  }
+
+  /// Makes the WebDAV server the Sync Location, as [chooseDropbox] does
+  /// Dropbox. This Device must be signed in ([signInToWebDav]).
+  Future<void> chooseWebDav() async {
+    if (!state.enabled) {
+      return emit(state.copyWith(
+          locationKind: SyncLocationKind.webDav, setupProblem: () => null));
+    }
+    await _settingUp(_repository.moveToWebDav);
+  }
+
+  /// Turns sync on with the WebDAV server, under [deviceName] if given, as
+  /// [enable] does with a folder.
+  Future<void> enableWebDav({String? deviceName}) {
+    final name = deviceName?.trim() ?? '';
+    return _settingUp(() => _repository.enableWebDav(
+        deviceName: name.isEmpty ? state.deviceName : name));
+  }
+
+  /// Signs in to the WebDAV folder at [address] as [user] with [password],
+  /// once it passes its test; completes with why it cannot be used, or null
+  /// once signed in.
+  Future<SyncLocationProblem?> signInToWebDav(
+      {required String address,
+      required String user,
+      required String password}) async {
+    final problem = await _repository.signInToWebDav(
+        address: address, user: user, password: password);
     try {
       await load();
     } catch (error) {
@@ -339,10 +401,13 @@ class SyncCubit extends Cubit<SyncState> {
     final signInRefused =
         error is SyncSignInNeeded && !identical(error, _signInAlerted);
     if (signInRefused) _signInAlerted = error;
-    const alert = SignInNeededAlert();
+    final kind = error is SyncSignInNeeded ? error.kind : null;
+    final alert = SignInNeededAlert(kind);
     emit(state.copyWith(
         status: status,
-        dropboxSignedIn: signInRefused ? false : null,
+        // A refused Dropbox sign-in is forgotten; a WebDAV password is kept.
+        dropboxSignedIn:
+            signInRefused && kind == SyncLocationKind.dropbox ? false : null,
         alerts: signInRefused && !state.alerts.contains(alert)
             ? [...state.alerts, alert]
             : null));

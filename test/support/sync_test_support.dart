@@ -11,6 +11,7 @@ import 'package:Bloomee/services/db/dao/playlist_dao.dart';
 import 'package:Bloomee/services/db/dao/track_dao.dart';
 import 'package:Bloomee/services/db/db_provider.dart';
 import 'package:Bloomee/services/db/global_db.dart';
+import 'package:Bloomee/services/sync/credential_store.dart';
 import 'package:Bloomee/services/sync/local_folder_sync_location.dart';
 import 'package:Bloomee/services/sync/sync_location.dart';
 import 'package:Bloomee/src/rust/api/plugin/models.dart';
@@ -365,3 +366,17 @@ Track song(String id,
         thumbnail: thumbnail,
         durationMs: durationMs == null ? null : BigInt.from(durationMs),
         isExplicit: false);
+
+/// A keyring that keeps its values in memory, for one Device.
+class MemoryKeyring implements CredentialStore {
+  final Map<String, String> values = {};
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+}

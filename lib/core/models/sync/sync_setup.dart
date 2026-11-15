@@ -6,6 +6,10 @@ enum SyncLocationKind {
   /// Android, by a build given a Dropbox app key.
   dropbox,
 
+  /// A folder on the owner's own WebDAV server, signed in to with a user
+  /// name and password. Offered on Linux and Android.
+  webDav,
+
   /// A folder on this machine that another tool carries between machines.
   /// Offered on Linux only, as an advanced choice.
   localFolder;
@@ -14,13 +18,15 @@ enum SyncLocationKind {
   /// names it), in the order the settings show them. Only a build with a
   /// Dropbox app key offers [dropbox].
   static List<SyncLocationKind> offeredOn(String operatingSystem,
-          {required bool dropbox}) =>
-      [
-        if (dropbox &&
-            (operatingSystem == 'linux' || operatingSystem == 'android'))
-          SyncLocationKind.dropbox,
-        if (operatingSystem == 'linux') localFolder,
-      ];
+      {required bool dropbox}) {
+    final linuxOrAndroid =
+        operatingSystem == 'linux' || operatingSystem == 'android';
+    return [
+      if (dropbox && linuxOrAndroid) SyncLocationKind.dropbox,
+      if (linuxOrAndroid) webDav,
+      if (operatingSystem == 'linux') localFolder,
+    ];
+  }
 }
 
 /// How Library Sync is set up on this Device.
@@ -34,6 +40,12 @@ class SyncSetup {
   /// [locationKind] is [SyncLocationKind.localFolder].
   final String? folder;
 
+  /// The WebDAV folder's address and the user name signed in with, if a
+  /// WebDAV server was set up; it is the Sync Location when [locationKind]
+  /// is [SyncLocationKind.webDav]. The password is in the keyring only.
+  final String? webDavAddress;
+  final String? webDavUser;
+
   /// This Device's name: the one chosen, or the machine's name until then.
   final String deviceName;
 
@@ -41,6 +53,8 @@ class SyncSetup {
       {required this.enabled,
       this.locationKind,
       this.folder,
+      this.webDavAddress,
+      this.webDavUser,
       required this.deviceName});
 }
 
@@ -52,12 +66,20 @@ enum SyncLocationProblem {
   /// It can be reached, but Bloomee cannot write into it.
   notWritable,
 
-  /// It refused the sign-in: the code pasted was not the one shown, or the
-  /// sign-in expired or was revoked. Signing in again helps.
+  /// It refused the sign-in: the code pasted was not the one shown, the
+  /// sign-in expired or was revoked, or the user name and password are
+  /// wrong. Signing in again helps.
   signInRefused,
 
   /// The sign-in could not be kept in the system keyring.
   keyringUnavailable,
+
+  /// The address given is not a server address.
+  invalidAddress,
+
+  /// The address given would send the password unprotected: plain `http`
+  /// to another machine than this one.
+  insecureAddress,
 }
 
 /// Where Library Sync stands, for the status line.
@@ -97,7 +119,10 @@ final class SyncLocationUnreachable extends SyncError {
 /// until the owner signs in again.
 final class SyncSignInNeeded extends SyncError {
   final String detail;
-  const SyncSignInNeeded(super.at, this.detail);
+
+  /// The kind of Sync Location that refused the sign-in.
+  final SyncLocationKind? kind;
+  const SyncSignInNeeded(super.at, this.detail, [this.kind]);
 }
 
 /// The sync failed for another reason; sync retries by itself.

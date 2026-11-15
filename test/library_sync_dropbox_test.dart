@@ -5,27 +5,12 @@ import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
 import 'package:Bloomee/repository/sync/sync_engine.dart';
 import 'package:Bloomee/repository/sync/sync_repository.dart';
-import 'package:Bloomee/services/sync/credential_store.dart';
 import 'package:Bloomee/services/sync/dropbox_sync_location.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/dropbox_stand_in.dart';
 import 'support/isar_test_support.dart';
 import 'support/sync_test_support.dart';
-
-/// A keyring that keeps its values in memory, for one Device.
-class MemoryKeyring implements CredentialStore {
-  final Map<String, String> values = {};
-
-  @override
-  Future<String?> read(String key) async => values[key];
-
-  @override
-  Future<void> write(String key, String value) async => values[key] = value;
-
-  @override
-  Future<void> delete(String key) async => values.remove(key);
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -105,16 +90,20 @@ void main() {
   }
 
   test('Dropbox is offered first where the build has its app key', () {
-    expect(SyncLocationKind.offeredOn('linux', dropbox: true),
-        [SyncLocationKind.dropbox, SyncLocationKind.localFolder]);
+    expect(SyncLocationKind.offeredOn('linux', dropbox: true), [
+      SyncLocationKind.dropbox,
+      SyncLocationKind.webDav,
+      SyncLocationKind.localFolder
+    ]);
     expect(SyncLocationKind.offeredOn('android', dropbox: true),
-        [SyncLocationKind.dropbox]);
+        [SyncLocationKind.dropbox, SyncLocationKind.webDav]);
   });
 
   test('a build without the Dropbox app key does not offer Dropbox', () async {
     expect(SyncLocationKind.offeredOn('linux', dropbox: false),
-        [SyncLocationKind.localFolder]);
-    expect(SyncLocationKind.offeredOn('android', dropbox: false), isEmpty);
+        [SyncLocationKind.webDav, SyncLocationKind.localFolder]);
+    expect(SyncLocationKind.offeredOn('android', dropbox: false),
+        [SyncLocationKind.webDav]);
     final laptop = await world.device('laptop', enabled: false);
     final withoutKey = SyncRepository(
         database: Future.value(laptop.isar), backups: laptop.backups);
@@ -229,13 +218,15 @@ void main() {
     await pumpEventQueue();
 
     expect(cubit.state.status.lastError, isA<SyncSignInNeeded>());
-    expect(cubit.state.alerts, [const SignInNeededAlert()]);
+    expect(cubit.state.alerts,
+        [const SignInNeededAlert(SyncLocationKind.dropbox)]);
     expect(cubit.state.dropboxSignedIn, isFalse);
     final requests = dropbox.requests;
     await cubit.syncNow();
     await pumpEventQueue();
     expect(dropbox.requests, requests, reason: 'sync stopped');
-    expect(cubit.state.alerts, [const SignInNeededAlert()],
+    expect(
+        cubit.state.alerts, [const SignInNeededAlert(SyncLocationKind.dropbox)],
         reason: 'the owner is asked once');
 
     expect(await signIn(cubit), isNull);
