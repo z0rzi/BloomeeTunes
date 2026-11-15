@@ -96,7 +96,10 @@ void main() {
     await watchB.cancel();
     await a.sync();
 
-    final writes = [a.location.written.length, b.location.written.length];
+    final writes = [
+      a.location.statesWritten.length,
+      b.location.statesWritten.length
+    ];
     libraryEvents.clear();
     final watching = [await watch(a), await watch(b)];
     world.clock.advance(const Duration(minutes: 2));
@@ -108,7 +111,8 @@ void main() {
       await subscription.cancel();
     }
 
-    expect([a.location.written.length, b.location.written.length], writes);
+    expect([a.location.statesWritten.length, b.location.statesWritten.length],
+        writes);
     expect(libraryEvents, isEmpty);
     expect(await a.songsOf('Road trip'), ['yt::1', 'yt::2']);
     expect(await b.songsOf('Road trip'), ['yt::1', 'yt::2']);
@@ -130,10 +134,10 @@ void main() {
 
     final files = <String>{};
     for (final device in [a, b, c]) {
-      final own = device.location.written.toSet();
+      final own = device.location.statesWritten.toSet();
       expect(own, hasLength(1), reason: '${device.name} wrote $own');
       expect(own.single, startsWith('sync/'));
-      expect(device.location.deleted, isEmpty);
+      expect(device.location.statesDeleted, isEmpty);
       files.addAll(own);
     }
     expect(files, hasLength(3), reason: 'no two Devices share a file');

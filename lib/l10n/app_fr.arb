@@ -1105,5 +1105,6 @@
   "dialogSyncUnreadableTitle": "Ce qu'un appareil a publié est illisible",
   "dialogSyncUnreadableBody": "Ce que {device} a publié pour vos autres appareils est endommagé ou illisible : ses modifications sont ignorées. Vos autres appareils continuent de se synchroniser. À sa prochaine synchronisation, {device} publie de nouveau.",
   "dialogSyncUpdateTitle": "Mettez Bloomee à jour pour continuer à synchroniser",
-  "dialogSyncUpdateBody": "{device} utilise un format de synchronisation plus récent que celui que cette version de Bloomee sait lire. La synchronisation est arrêtée sur cet appareil jusqu'à la mise à jour de Bloomee."
+  "dialogSyncUpdateBody": "{device} utilise un format de synchronisation plus récent que celui que cette version de Bloomee sait lire. La synchronisation est arrêtée sur cet appareil jusqu'à la mise à jour de Bloomee.",
+  "backupReplaceSyncWarning": "La synchronisation de la bibliothèque est activée : ce remplacement atteindra aussi vos autres appareils. Les playlists, titres, favoris, albums et artistes enregistrés absents de cette sauvegarde y seront également supprimés."
 }

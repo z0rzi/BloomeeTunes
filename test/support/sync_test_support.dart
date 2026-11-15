@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:Bloomee/core/models/backup/backup_document.dart';
 import 'package:Bloomee/core/models/sync/sync_outcome.dart';
 import 'package:Bloomee/repository/backup/backup_repository.dart';
 import 'package:Bloomee/repository/sync/sync_engine.dart';
@@ -44,6 +45,15 @@ class RecordingSyncLocation implements SyncLocation {
   final List<String> deleted = [];
 
   RecordingSyncLocation(this.inner);
+
+  static bool _isDeviceState(String path) =>
+      path.startsWith('${SyncEngine.stateDirectory}/');
+
+  /// The Device States among what this Device wrote.
+  List<String> get statesWritten => written.where(_isDeviceState).toList();
+
+  /// The Device States among what this Device deleted.
+  List<String> get statesDeleted => deleted.where(_isDeviceState).toList();
 
   @override
   Future<List<String>> list(String directory) => inner.list(directory);
@@ -135,6 +145,18 @@ class SyncDevice {
       for (final row in plan.document.rows('playlists')) row['name'] as String
     ]..sort();
   }
+
+  /// A full backup of this Device's library, as the backup export makes.
+  Future<BackupDocument> backup() => backups.dao.snapshot();
+
+  /// Restores [document], as the backup import does: merging it into the
+  /// library, or with [replace] replacing the library with it.
+  Future<void> restore(BackupDocument document, {bool replace = false}) =>
+      backups.apply(
+          document,
+          BackupSelection(
+              mode:
+                  replace ? BackupImportMode.replace : BackupImportMode.merge));
 
   /// Turns Library Sync on.
   Future<void> enable() async =>
@@ -292,11 +314,11 @@ class SyncWorld {
         directory: directory.path, name: instance, inspector: false);
     final syncLocation = RecordingSyncLocation(
         LocalFolderSyncLocation(location ?? locationPath));
+    final deviceClock = _DeviceClock(clock);
     final backups = BackupRepository(
-        dao: BackupDAO(Future.value(isar)),
+        dao: BackupDAO(Future.value(isar), clock: deviceClock.call),
         database: Future.value(isar),
         supportPath: directory.path);
-    final deviceClock = _DeviceClock(clock);
     final engine = SyncEngine(
         database: Future.value(isar),
         location: syncLocation,

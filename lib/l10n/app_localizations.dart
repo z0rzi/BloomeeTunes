@@ -4087,6 +4087,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{device} uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.'**
   String dialogSyncUpdateBody(String device);
+
+  /// No description provided for @backupReplaceSyncWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.'**
+  String get backupReplaceSyncWarning;
 }
 
 class _AppLocalizationsDelegate

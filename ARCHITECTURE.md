@@ -121,7 +121,13 @@ protected atomic merge, including download mappings. Recovery models are grouped
 schemas and migration runners remain removed.
 Library Sync's `SyncEngine` (`lib/repository/sync/`) takes its protection snapshot
 through `BackupRepository.createSnapshot` (reason `before_sync`) before applying any
-merge that changes the library.
+merge that changes the library. After each sync it writes the day's Location Backup,
+the export's full JSON backup (`BackupRepository.exportFullBackup`), to
+`backups/<UTC date>_<Device ID>.json` in the Sync Location unless it is there, and
+deletes its own beyond the latest seven; a failure there leaves the sync as it ended and is
+retried at the next sync. A replace-restore in `BackupDAO` records,
+through `SyncDAO`, Removal Markers for what the backup lacks and stamps what it
+restores as changed now, so it reaches the other Devices as the Latest Change.
 `SyncRepository` (`lib/repository/sync/`) is what the app uses: it keeps the Device's
 sync setup (on/off, the local folder, the Device name) in device-local settings that
 never travel in a backup, tests a Sync Location before enabling or moving sync, owns the engine for

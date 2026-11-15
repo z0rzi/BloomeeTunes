@@ -2323,4 +2323,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String dialogSyncUpdateBody(String device) {
     return '$device uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.';
   }
+
+  @override
+  String get backupReplaceSyncWarning =>
+      'Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too.';
 }

@@ -1,5 +1,6 @@
 import 'package:Bloomee/blocs/backup/backup_cubit.dart';
 import 'package:Bloomee/blocs/settings_cubit/cubit/settings_cubit.dart';
+import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/backup/backup_document.dart';
 import 'package:Bloomee/l10n/app_localizations.dart';
 import 'package:Bloomee/screens/widgets/snackbar.dart';
@@ -153,11 +154,26 @@ class BackupImportFlow {
           );
           if (selection == null || !context.mounted) return;
           if (selection.mode == BackupImportMode.replace) {
+            // Replacing the library while syncing removes from the other
+            // Devices whatever the backup lacks.
+            final reachesOtherDevices =
+                selection.library && context.read<SyncCubit>().state.enabled;
             final accepted = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
                       title: Text(l10n.storageRestoreConfirmTitle),
-                      content: Text(l10n.backupReplaceWarning),
+                      content: reachesOtherDevices
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                  Text(l10n.backupReplaceSyncWarning,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 12),
+                                  Text(l10n.backupReplaceWarning),
+                                ])
+                          : Text(l10n.backupReplaceWarning),
                       actions: [
                         TextButton(
                             onPressed: () => Navigator.pop(ctx, false),

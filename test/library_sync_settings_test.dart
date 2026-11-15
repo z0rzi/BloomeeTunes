@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:Bloomee/blocs/sync/sync_cubit.dart';
 import 'package:Bloomee/core/models/sync/sync_setup.dart';
+import 'package:Bloomee/repository/sync/sync_engine.dart';
 import 'package:Bloomee/repository/sync/sync_repository.dart';
 import 'package:Bloomee/repository/sync/sync_scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +45,12 @@ void main() {
         await for (final entry in Directory(world.locationPath)
             .list(recursive: true, followLinks: false))
           if (entry is File) p.relative(entry.path, from: world.locationPath)
+      ];
+
+  /// The Device States in the Sync Location.
+  Future<List<String>> deviceStates() async => [
+        for (final path in await locationFiles())
+          if (p.split(path).first == SyncEngine.stateDirectory) path
       ];
 
   /// Waits until [condition] holds, for at most [limit].
@@ -102,7 +109,7 @@ void main() {
 
     final restarted = appOn(laptop);
     expect((await restarted.setup()).deviceName, 'Kitchen laptop');
-    expect(await locationFiles(), hasLength(1),
+    expect(await deviceStates(), hasLength(1),
         reason: 'renaming publishes the same Device State');
   });
 
@@ -263,7 +270,7 @@ void main() {
         [for (final d in await app.knownDevices()) d.deviceName], ['laptop']);
     expect(await laptop.songsOf('Road trip'), ['yt::1']);
     expect(await phone.songsOf('Road trip'), ['yt::1']);
-    expect(await locationFiles(), hasLength(1));
+    expect(await deviceStates(), hasLength(1));
   });
 
   test('turned off and back on in the settings, sync resumes where it left off',

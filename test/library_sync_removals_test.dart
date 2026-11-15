@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:Bloomee/core/models/backup/backup_document.dart';
 import 'package:Bloomee/services/db/global_db.dart';
 import 'package:Bloomee/src/rust/api/plugin/models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -279,8 +282,6 @@ void main() {
   group(
       'every data-access path that takes something out of the Synced Library reaches the other Device:',
       () {
-    // BackupDAO's replace-restore is not listed: how a restore reaches the
-    // other Devices is settled with restore under sync.
     const album = AlbumSummary(id: 'yt::album', title: 'For Emma', artists: []);
     const artist = ArtistSummary(id: 'yt::artist', name: 'Bon Iver');
     Future<int> rowId(SyncDevice d, String name) async =>
@@ -301,6 +302,21 @@ void main() {
     Future<bool> likeThere(SyncDevice d) => d.playlists.isTrackLiked('yt::1');
     Future<bool> albumThere(SyncDevice d) =>
         d.library.isSavedByMediaId(album.id, PlaylistTypeDB.album);
+    // Replaces the library with a backup of it lacking [playlist], or only
+    // its [song].
+    Future<void> restoreWithout(SyncDevice d, String playlist,
+        {String? song}) async {
+      final data = jsonDecode(jsonEncode((await d.backup()).data))
+          as Map<String, dynamic>;
+      final playlists = data['playlists'] as List;
+      if (song == null) {
+        playlists.removeWhere((p) => p['name'] == playlist);
+      } else {
+        (playlists.firstWhere((p) => p['name'] == playlist)['entries'] as List)
+            .remove(song);
+      }
+      await d.restore(BackupDocument.fromMap(data), replace: true);
+    }
 
     final paths = <String,
         (
@@ -382,6 +398,34 @@ void main() {
       'PlaylistDAO.deletePlaylist on a saved album': (
         (d) => d.library.saveAlbum(album, sourceName: 'YouTube'),
         (d) async => d.playlists.deletePlaylist(await rowId(d, album.id)),
+        albumThere,
+      ),
+      'BackupDAO.apply replacing the library with a backup lacking a song': (
+        inPlaylist,
+        (d) => restoreWithout(d, 'Road trip', song: 'yt::1'),
+        songThere,
+      ),
+      'BackupDAO.apply replacing the library with a backup lacking a playlist':
+          (
+        inPlaylist,
+        (d) => restoreWithout(d, 'Road trip'),
+        (d) async => await d.songsOf('Road trip') != null,
+      ),
+      'BackupDAO.apply replacing the library with a backup lacking a like': (
+        liked,
+        (d) => restoreWithout(d, 'Liked', song: 'yt::1'),
+        likeThere,
+      ),
+      'BackupDAO.apply replacing the library with a backup lacking the liked songs':
+          (
+        liked,
+        (d) => restoreWithout(d, 'Liked'),
+        likeThere,
+      ),
+      'BackupDAO.apply replacing the library with a backup lacking a saved album':
+          (
+        (d) => d.library.saveAlbum(album, sourceName: 'YouTube'),
+        (d) => restoreWithout(d, album.id),
         albumThere,
       ),
     };

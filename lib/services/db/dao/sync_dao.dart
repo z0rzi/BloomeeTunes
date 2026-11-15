@@ -199,6 +199,95 @@ class SyncDAO {
     }
   }
 
+  /// What sync knows of the Synced Library a backup restore is about to
+  /// replace; read inside the restore's write transaction, before it deletes
+  /// anything, for [recordReplaceInTransaction]. Null while sync has never
+  /// been enabled: nothing is recorded then.
+  static ReplacedSyncedLibrary? readBeforeReplaceInTransaction(Isar isar) {
+    final me = _ownId(isar);
+    if (me == null) return null;
+    return ReplacedSyncedLibrary._({
+      for (final row in isar.playlistDBs.where().findAllSync())
+        if (_replaceKey(row) case final key?)
+          key: (row: row, songs: _songsInOrder(isar, row))
+    });
+  }
+
+  /// Makes the backup restore that replaced [before] the Latest Change at
+  /// [at], inside its write transaction once the restored library is in
+  /// place: whatever [before] held that the restored library lacks leaves a
+  /// Removal Marker, and what the restored library holds counts as changed
+  /// at [at] (its songs added, its playlists' details and order and the
+  /// library's arrangement set, its collections saved). A playlist restored
+  /// under the name of one it replaced keeps that one's sync ID, so it stays
+  /// the same playlist on every Device.
+  static void recordReplaceInTransaction(
+      Isar isar, ReplacedSyncedLibrary before, DateTime at) {
+    final replaced = {...before._rows};
+    for (final row in isar.playlistDBs.where().findAllSync()) {
+      final key = _replaceKey(row);
+      if (key == null) continue;
+      final old = replaced.remove(key);
+      final songs = _songsInOrder(isar, row);
+      if (_savedKind(row) != null) {
+        row
+          ..savedBy = null
+          ..updatedAt = at;
+      } else if (!_isLiked(row)) {
+        row
+          ..syncId ??= old?.row.syncId
+          ..nameChangedAt = at
+          ..nameChangedBy = null
+          ..descriptionChangedAt = at
+          ..descriptionChangedBy = null
+          ..pinnedChangedAt = at
+          ..pinnedChangedBy = null;
+        recordArrangement(row, songs, at);
+      }
+      isar.playlistDBs.putSync(row);
+      for (final mediaId in old?.songs ?? const <String>[]) {
+        if (!songs.contains(mediaId)) {
+          recordSongRemovalInTransaction(isar, row, mediaId, at);
+        }
+      }
+    }
+    for (final (:row, :songs) in replaced.values) {
+      if (_isLiked(row)) {
+        // Its songs went with it: each is unliked.
+        for (final mediaId in songs) {
+          _record(isar, RemovalKind.like, null, mediaId,
+              ChangeStamp(at, _ownId(isar)!));
+        }
+      } else {
+        recordDeletionInTransaction(isar, row, at);
+      }
+    }
+    _recordLibraryArrangementSync(isar, at);
+  }
+
+  /// What identifies [row] across a replace-restore, for the rows sync
+  /// covers: the liked songs, a saved collection by kind and media ID, a
+  /// synced playlist by name ignoring case.
+  static String? _replaceKey(PlaylistDB row) {
+    if (_isLiked(row)) return 'liked';
+    if (_savedKind(row) case final kind?) {
+      final mediaId = LibraryDAO.mediaIdOf(row);
+      return mediaId.isEmpty ? null : '${kind.name}:$mediaId';
+    }
+    return _isSynced(row) ? 'playlist:${row.name.toLowerCase()}' : null;
+  }
+
+  /// The media IDs of the songs [row] holds, in order.
+  static List<String> _songsInOrder(Isar isar, PlaylistDB row) => [
+        for (final entry in isar.playlistEntryDBs
+            .where()
+            .playlistIdEqualToAnyPosition(row.id)
+            .findAllSync())
+          if ((entry..track.loadSync()).track.value?.mediaId
+              case final mediaId?)
+            mediaId
+      ];
+
   /// When and by which Device [entry]'s song was added; [me] is this Device.
   static ChangeStamp _addedStamp(PlaylistEntryDB entry, String me) =>
       ChangeStamp(entry.addedAt, entry.addedBy ?? me);
@@ -259,20 +348,35 @@ class SyncDAO {
     final device = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
     if (device == null) return;
     final rows = await isar.playlistDBs.where().findAll();
+    await isar.playlistDBs.putAll(_arrangeLibrary(device, rows, at));
+    await isar.syncDeviceDBs.put(device);
+  }
+
+  /// [recordLibraryArrangement] for a synchronous write transaction.
+  static void _recordLibraryArrangementSync(Isar isar, DateTime at) {
+    final device = isar.syncDeviceDBs.getSync(SyncDeviceDB.ownId);
+    if (device == null) return;
+    final rows = isar.playlistDBs.where().findAllSync();
+    isar.playlistDBs.putAllSync(_arrangeLibrary(device, rows, at));
+    isar.syncDeviceDBs.putSync(device);
+  }
+
+  /// Records on [device] that the playlists [rows] were arranged at [at] in
+  /// their library order. Returns the rows given a sync ID for it, to store.
+  static List<PlaylistDB> _arrangeLibrary(
+      SyncDeviceDB device, List<PlaylistDB> rows, DateTime at) {
     final ids = <String>[];
+    final given = <PlaylistDB>[];
     for (final row in rows..sort(_byLibraryOrder)) {
       if (!_isSynced(row)) continue;
-      if (row.syncId == null) {
-        row.syncId = newSyncId();
-        await isar.playlistDBs.put(row);
-      }
+      if (row.syncId == null) given.add(row..syncId = newSyncId());
       ids.add(row.syncId!);
     }
     device
       ..libraryArrangedAt = at
       ..libraryArrangedBy = null
       ..libraryArrangement = ids;
-    await isar.syncDeviceDBs.put(device);
+    return given;
   }
 
   /// Where a playlist made now goes in the library: after the others while
@@ -1102,4 +1206,14 @@ class SyncDAO {
       isar.playlistDBs.putSync(playlist);
     }
   }
+}
+
+/// The Synced Library a backup restore replaces, as sync knew it (see
+/// [SyncDAO.readBeforeReplaceInTransaction]).
+class ReplacedSyncedLibrary {
+  /// Each row sync covers, by what identifies it across the restore, with
+  /// the media IDs of its songs.
+  final Map<String, ({PlaylistDB row, List<String> songs})> _rows;
+
+  const ReplacedSyncedLibrary._(this._rows);
 }

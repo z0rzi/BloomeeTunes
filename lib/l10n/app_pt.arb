@@ -1105,5 +1105,6 @@
   "dialogSyncUnreadableTitle": "What a device published cannot be read",
   "dialogSyncUnreadableBody": "What {device} published for your other devices is damaged or unreadable, so its changes are left out. Your other devices still sync. The next time {device} syncs, it publishes again.",
   "dialogSyncUpdateTitle": "Update Bloomee to keep syncing",
-  "dialogSyncUpdateBody": "{device} uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee."
+  "dialogSyncUpdateBody": "{device} uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.",
+  "backupReplaceSyncWarning": "Library Sync is on: this replacement will also reach your other devices. Playlists, songs, likes and saved albums and artists this backup lacks will be removed from them too."
 }

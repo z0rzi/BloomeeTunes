@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:Bloomee/core/models/backup/backup_document.dart';
 import 'package:Bloomee/services/backup/backup_files.dart';
@@ -140,6 +141,8 @@ class BackupRepository {
             }
           }
         }
+        final staged = Directory(_exportStagingDirectory);
+        if (await staged.exists()) await staged.delete(recursive: true);
         final exports = Directory(
             p.join((await getTemporaryDirectory()).path, 'bloomee_exports'));
         if (await exports.exists()) {
@@ -207,29 +210,50 @@ class BackupRepository {
       });
 
   Future<String> export({String? playlistName}) => _operations.run(() async {
-        final document = await dao.snapshot(playlistName: playlistName);
         final directory = await Directory(
                 p.join((await getTemporaryDirectory()).path, 'bloomee_exports'))
             .create(recursive: true);
-        final name = playlistName == null
-            ? 'Bloomee_Backup'
-            : BackupFiles.safeName(playlistName);
-        final target = File(p.join(directory.path, '${name}_${_id()}.json'));
-        final temporary = File('${target.path}.partial');
+        return _exportTo(directory, playlistName: playlistName);
+      });
+
+  /// The full-library backup [export] writes, as the bytes of its file, for
+  /// a copy kept elsewhere (a Location Backup in the Sync Location).
+  Future<Uint8List> exportFullBackup() => _operations.run(() async {
+        final directory =
+            await Directory(_exportStagingDirectory).create(recursive: true);
+        final path = await _exportTo(directory);
         try {
-          await temporary.writeAsString(jsonEncode(document.data), flush: true);
-          if (await temporary.length() > BackupDocument.maxBytes) {
-            throw const FormatException(
-                'Export exceeds the supported 32 MB JSON limit. Export smaller playlists.');
-          }
-          // Round-trip validation before the file can be saved or shared.
-          await BackupFiles.readJson(temporary.path);
-          await temporary.rename(target.path);
-          return target.path;
+          return await File(path).readAsBytes();
         } finally {
-          if (await temporary.exists()) await temporary.delete();
+          await File(path).delete();
         }
       });
+
+  String get _exportStagingDirectory => p.join(supportPath, 'export_staging');
+
+  /// Writes the backup [export] describes into [directory], returning its
+  /// path once it is complete and validated.
+  Future<String> _exportTo(Directory directory, {String? playlistName}) async {
+    final document = await dao.snapshot(playlistName: playlistName);
+    final name = playlistName == null
+        ? 'Bloomee_Backup'
+        : BackupFiles.safeName(playlistName);
+    final target = File(p.join(directory.path, '${name}_${_id()}.json'));
+    final temporary = File('${target.path}.partial');
+    try {
+      await temporary.writeAsString(jsonEncode(document.data), flush: true);
+      if (await temporary.length() > BackupDocument.maxBytes) {
+        throw const FormatException(
+            'Export exceeds the supported 32 MB JSON limit. Export smaller playlists.');
+      }
+      // Round-trip validation before the file can be saved or shared.
+      await BackupFiles.readJson(temporary.path);
+      await temporary.rename(target.path);
+      return target.path;
+    } finally {
+      if (await temporary.exists()) await temporary.delete();
+    }
+  }
 
   Future<String> _snapshot(String reason) async {
     final dir = await Directory(snapshotDirectory).create(recursive: true);

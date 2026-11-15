@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:Bloomee/core/models/sync/device_state.dart';
 import 'package:Bloomee/core/models/sync/known_device.dart';
@@ -28,6 +29,12 @@ typedef SyncClock = DateTime Function();
 class SyncEngine {
   /// Where Device States live in the Sync Location.
   static const stateDirectory = 'sync';
+
+  /// Where Location Backups live in the Sync Location.
+  static const backupDirectory = 'backups';
+
+  /// How many Location Backups each Device keeps of its own.
+  static const locationBackupsKept = 7;
 
   /// The reason protection snapshots taken before a sync are kept under.
   static const snapshotReason = 'before_sync';
@@ -188,10 +195,47 @@ class SyncEngine {
                 _statePath(me.deviceId), utf8.encode(publish));
           }
           if (outcome is SyncCompleted) await _dao.recordSync(now);
+          // While an update is needed, sync is stopped.
+          if (outcome is! SyncUpdateNeeded) {
+            await _keepLocationBackups(me.deviceId, now);
+          }
           return outcome;
       }
     }
   }
+
+  /// Writes this Device's Location Backup for the day of [now], unless it is
+  /// there already, then deletes its own beyond the latest
+  /// [locationBackupsKept]. Other Devices' Location Backups are never touched.
+  ///
+  /// A failure leaves the sync as it ended: the Location Backup is written
+  /// at the next sync instead.
+  Future<void> _keepLocationBackups(String deviceId, DateTime now) async {
+    try {
+      final todaysName =
+          '${now.toIso8601String().substring(0, 10)}_$deviceId.json';
+      final ownNames = [
+        for (final name in await _location.list(backupDirectory))
+          if (_locationBackupName.firstMatch(name)?.group(2) == deviceId) name
+      ];
+      if (!ownNames.contains(todaysName)) {
+        await _location.write(
+            '$backupDirectory/$todaysName', await _backups.exportFullBackup());
+        ownNames.add(todaysName);
+      }
+      ownNames.sort();
+      for (final name in ownNames.reversed.skip(locationBackupsKept)) {
+        await _location.delete('$backupDirectory/$name');
+      }
+    } on Exception catch (error, stack) {
+      log('Location Backup not written', error: error, stackTrace: stack);
+    }
+  }
+
+  /// A Location Backup's name: the day it was written (UTC) and the
+  /// permanent ID of the Device that wrote it.
+  static final _locationBackupName =
+      RegExp(r'^(\d{4}-\d{2}-\d{2})_([^_/]+)\.json$');
 
   /// This Device's identity; sync must have been enabled.
   Future<SyncIdentity> _identity() async =>

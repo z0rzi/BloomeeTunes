@@ -166,7 +166,7 @@ void main() {
     }
 
     expect(world.stateOf(drawer).existsSync(), isTrue);
-    expect(a.location.deleted, isEmpty);
+    expect(a.location.statesDeleted, isEmpty);
     expect(
         (await devicesSeenBy(a))['phone in a drawer'], (drawerSynced, false));
   });

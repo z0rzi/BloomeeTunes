@@ -102,7 +102,7 @@ the historical report's OnePlus device is not available.
 
 Track metadata includes artists, album, artwork, duration, genre, language, and explicit status. Embedded artist/album/artwork maps preserve their identifiers, URLs, artwork layouts, and metadata. Playlists also preserve type, subtitle, description, artwork, artists, album/remote-collection metadata, pinning, sort order, and timestamps. Entry arrays explicitly preserve each playlist's independent ordering. Internal row IDs and Isar links are never exported.
 
-Playlists use the application's existing case-insensitive name identity. Tracks use source-scoped media IDs. A renamed playlist on another device is a different playlist; there is no cross-device synchronization protocol.
+Playlists use the application's existing case-insensitive name identity. Tracks use source-scoped media IDs. A backup file carries no Library Sync identity: imported on another device, a renamed playlist is a different playlist.
 
 Playback history records contain `mediaId` and UTC `playedAt`. Search-history records contain `query` and UTC `lastSearched`. Preferences contain `key` and a string or boolean `value`.
 
@@ -117,6 +117,8 @@ All Settings, Library, Android Open With, and Android Share file actions use the
 - **New playlists:** choose unique names in the write transaction. Likes merge into the existing liked playlist. Preferences retain existing values.
 - **Merge:** preserve existing metadata, playlist order, and preferences. Append missing tracks in incoming order. Search history retains the latest timestamp; playback history merges by event identity and occurrence count so repeated imports do not duplicate events.
 - **Replace selected sections:** requires a second explicit confirmation. Replace portable library rows when library is selected, replace only present history sections, and replace allowlisted preferences when settings are selected. Device-managed playlists, downloads, plugin state, and unselected sections remain intact.
+
+With Library Sync on, an import is a change like any other. A merge's additions reach the other devices. A library replacement is the latest change: what the backup lacks is removed from the other devices too (a large removal waits for the Removal Guard there), and what it restores counts as changed at the time of the import; a restored playlist keeps the sync identity of the one it replaces under the same name. Its confirmation then says it will reach the other devices.
 
 Legacy full JSON, legacy playlist JSON, and single-song JSON are adapted to the common document model. They support merge/new-copy imports. Replacement is disabled for legacy files because they cannot establish a complete portable-library snapshot. The preview warns that old full backups may lack per-playlist ordering or other data.
 
@@ -152,7 +154,7 @@ Automatic backup checks occur at app initialization and when automatic backup is
 
 Reset creates a protection copy and writes a versioned request referencing that copy. It is cancelable. Imports are blocked until a scheduled reset is canceled or completed. On next bootstrap, before services start, the request and protection file are checked, every collection is cleared in one transaction, and system playlists are recreated. Downloaded audio and installed plugin files are retained, as the confirmation explains. No live database connection is replaced underneath background workers.
 
-App uninstall removes private recovery copies. Users should use Save As or Share for an external backup.
+App uninstall removes private recovery copies. Users should use Save As or Share for an external backup. With Library Sync on, each device also writes one full JSON backup a day into the `backups/` area of its Sync Location (Location Backups), through the same export, and keeps its own seven latest; it never deletes another device's. They are imported like any backup file.
 
 ## Platform support and validation
 

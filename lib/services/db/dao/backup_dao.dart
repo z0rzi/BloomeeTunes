@@ -6,6 +6,7 @@ import 'dart:isolate';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:Bloomee/services/db/dao/download_dao.dart';
+import 'package:Bloomee/services/db/dao/sync_dao.dart';
 import 'package:Bloomee/services/db/database_schemas.dart';
 import 'package:Bloomee/core/models/backup/recovery_copy.dart';
 import 'package:Bloomee/plugins/utils/media_id.dart';
@@ -15,8 +16,14 @@ import 'package:Bloomee/services/db/mappers/track_json_mapper.dart';
 class BackupDAO {
   final Future<Isar> _db;
   final bool _background;
-  const BackupDAO(this._db) : _background = true;
-  const BackupDAO._worker(this._db) : _background = false;
+
+  /// The time an import's changes to the library are stamped with.
+  final DateTime Function() _clock;
+
+  const BackupDAO(this._db, {DateTime Function() clock = DateTime.now})
+      : _background = true,
+        _clock = clock;
+  const BackupDAO._worker(this._db, this._clock) : _background = false;
 
   /// Read a retained v3 database on a disposable copy. Legacy schema migration
   /// is intentionally unsupported; the repository snapshots the live DB first.
@@ -74,13 +81,17 @@ class BackupDAO {
         }
       });
 
+  /// Runs [operation] on a worker isolate with its own connection; an import
+  /// there stamps its changes [at].
   static Future<T> _onWorker<T>(String directory, String name,
-          Future<T> Function(BackupDAO) operation) =>
+          Future<T> Function(BackupDAO) operation,
+          {DateTime? at}) =>
       Isolate.run(() async {
         final connection = await Isar.open(databaseSchemas,
             directory: directory, name: name, inspector: false);
         try {
-          return await operation(BackupDAO._worker(Future.value(connection)));
+          return await operation(BackupDAO._worker(
+              Future.value(connection), at == null ? DateTime.now : () => at));
         } finally {
           await connection.close();
         }
@@ -97,12 +108,14 @@ class BackupDAO {
           BackupDocument document,
           BackupSelection selection,
           String? receiptKey,
-          List<RecoveredDownload> downloads) =>
+          List<RecoveredDownload> downloads,
+          DateTime at) =>
       _onWorker(
           directory,
           name,
           (dao) => dao.apply(document, selection,
-              receiptKey: receiptKey, recoveredDownloads: downloads));
+              receiptKey: receiptKey, recoveredDownloads: downloads),
+          at: at);
 
   static Future<void> validateInBackground(BackupDocument document) =>
       Isolate.run(() => validateEntities(document));
@@ -206,14 +219,17 @@ class BackupDAO {
     }
   }
 
+  /// Imports [document]; what it changes in the library is stamped with the
+  /// time it starts.
   Future<Map<String, int>> apply(
       BackupDocument document, BackupSelection selection,
       {String? receiptKey,
       List<RecoveredDownload> recoveredDownloads = const []}) async {
     final isar = await _db;
+    final now = _clock();
     if (_background) {
       return _applyWorker(isar.directory!, isar.name, document, selection,
-          receiptKey, recoveredDownloads);
+          receiptKey, recoveredDownloads, now);
     }
     validateEntities(document);
     if (recoveredDownloads.isNotEmpty &&
@@ -287,6 +303,10 @@ class BackupDAO {
         }
       }
       if (selection.library && document.has('playlists')) {
+        // A replacement reaches the other Devices as the Latest Change.
+        final replaced = selection.mode == BackupImportMode.replace
+            ? SyncDAO.readBeforeReplaceInTransaction(isar)
+            : null;
         if (selection.mode == BackupImportMode.replace) {
           for (final p in isar.playlistDBs.where().findAllSync()) {
             if (isDevicePlaylist(p.name)) continue;
@@ -339,10 +359,12 @@ class BackupDAO {
           }
           for (final id in document.rows('playlists')[i]['entries'] as List) {
             if (!seen.add(id as String)) continue;
-            final e =
-                PlaylistEntryDB(playlistId: p.id, position: nextPosition++)
-                  ..playlist.value = p
-                  ..track.value = tracks[id]!;
+            final e = PlaylistEntryDB(
+                playlistId: p.id,
+                position: nextPosition++,
+                addedAtOverride: now)
+              ..playlist.value = p
+              ..track.value = tracks[id]!;
             isar.playlistEntryDBs.putSync(e);
             e.playlist.saveSync();
             e.track.saveSync();
@@ -350,8 +372,11 @@ class BackupDAO {
           }
           // Library subscribers watch playlist rows, so entry changes must touch
           // their parent in the same transaction.
-          p.updatedAt = DateTime.now();
+          p.updatedAt = now;
           isar.playlistDBs.putSync(p);
+        }
+        if (replaced != null) {
+          SyncDAO.recordReplaceInTransaction(isar, replaced, now);
         }
       }
       if (wantsHistory) {

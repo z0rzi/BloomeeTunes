@@ -2342,4 +2342,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String dialogSyncUpdateBody(String device) {
     return '$device utilise un format de synchronisation plus récent que celui que cette version de Bloomee sait lire. La synchronisation est arrêtée sur cet appareil jusqu\'à la mise à jour de Bloomee.';
   }
+
+  @override
+  String get backupReplaceSyncWarning =>
+      'La synchronisation de la bibliothèque est activée : ce remplacement atteindra aussi vos autres appareils. Les playlists, titres, favoris, albums et artistes enregistrés absents de cette sauvegarde y seront également supprimés.';
 }
