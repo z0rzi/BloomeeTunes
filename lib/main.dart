@@ -42,6 +42,8 @@ import 'package:Bloomee/services/shortcut_indicator_service.dart';
 import 'package:Bloomee/core/theme/app_theme.dart';
 import 'package:Bloomee/screens/widgets/backup_import_flow.dart';
 import 'package:Bloomee/blocs/backup/backup_cubit.dart';
+import 'package:Bloomee/blocs/sync/sync_cubit.dart';
+import 'package:Bloomee/screens/widgets/sync_alert_listener.dart';
 import 'package:Bloomee/utils/ticker.dart';
 import 'package:Bloomee/utils/url_checker.dart';
 import 'package:flutter/gestures.dart';
@@ -184,10 +186,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (io.Platform.isWindows || io.Platform.isLinux || io.Platform.isMacOS) {
       unawaited(_openDesktopArguments());
     }
+    unawaited(ServiceLocator.syncRepository.start());
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        ServiceLocator.syncRepository.returnToForeground();
+      // A phone app in the background; a minimised desktop window is only
+      // hidden, and keeps syncing.
+      case AppLifecycleState.paused:
+        ServiceLocator.syncRepository.moveToBackground();
+      case AppLifecycleState.inactive ||
+            AppLifecycleState.hidden ||
+            AppLifecycleState.detached:
+        break;
+    }
     if (state == AppLifecycleState.resumed) {
       unawaited(_ensurePlayerHealthyOnResume());
       // Check for plugin updates when app resumes (30-min cooldown enforced).
@@ -269,6 +284,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _incomingFiles?.dispose();
     if (!_disposed.isCompleted) _disposed.complete();
     bloomeePlayerCubit.close();
+    unawaited(ServiceLocator.syncRepository.close());
     if (io.Platform.isWindows || io.Platform.isLinux || io.Platform.isMacOS) {
       DiscordService.clearPresence();
     }
@@ -313,6 +329,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 ServiceLocator.backupRepository, ServiceLocator.backupFiles,
                 refreshPreferences:
                     bloomeePlayerCubit.bloomeePlayer.reloadPreferences)),
+        BlocProvider(
+          create: (_) => SyncCubit(ServiceLocator.syncRepository)..load(),
+          lazy: false,
+        ),
         BlocProvider(
           create: (context) => PluginBloc(
             pluginService: ServiceLocator.pluginService,
@@ -476,7 +496,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                         child: ShortcutIndicatorOverlay(
                           child: GlobalEventListener(
                             navigatorKey: GlobalRoutes.globalRouterKey,
-                            child: child!,
+                            child: SyncAlertListener(
+                              navigatorKey: GlobalRoutes.globalRouterKey,
+                              child: child!,
+                            ),
                           ),
                         ),
                       );

@@ -99,6 +99,13 @@ class RemovalGuardHold {
 
   /// The Devices the removals come from.
   Set<String> get deviceNames => {for (final r in removals) r.deviceName};
+
+  /// Whether [other] takes out exactly what this does.
+  bool sameRemovalsAs(RemovalGuardHold other) {
+    final keys = {for (final r in removals) r.key};
+    return removals.length == other.removals.length &&
+        other.removals.every((r) => keys.contains(r.key));
+  }
 }
 
 /// One thing a held merge would take out of the Synced Library.

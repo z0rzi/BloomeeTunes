@@ -122,6 +122,14 @@ schemas and migration runners remain removed.
 Library Sync's `SyncEngine` (`lib/repository/sync/`) takes its protection snapshot
 through `BackupRepository.createSnapshot` (reason `before_sync`) before applying any
 merge that changes the library.
+`SyncRepository` (`lib/repository/sync/`) is what the app uses: it keeps the Device's
+sync setup (on/off, the local folder, the Device name) in device-local settings that
+never travel in a backup, tests a Sync Location before enabling, owns the engine for
+the chosen Sync Location, and runs syncs through `SyncScheduler` (startup, return to
+the foreground, a debounced change to the Synced Library seen through
+`SyncDAO.watchSyncedLibrary`, every two minutes in the foreground, sync now; one at a
+time; quiet retries with backoff). `SyncCubit` turns its status and outcomes into the
+settings screen's state and the alerts `SyncAlertListener` shows app-wide.
 
 ### DAOs
 
@@ -191,6 +199,7 @@ UI never holds `PlaylistTypeDB`. All enum mapping happens inside DAO calls withi
 | `DownloaderCubit` | `blocs/downloader/` | Offline download queue |
 | `SettingsCubit` | `blocs/settings/` | Reactive app settings |
 | `GlobalEventsCubit` | `blocs/global_events/` | Update check, changelog, alert dialogs |
+| `SyncCubit` | `blocs/sync/` | Library Sync setup, status line, Removal Guard question, sync alerts |
 | `ShortcutIndicatorCubit` | `services/shortcut_indicator_service.dart` | Keyboard shortcut on-screen feedback |
 
 ---

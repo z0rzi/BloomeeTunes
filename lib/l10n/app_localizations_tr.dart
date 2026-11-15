@@ -2036,4 +2036,194 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get eqPresetCustom => 'Özel';
+
+  @override
+  String get settingsLibrarySync => 'Library Sync';
+
+  @override
+  String get settingsLibrarySyncSubtitle =>
+      'Keep your playlists the same on all your devices.';
+
+  @override
+  String get syncTitle => 'Library Sync';
+
+  @override
+  String get syncEnableTitle => 'Sync this device';
+
+  @override
+  String get syncEnableSubtitle =>
+      'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on.';
+
+  @override
+  String get syncLocationHeader => 'Sync location';
+
+  @override
+  String get syncLocalFolder => 'Local folder (advanced)';
+
+  @override
+  String get syncLocalFolderNote =>
+      'Bloomee only reads and writes files in this folder. Another tool, such as Syncthing, must carry it between your machines.';
+
+  @override
+  String get syncNoFolder => 'No folder chosen';
+
+  @override
+  String snackbarSyncFolderPickerFailed(String error) {
+    return 'The folder picker could not open: $error';
+  }
+
+  @override
+  String get snackbarSyncFolderLocked =>
+      'Turn sync off to choose another folder.';
+
+  @override
+  String get syncFolderNotFound =>
+      'This folder cannot be found. Check that it exists and that its drive is connected.';
+
+  @override
+  String get syncFolderNotWritable =>
+      'Bloomee cannot write into this folder. Choose a folder you are allowed to change.';
+
+  @override
+  String get syncDeviceHeader => 'This device';
+
+  @override
+  String get syncDeviceName => 'Device name';
+
+  @override
+  String get syncDeviceNameSubtitle =>
+      'How your other devices name this one. Renaming changes nothing about what syncs.';
+
+  @override
+  String get syncStatusHeader => 'Status';
+
+  @override
+  String get syncNow => 'Sync now';
+
+  @override
+  String get syncSyncing => 'Syncing…';
+
+  @override
+  String get syncNeverSynced => 'Not synced yet';
+
+  @override
+  String syncLastSynced(String time) {
+    return 'Last synced: $time';
+  }
+
+  @override
+  String syncLastError(String time, String error) {
+    return 'Last error ($time): $error';
+  }
+
+  @override
+  String get syncErrorUnreachable =>
+      'the sync location cannot be reached. Sync tries again by itself.';
+
+  @override
+  String syncErrorFailed(String detail) {
+    return 'sync failed ($detail). Sync tries again by itself.';
+  }
+
+  @override
+  String get syncErrorHeld =>
+      'removals from another device are waiting for your decision.';
+
+  @override
+  String get syncErrorPaused =>
+      'sync is paused because you declined removals from another device.';
+
+  @override
+  String get syncErrorUpdateNeeded => 'update Bloomee to keep syncing.';
+
+  @override
+  String syncErrorSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'the changes of $count devices were left out.',
+      one: 'the changes of $count device were left out.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncReviewRemovals => 'Review removals';
+
+  @override
+  String get dialogSyncGuardTitle => 'Confirm these removals?';
+
+  @override
+  String syncGuardSummary(int removed, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      removed,
+      locale: localeName,
+      other: 'This sync would remove $removed of your $total songs.',
+      one: 'This sync would remove $removed of your $total songs.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncGuardFrom(String devices) {
+    return 'Made on: $devices';
+  }
+
+  @override
+  String syncGuardPlaylistDeleted(String name) {
+    return 'Playlist “$name” deleted, with its songs';
+  }
+
+  @override
+  String syncGuardSongRemoved(String title, String playlist) {
+    return '“$title” taken out of “$playlist”';
+  }
+
+  @override
+  String syncGuardUnliked(String title) {
+    return '“$title” unliked';
+  }
+
+  @override
+  String syncGuardOnDevice(String device) {
+    return 'on $device';
+  }
+
+  @override
+  String get buttonSyncRemove => 'Remove them';
+
+  @override
+  String get buttonSyncKeepLibrary => 'Keep my library';
+
+  @override
+  String get syncGuardDeclineNote =>
+      'If you keep your library, sync pauses until you confirm these removals from the Library Sync settings.';
+
+  @override
+  String get syncAnotherDevice => 'another device';
+
+  @override
+  String get dialogSyncClockTitle => 'A device\'s clock is wrong';
+
+  @override
+  String dialogSyncClockBody(String device, String time) {
+    return '$device dates a change $time, more than a day ahead of this device. Its changes are refused until its clock is set right.';
+  }
+
+  @override
+  String get dialogSyncUnreadableTitle =>
+      'What a device published cannot be read';
+
+  @override
+  String dialogSyncUnreadableBody(String device) {
+    return 'What $device published for your other devices is damaged or unreadable, so its changes are left out. Your other devices still sync. The next time $device syncs, it publishes again.';
+  }
+
+  @override
+  String get dialogSyncUpdateTitle => 'Update Bloomee to keep syncing';
+
+  @override
+  String dialogSyncUpdateBody(String device) {
+    return '$device uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.';
+  }
 }

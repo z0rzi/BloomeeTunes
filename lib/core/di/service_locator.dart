@@ -8,6 +8,7 @@
 library service_locator;
 
 import 'package:Bloomee/repository/backup/backup_repository.dart';
+import 'package:Bloomee/repository/sync/sync_repository.dart';
 import 'package:Bloomee/services/backup/backup_files.dart';
 import 'package:Bloomee/services/db/dao/backup_dao.dart';
 import 'package:Bloomee/services/cache/plugin_cache_repository.dart';
@@ -35,6 +36,7 @@ class ServiceLocator {
   static bool _initialized = false;
   static late final BackupRepository backupRepository;
   static final BackupFiles backupFiles = BackupFiles();
+  static late final SyncRepository syncRepository;
 
   // ── Plugin System Singletons ─────────────────────────────────────────────
 
@@ -57,6 +59,8 @@ class ServiceLocator {
         database: DBProvider.db,
         supportPath: DBProvider.appSuppDir,
         documentsPath: DBProvider.appDocDir);
+    syncRepository =
+        SyncRepository(database: DBProvider.db, backups: backupRepository);
 
     // ── Plugin system ──────────────────────────────────────────────────────
 

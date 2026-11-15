@@ -1,6 +1,9 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:Bloomee/screens/screen/home_views/setting_views/about.dart';
 import 'package:Bloomee/screens/screen/home_views/setting_views/appui_setting.dart';
+import 'package:Bloomee/screens/screen/home_views/setting_views/library_sync_setting.dart';
+import 'package:Bloomee/blocs/sync/sync_cubit.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:Bloomee/screens/screen/home_views/setting_views/local_music_setting.dart';
 import 'package:Bloomee/screens/screen/home_views/setting_views/plugin_defaults_setting.dart';
 import 'package:Bloomee/screens/screen/home_views/setting_views/storage_setting.dart';
@@ -137,6 +140,17 @@ class SettingsView extends StatelessWidget {
                     iconColor: Default_Theme.accentColor2,
                     onTap: () => _navigate(context, const BackupSettings()),
                   ),
+                  // Only where this Device offers a Sync Location.
+                  if (context.read<SyncCubit>().state.locationKinds.isNotEmpty)
+                    _SettingsTile(
+                      title: AppLocalizations.of(context)!.settingsLibrarySync,
+                      subtitle: AppLocalizations.of(context)!
+                          .settingsLibrarySyncSubtitle,
+                      icon: Icons.sync_rounded,
+                      iconColor: Default_Theme.accentColor2,
+                      onTap: () =>
+                          _navigate(context, const LibrarySyncSettings()),
+                    ),
                   _SettingsTile(
                     title: AppLocalizations.of(context)!.settingsLastFM,
                     subtitle:

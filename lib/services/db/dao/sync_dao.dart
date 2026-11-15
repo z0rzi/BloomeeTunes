@@ -101,6 +101,23 @@ class SyncDAO {
     });
   }
 
+  /// Fires after each write that may change the Synced Library: to
+  /// playlists (liked songs and saved collections included) or their songs.
+  Stream<void> watchSyncedLibrary() async* {
+    final isar = await _db;
+    final changes = StreamController<void>();
+    final subscriptions = [
+      isar.playlistDBs.watchLazy().listen(changes.add),
+      isar.playlistEntryDBs.watchLazy().listen(changes.add),
+    ];
+    changes.onCancel = () async {
+      for (final subscription in subscriptions) {
+        await subscription.cancel();
+      }
+    };
+    yield* changes.stream;
+  }
+
   // ── Removal Markers left by the other data-access classes ────────────────
 
   /// Leaves the Removal Marker for [row] about to be deleted: a synced

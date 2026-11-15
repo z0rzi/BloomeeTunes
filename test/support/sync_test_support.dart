@@ -92,6 +92,9 @@ class SyncDevice {
             clock: clock.call),
         library = LibraryDAO(Future.value(isar), clock: clock.call);
 
+  /// This Device's clock.
+  DateTime Function() get clock => _clock.call;
+
   /// How far this Device's clock is ahead of the others'.
   set clockAhead(Duration by) => _clock.ahead = by;
 

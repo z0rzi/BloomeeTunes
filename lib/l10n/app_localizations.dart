@@ -3757,6 +3757,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom'**
   String get eqPresetCustom;
+
+  /// No description provided for @settingsLibrarySync.
+  ///
+  /// In en, this message translates to:
+  /// **'Library Sync'**
+  String get settingsLibrarySync;
+
+  /// No description provided for @settingsLibrarySyncSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep your playlists the same on all your devices.'**
+  String get settingsLibrarySyncSubtitle;
+
+  /// No description provided for @syncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Library Sync'**
+  String get syncTitle;
+
+  /// No description provided for @syncEnableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync this device'**
+  String get syncEnableTitle;
+
+  /// No description provided for @syncEnableSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your playlists, liked songs and saved albums and artists stay the same on every device that syncs with the same place. Nothing leaves this device until you turn this on.'**
+  String get syncEnableSubtitle;
+
+  /// No description provided for @syncLocationHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync location'**
+  String get syncLocationHeader;
+
+  /// No description provided for @syncLocalFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Local folder (advanced)'**
+  String get syncLocalFolder;
+
+  /// No description provided for @syncLocalFolderNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee only reads and writes files in this folder. Another tool, such as Syncthing, must carry it between your machines.'**
+  String get syncLocalFolderNote;
+
+  /// No description provided for @syncNoFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'No folder chosen'**
+  String get syncNoFolder;
+
+  /// No description provided for @snackbarSyncFolderPickerFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The folder picker could not open: {error}'**
+  String snackbarSyncFolderPickerFailed(String error);
+
+  /// No description provided for @snackbarSyncFolderLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn sync off to choose another folder.'**
+  String get snackbarSyncFolderLocked;
+
+  /// No description provided for @syncFolderNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder cannot be found. Check that it exists and that its drive is connected.'**
+  String get syncFolderNotFound;
+
+  /// No description provided for @syncFolderNotWritable.
+  ///
+  /// In en, this message translates to:
+  /// **'Bloomee cannot write into this folder. Choose a folder you are allowed to change.'**
+  String get syncFolderNotWritable;
+
+  /// No description provided for @syncDeviceHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'This device'**
+  String get syncDeviceHeader;
+
+  /// No description provided for @syncDeviceName.
+  ///
+  /// In en, this message translates to:
+  /// **'Device name'**
+  String get syncDeviceName;
+
+  /// No description provided for @syncDeviceNameSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How your other devices name this one. Renaming changes nothing about what syncs.'**
+  String get syncDeviceNameSubtitle;
+
+  /// No description provided for @syncStatusHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get syncStatusHeader;
+
+  /// No description provided for @syncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get syncNow;
+
+  /// No description provided for @syncSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get syncSyncing;
+
+  /// No description provided for @syncNeverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get syncNeverSynced;
+
+  /// No description provided for @syncLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced: {time}'**
+  String syncLastSynced(String time);
+
+  /// No description provided for @syncLastError.
+  ///
+  /// In en, this message translates to:
+  /// **'Last error ({time}): {error}'**
+  String syncLastError(String time, String error);
+
+  /// No description provided for @syncErrorUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'the sync location cannot be reached. Sync tries again by itself.'**
+  String get syncErrorUnreachable;
+
+  /// No description provided for @syncErrorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'sync failed ({detail}). Sync tries again by itself.'**
+  String syncErrorFailed(String detail);
+
+  /// No description provided for @syncErrorHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'removals from another device are waiting for your decision.'**
+  String get syncErrorHeld;
+
+  /// No description provided for @syncErrorPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'sync is paused because you declined removals from another device.'**
+  String get syncErrorPaused;
+
+  /// No description provided for @syncErrorUpdateNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'update Bloomee to keep syncing.'**
+  String get syncErrorUpdateNeeded;
+
+  /// No description provided for @syncErrorSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{the changes of {count} device were left out.} other{the changes of {count} devices were left out.}}'**
+  String syncErrorSkipped(int count);
+
+  /// No description provided for @syncReviewRemovals.
+  ///
+  /// In en, this message translates to:
+  /// **'Review removals'**
+  String get syncReviewRemovals;
+
+  /// No description provided for @dialogSyncGuardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm these removals?'**
+  String get dialogSyncGuardTitle;
+
+  /// No description provided for @syncGuardSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{removed, plural, =1{This sync would remove {removed} of your {total} songs.} other{This sync would remove {removed} of your {total} songs.}}'**
+  String syncGuardSummary(int removed, int total);
+
+  /// No description provided for @syncGuardFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'Made on: {devices}'**
+  String syncGuardFrom(String devices);
+
+  /// No description provided for @syncGuardPlaylistDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist “{name}” deleted, with its songs'**
+  String syncGuardPlaylistDeleted(String name);
+
+  /// No description provided for @syncGuardSongRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” taken out of “{playlist}”'**
+  String syncGuardSongRemoved(String title, String playlist);
+
+  /// No description provided for @syncGuardUnliked.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” unliked'**
+  String syncGuardUnliked(String title);
+
+  /// No description provided for @syncGuardOnDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'on {device}'**
+  String syncGuardOnDevice(String device);
+
+  /// No description provided for @buttonSyncRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove them'**
+  String get buttonSyncRemove;
+
+  /// No description provided for @buttonSyncKeepLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep my library'**
+  String get buttonSyncKeepLibrary;
+
+  /// No description provided for @syncGuardDeclineNote.
+  ///
+  /// In en, this message translates to:
+  /// **'If you keep your library, sync pauses until you confirm these removals from the Library Sync settings.'**
+  String get syncGuardDeclineNote;
+
+  /// No description provided for @syncAnotherDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'another device'**
+  String get syncAnotherDevice;
+
+  /// No description provided for @dialogSyncClockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A device\'s clock is wrong'**
+  String get dialogSyncClockTitle;
+
+  /// No description provided for @dialogSyncClockBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} dates a change {time}, more than a day ahead of this device. Its changes are refused until its clock is set right.'**
+  String dialogSyncClockBody(String device, String time);
+
+  /// No description provided for @dialogSyncUnreadableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What a device published cannot be read'**
+  String get dialogSyncUnreadableTitle;
+
+  /// No description provided for @dialogSyncUnreadableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'What {device} published for your other devices is damaged or unreadable, so its changes are left out. Your other devices still sync. The next time {device} syncs, it publishes again.'**
+  String dialogSyncUnreadableBody(String device);
+
+  /// No description provided for @dialogSyncUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Bloomee to keep syncing'**
+  String get dialogSyncUpdateTitle;
+
+  /// No description provided for @dialogSyncUpdateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} uses a newer sync format than this version of Bloomee can read. Sync is stopped on this device until you update Bloomee.'**
+  String dialogSyncUpdateBody(String device);
 }
 
 class _AppLocalizationsDelegate

@@ -43,6 +43,21 @@ HOME="$d" XDG_DATA_HOME="$d/data" XDG_CONFIG_HOME="$d/config" XDG_CACHE_HOME="$d
   timeout 30 build/linux/x64/release/bundle/bloomee
 ```
 
+### Two instances on one machine (trying Library Sync)
+
+Each instance needs its own data directory, so that each is a separate Device with its own library; the Linux app allows several instances at once. These commands run from the repository root, in any shell (fish included), after a `flutter build linux --release`. Each keeps its instance under `~/bloomee-instances/<name>` (its library in `data/ls.bloomee.musicplayer`), separate from the real library and from the official Bloomee, and the instance survives between runs:
+
+```sh
+mkdir -p ~/bloomee-instances/sync-location
+nix develop -c bash -c '
+  d="$HOME/bloomee-instances/$1"; mkdir -p "$d"/{data,config,cache,Documents}
+  echo "XDG_DOCUMENTS_DIR=\"\$HOME/Documents\"" > "$d/config/user-dirs.dirs"
+  HOME="$d" XDG_DATA_HOME="$d/data" XDG_CONFIG_HOME="$d/config" XDG_CACHE_HOME="$d/cache" \
+    exec build/linux/x64/release/bundle/bloomee' _ one
+```
+
+For the second instance, run the same command in another terminal with `_ two` instead of `_ one` at the end. In each, go through the first-run screens, then open Settings, Library Sync, give the Device a name, and turn sync on with `~/bloomee-instances/sync-location` as the local folder (the folder picker may open in the instance's own home, `~/bloomee-instances/<name>`: type or browse to the full path). To start an instance from scratch, close it and delete its directory (`rm -rf ~/bloomee-instances/one`). These persistent instances are for the owner; an agent launching the app uses the throwaway recipe above instead.
+
 The libmpv player tests in `test/player_network_test.dart` skip unless `MPV_TEST_LIBRARY` points at a libmpv; upstream CI leaves it unset. The shell exports the path of its libmpv as `BLOOMEE_LIBMPV`, so to run them: `MPV_TEST_LIBRARY=$BLOOMEE_LIBMPV flutter test test/player_network_test.dart`.
 
 A Linux build marks `rust_builder/cargokit/run_build_tool.sh` executable, which git reports as a mode change; undo it with `git checkout -- rust_builder/cargokit/run_build_tool.sh` before committing.

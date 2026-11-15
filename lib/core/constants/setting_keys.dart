@@ -51,6 +51,19 @@ class SettingKeys {
   /// Used to gate the once-per-24-hours auto-backup check.
   static const String lastBackupTimestamp = "lastBackupTimestamp";
 
+  // ── Library Sync ────────────────────────────────────────────────────────────
+  // Device-local: never in a portable backup (see BackupSettingsPolicy).
+
+  /// Whether the owner turned Library Sync on for this Device. Stored as bool.
+  static const String librarySyncEnabled = "librarySyncEnabled";
+
+  /// The local folder chosen as the Sync Location.
+  static const String librarySyncFolder = "librarySyncFolder";
+
+  /// The Device name the owner chose, kept so that sync can be turned back
+  /// on under it when its bookkeeping is lost.
+  static const String librarySyncDeviceName = "librarySyncDeviceName";
+
   // ── History ─────────────────────────────────────────────────────────────────
   static const String historyClearTime = "autoHistoryCleanupTime";
 

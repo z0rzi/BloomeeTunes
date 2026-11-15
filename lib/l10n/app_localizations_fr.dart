@@ -2116,4 +2116,196 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eqPresetCustom => 'Personnalisé';
+
+  @override
+  String get settingsLibrarySync => 'Synchronisation de la bibliothèque';
+
+  @override
+  String get settingsLibrarySyncSubtitle =>
+      'Gardez les mêmes playlists sur tous vos appareils.';
+
+  @override
+  String get syncTitle => 'Synchronisation de la bibliothèque';
+
+  @override
+  String get syncEnableTitle => 'Synchroniser cet appareil';
+
+  @override
+  String get syncEnableSubtitle =>
+      'Vos playlists, titres aimés, albums et artistes enregistrés restent les mêmes sur chaque appareil synchronisé avec le même emplacement. Rien ne quitte cet appareil tant que vous n\'activez pas cette option.';
+
+  @override
+  String get syncLocationHeader => 'Emplacement de synchronisation';
+
+  @override
+  String get syncLocalFolder => 'Dossier local (avancé)';
+
+  @override
+  String get syncLocalFolderNote =>
+      'Bloomee se contente de lire et d\'écrire des fichiers dans ce dossier. Un autre outil, comme Syncthing, doit le transporter d\'une machine à l\'autre.';
+
+  @override
+  String get syncNoFolder => 'Aucun dossier choisi';
+
+  @override
+  String snackbarSyncFolderPickerFailed(String error) {
+    return 'Le sélecteur de dossier n\'a pas pu s\'ouvrir : $error';
+  }
+
+  @override
+  String get snackbarSyncFolderLocked =>
+      'Désactivez la synchronisation pour choisir un autre dossier.';
+
+  @override
+  String get syncFolderNotFound =>
+      'Ce dossier est introuvable. Vérifiez qu\'il existe et que son disque est connecté.';
+
+  @override
+  String get syncFolderNotWritable =>
+      'Bloomee ne peut pas écrire dans ce dossier. Choisissez un dossier que vous avez le droit de modifier.';
+
+  @override
+  String get syncDeviceHeader => 'Cet appareil';
+
+  @override
+  String get syncDeviceName => 'Nom de l\'appareil';
+
+  @override
+  String get syncDeviceNameSubtitle =>
+      'Le nom sous lequel vos autres appareils voient celui-ci. Le changer ne modifie rien à ce qui est synchronisé.';
+
+  @override
+  String get syncStatusHeader => 'État';
+
+  @override
+  String get syncNow => 'Synchroniser maintenant';
+
+  @override
+  String get syncSyncing => 'Synchronisation…';
+
+  @override
+  String get syncNeverSynced => 'Pas encore synchronisé';
+
+  @override
+  String syncLastSynced(String time) {
+    return 'Dernière synchronisation : $time';
+  }
+
+  @override
+  String syncLastError(String time, String error) {
+    return 'Dernière erreur ($time) : $error';
+  }
+
+  @override
+  String get syncErrorUnreachable =>
+      'l\'emplacement de synchronisation est inaccessible. La synchronisation réessaie d\'elle-même.';
+
+  @override
+  String syncErrorFailed(String detail) {
+    return 'la synchronisation a échoué ($detail). Elle réessaie d\'elle-même.';
+  }
+
+  @override
+  String get syncErrorHeld =>
+      'des suppressions venant d\'un autre appareil attendent votre décision.';
+
+  @override
+  String get syncErrorPaused =>
+      'la synchronisation est en pause car vous avez refusé des suppressions venant d\'un autre appareil.';
+
+  @override
+  String get syncErrorUpdateNeeded =>
+      'mettez Bloomee à jour pour continuer à synchroniser.';
+
+  @override
+  String syncErrorSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'les modifications de $count appareils ont été ignorées.',
+      one: 'les modifications de $count appareil ont été ignorées.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncReviewRemovals => 'Revoir les suppressions';
+
+  @override
+  String get dialogSyncGuardTitle => 'Confirmer ces suppressions ?';
+
+  @override
+  String syncGuardSummary(int removed, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      removed,
+      locale: localeName,
+      other: 'Cette synchronisation retirerait $removed de vos $total titres.',
+      one: 'Cette synchronisation retirerait $removed de vos $total titres.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncGuardFrom(String devices) {
+    return 'Effectuées sur : $devices';
+  }
+
+  @override
+  String syncGuardPlaylistDeleted(String name) {
+    return 'Playlist « $name » supprimée, avec ses titres';
+  }
+
+  @override
+  String syncGuardSongRemoved(String title, String playlist) {
+    return '« $title » retiré de « $playlist »';
+  }
+
+  @override
+  String syncGuardUnliked(String title) {
+    return '« $title » n\'est plus aimé';
+  }
+
+  @override
+  String syncGuardOnDevice(String device) {
+    return 'sur $device';
+  }
+
+  @override
+  String get buttonSyncRemove => 'Les retirer';
+
+  @override
+  String get buttonSyncKeepLibrary => 'Garder ma bibliothèque';
+
+  @override
+  String get syncGuardDeclineNote =>
+      'Si vous gardez votre bibliothèque, la synchronisation se met en pause jusqu\'à ce que vous confirmiez ces suppressions dans les réglages de synchronisation.';
+
+  @override
+  String get syncAnotherDevice => 'un autre appareil';
+
+  @override
+  String get dialogSyncClockTitle => 'L\'horloge d\'un appareil est fausse';
+
+  @override
+  String dialogSyncClockBody(String device, String time) {
+    return '$device date une modification du $time, plus d\'un jour en avance sur cet appareil. Ses modifications sont refusées tant que son horloge n\'est pas corrigée.';
+  }
+
+  @override
+  String get dialogSyncUnreadableTitle =>
+      'Ce qu\'un appareil a publié est illisible';
+
+  @override
+  String dialogSyncUnreadableBody(String device) {
+    return 'Ce que $device a publié pour vos autres appareils est endommagé ou illisible : ses modifications sont ignorées. Vos autres appareils continuent de se synchroniser. À sa prochaine synchronisation, $device publie de nouveau.';
+  }
+
+  @override
+  String get dialogSyncUpdateTitle =>
+      'Mettez Bloomee à jour pour continuer à synchroniser';
+
+  @override
+  String dialogSyncUpdateBody(String device) {
+    return '$device utilise un format de synchronisation plus récent que celui que cette version de Bloomee sait lire. La synchronisation est arrêtée sur cet appareil jusqu\'à la mise à jour de Bloomee.';
+  }
 }
