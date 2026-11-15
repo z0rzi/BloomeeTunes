@@ -232,6 +232,10 @@ class SyncDeviceDB {
   /// it does not mention follow it, in the order they were created.
   List<String>? libraryArrangement;
 
+  /// Whether the owner declined a merge the Removal Guard held; sync stays
+  /// paused until they confirm it.
+  bool syncPaused = false;
+
   SyncDeviceDB({
     required this.deviceId,
     required this.deviceName,

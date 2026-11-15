@@ -62,7 +62,8 @@ class SyncDAO {
         : SyncIdentity(
             deviceId: row.deviceId,
             deviceName: row.deviceName,
-            lastSyncAt: row.lastSyncAt?.toUtc());
+            lastSyncAt: row.lastSyncAt?.toUtc(),
+            paused: row.syncPaused);
   }
 
   /// Stores this Device's identity; an existing permanent ID is kept.
@@ -84,6 +85,18 @@ class SyncDAO {
       final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
       if (row == null) return;
       row.lastSyncAt = at;
+      await isar.syncDeviceDBs.put(row);
+    });
+  }
+
+  /// Pauses sync after the owner declined a merge the Removal Guard held, or
+  /// resumes it once they confirm it.
+  Future<void> setPaused(bool paused) async {
+    final isar = await _db;
+    await isar.writeTxn(() async {
+      final row = await isar.syncDeviceDBs.get(SyncDeviceDB.ownId);
+      if (row == null) return;
+      row.syncPaused = paused;
       await isar.syncDeviceDBs.put(row);
     });
   }
@@ -445,8 +458,12 @@ class SyncDAO {
   /// Applies [merge] to the library [local] was read from, in one write
   /// transaction: all of it or, on failure, none of it. Returns whether
   /// anything was written. For a worker connection (see [onWorker]).
+  ///
+  /// [beforeCommit] runs inside the transaction once everything is written;
+  /// tests throw from it to fail the apply at its last moment.
   Future<bool> apply(
-      LocalSyncedLibrary local, SyncedLibraryMerge merge, DateTime now) async {
+      LocalSyncedLibrary local, SyncedLibraryMerge merge, DateTime now,
+      {void Function()? beforeCommit}) async {
     if (merge.changes.isEmpty && !local.hasNewBookkeeping) return false;
     final isar = await _db;
     final tracks = merge.library.tracks;
@@ -618,6 +635,7 @@ class SyncDAO {
             _putPlaylistsInOrder(isar, playlistIds);
         }
       }
+      beforeCommit?.call();
     });
     return true;
   }

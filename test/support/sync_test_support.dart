@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:Bloomee/core/models/sync/sync_outcome.dart';
+import 'package:Bloomee/repository/backup/backup_repository.dart';
 import 'package:Bloomee/repository/sync/sync_engine.dart';
+import 'package:Bloomee/services/db/dao/backup_dao.dart';
 import 'package:Bloomee/services/db/dao/library_dao.dart';
 import 'package:Bloomee/services/db/dao/playlist_dao.dart';
 import 'package:Bloomee/services/db/dao/track_dao.dart';
@@ -13,13 +16,25 @@ import 'package:Bloomee/src/rust/api/plugin/models.dart';
 import 'package:isar_community/isar.dart';
 import 'package:path/path.dart' as p;
 
-/// A clock the test moves by hand.
+/// A clock the test moves by hand. It starts at the real time, so nothing
+/// dated by the real clock (such as a database made earlier) is in its
+/// future.
 class TestClock {
-  DateTime _now = DateTime.utc(2026, 3, 1, 12);
+  DateTime _now = DateTime.now().toUtc();
 
   DateTime call() => _now;
 
   void advance(Duration by) => _now = _now.add(by);
+}
+
+/// One Device's clock: the shared [TestClock], [ahead] of it.
+class _DeviceClock {
+  final TestClock world;
+  Duration ahead = Duration.zero;
+
+  _DeviceClock(this.world);
+
+  DateTime call() => world().add(ahead);
 }
 
 /// Passes everything to [inner] and remembers what this Device changed.
@@ -61,20 +76,55 @@ class SyncDevice {
   final PlaylistDAO playlists;
   final LibraryDAO library;
   final RecordingSyncLocation location;
+  final BackupRepository backups;
   final SyncEngine engine;
+  final _DeviceClock _clock;
 
   /// This Device's permanent ID, which settles changes made at the same time.
   late final String id;
 
-  SyncDevice._(this.name, this.isar, this.location, this.engine,
-      DateTime Function() clock)
-      : tracks = TrackDAO(Future.value(isar)),
+  SyncDevice._(this.name, this.isar, this.location, this.backups, this.engine,
+      _DeviceClock clock)
+      : _clock = clock,
+        tracks = TrackDAO(Future.value(isar)),
         playlists = PlaylistDAO(
             Future.value(isar), TrackDAO(Future.value(isar)),
-            clock: clock),
-        library = LibraryDAO(Future.value(isar), clock: clock);
+            clock: clock.call),
+        library = LibraryDAO(Future.value(isar), clock: clock.call);
 
-  Future<void> sync() => engine.syncNow();
+  /// How far this Device's clock is ahead of the others'.
+  set clockAhead(Duration by) => _clock.ahead = by;
+
+  /// Syncs, the owner confirming any merge the Removal Guard holds (tests of
+  /// the Removal Guard itself use [engine] directly).
+  Future<SyncOutcome> sync() async {
+    final outcome = await engine.syncNow();
+    if (outcome is! SyncHeld) return outcome;
+    return engine.answerRemovalGuard(outcome.hold, confirm: true);
+  }
+
+  /// This Device's sync engine as it starts again after the app restarts;
+  /// [beforeCommit] runs as each merge is about to be written.
+  SyncEngine restartedEngine({void Function()? beforeCommit}) => SyncEngine(
+      database: Future.value(isar),
+      location: location,
+      backups: backups,
+      clock: _clock.call,
+      beforeCommit: beforeCommit);
+
+  /// The protection snapshots kept on this Device.
+  Future<int> protectionSnapshots() async =>
+      (await backups.recoverySnapshots()).length;
+
+  /// The playlists held in this Device's latest protection snapshot.
+  Future<List<String>> latestSnapshotPlaylists() async {
+    final latest = (await backups.recoverySnapshots()).first;
+    final plan = await BackupDAO.readRecoveryFile(
+        latest.path, backups.supportPath, null);
+    return [
+      for (final row in plan.document.rows('playlists')) row['name'] as String
+    ]..sort();
+  }
 
   /// Turns Library Sync on.
   Future<void> enable() async =>
@@ -137,6 +187,22 @@ class SyncDevice {
     ]);
   }
 
+  /// The Synced Library as the screens show it: the playlists in the
+  /// library's order, each with its songs in order and its description and
+  /// pinning, the liked songs, and the saved albums and artists.
+  Future<Map<String, Object?>> syncedLibrary() async => {
+        'playlists': [
+          for (final name in await libraryOrder())
+            if (await playlists.getPlaylistByName(name) case final row?)
+              [name, row.description, row.isPinned, await songsOf(name)]
+        ],
+        'liked': await songsOf(DBProvider.likedPlaylist),
+        'albums': [for (final x in await library.getSavedAlbums()) x.id]
+          ..sort(),
+        'artists': [for (final x in await library.getSavedArtists()) x.id]
+          ..sort(),
+      };
+
   /// The user playlists in the order the library shows them, without the
   /// liked songs.
   Future<List<String>> libraryOrder() async => [
@@ -176,15 +242,28 @@ class SyncWorld {
         directory: directory.path, name: instance, inspector: false);
     final location =
         RecordingSyncLocation(LocalFolderSyncLocation(locationPath));
+    final backups = BackupRepository(
+        dao: BackupDAO(Future.value(isar)),
+        database: Future.value(isar),
+        supportPath: directory.path);
+    final deviceClock = _DeviceClock(clock);
     final engine = SyncEngine(
-        database: Future.value(isar), location: location, clock: clock.call);
-    final device = SyncDevice._(name, isar, location, engine, clock.call);
+        database: Future.value(isar),
+        location: location,
+        backups: backups,
+        clock: deviceClock.call);
+    final device =
+        SyncDevice._(name, isar, location, backups, engine, deviceClock);
     await PlaylistDAO(Future.value(isar), TrackDAO(Future.value(isar)))
         .ensurePlaylist(DBProvider.likedPlaylist);
     if (enabled) await device.enable();
     devices.add(device);
     return device;
   }
+
+  /// [device]'s Device State as published in the Sync Location.
+  File stateOf(SyncDevice device) => File(
+      p.join(locationPath, SyncEngine.stateDirectory, '${device.id}.json'));
 
   Future<void> dispose() async {
     for (final device in devices) {

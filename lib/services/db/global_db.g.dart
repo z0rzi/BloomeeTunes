@@ -7161,6 +7161,11 @@ const SyncDeviceDBSchema = CollectionSchema(
       id: 5,
       name: r'libraryArrangement',
       type: IsarType.stringList,
+    ),
+    r'syncPaused': PropertySchema(
+      id: 6,
+      name: r'syncPaused',
+      type: IsarType.bool,
     )
   },
   estimateSize: _syncDeviceDBEstimateSize,
@@ -7218,6 +7223,7 @@ void _syncDeviceDBSerialize(
   writer.writeDateTime(offsets[3], object.libraryArrangedAt);
   writer.writeString(offsets[4], object.libraryArrangedBy);
   writer.writeStringList(offsets[5], object.libraryArrangement);
+  writer.writeBool(offsets[6], object.syncPaused);
 }
 
 SyncDeviceDB _syncDeviceDBDeserialize(
@@ -7235,6 +7241,7 @@ SyncDeviceDB _syncDeviceDBDeserialize(
   object.libraryArrangedAt = reader.readDateTimeOrNull(offsets[3]);
   object.libraryArrangedBy = reader.readStringOrNull(offsets[4]);
   object.libraryArrangement = reader.readStringList(offsets[5]);
+  object.syncPaused = reader.readBool(offsets[6]);
   return object;
 }
 
@@ -7257,6 +7264,8 @@ P _syncDeviceDBDeserializeProp<P>(
       return (reader.readStringOrNull(offset)) as P;
     case 5:
       return (reader.readStringList(offset)) as P;
+    case 6:
+      return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -8227,6 +8236,16 @@ extension SyncDeviceDBQueryFilter
       );
     });
   }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterFilterCondition>
+      syncPausedEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'syncPaused',
+        value: value,
+      ));
+    });
+  }
 }
 
 extension SyncDeviceDBQueryObject
@@ -8300,6 +8319,19 @@ extension SyncDeviceDBQuerySortBy
       sortByLibraryArrangedByDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'libraryArrangedBy', Sort.desc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> sortBySyncPaused() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncPaused', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      sortBySyncPausedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncPaused', Sort.desc);
     });
   }
 }
@@ -8383,6 +8415,19 @@ extension SyncDeviceDBQuerySortThenBy
       return query.addSortBy(r'libraryArrangedBy', Sort.desc);
     });
   }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy> thenBySyncPaused() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncPaused', Sort.asc);
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QAfterSortBy>
+      thenBySyncPausedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'syncPaused', Sort.desc);
+    });
+  }
 }
 
 extension SyncDeviceDBQueryWhereDistinct
@@ -8426,6 +8471,12 @@ extension SyncDeviceDBQueryWhereDistinct
       distinctByLibraryArrangement() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'libraryArrangement');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, SyncDeviceDB, QDistinct> distinctBySyncPaused() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'syncPaused');
     });
   }
 }
@@ -8474,6 +8525,12 @@ extension SyncDeviceDBQueryProperty
       libraryArrangementProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'libraryArrangement');
+    });
+  }
+
+  QueryBuilder<SyncDeviceDB, bool, QQueryOperations> syncPausedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'syncPaused');
     });
   }
 }

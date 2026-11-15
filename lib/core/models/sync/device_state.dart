@@ -425,10 +425,45 @@ class DeviceState {
   Map<String, dynamic> toJson() =>
       contentJson()..['writtenAt'] = writtenAt.toUtc().toIso8601String();
 
+  /// The latest time this Device State dates anything.
+  DateTime get latestChange {
+    var latest = writtenAt;
+    void consider(DateTime at) {
+      if (at.isAfter(latest)) latest = at;
+    }
+
+    for (final p in library.playlists) {
+      consider(p.createdAt);
+      consider(p.nameChanged.at);
+      consider(p.descriptionChanged.at);
+      consider(p.pinnedChanged.at);
+      if (p.arrangement case final a?) consider(a.arranged.at);
+      for (final s in p.songs) {
+        consider(s.added.at);
+      }
+    }
+    for (final s in library.liked) {
+      consider(s.added.at);
+    }
+    for (final c in library.saved) {
+      consider(c.saved.at);
+    }
+    for (final r in library.removals) {
+      consider(r.removed.at);
+    }
+    for (final a in library.aliases) {
+      consider(a.merged.at);
+    }
+    if (library.order case final o?) consider(o.arranged.at);
+    return latest;
+  }
+
   factory DeviceState.fromJson(Map<String, dynamic> json) {
-    if (json['format'] != format || json['formatVersion'] is! int) {
+    final version = json['formatVersion'];
+    if (json['format'] != format || version is! int) {
       throw const FormatException('Not a Bloomee Device State.');
     }
+    if (version > formatVersion) throw NewerDeviceStateFormat(version);
     final tracks = <String, Map<String, dynamic>>{};
     for (final t in _list(json, 'tracks')) {
       final track = t as Map<String, dynamic>;
@@ -438,13 +473,21 @@ class DeviceState {
           for (final item in _list(json, key))
             read(item as Map<String, dynamic>)
         ];
+    final playlists = items('playlists', SyncedPlaylist.fromJson);
+    final liked = items('liked', SyncedSong.fromJson);
+    for (final song in [for (final p in playlists) ...p.songs, ...liked]) {
+      if (!tracks.containsKey(song.mediaId)) {
+        throw FormatException(
+            'Device State lacks details for ${song.mediaId}.');
+      }
+    }
     return DeviceState(
       deviceId: _string(json, 'deviceId'),
       deviceName: _string(json, 'deviceName'),
       writtenAt: _time(json, 'writtenAt'),
       library: SyncedLibrary(
-        playlists: items('playlists', SyncedPlaylist.fromJson),
-        liked: items('liked', SyncedSong.fromJson),
+        playlists: playlists,
+        liked: liked,
         saved: items('saved', SavedCollection.fromJson),
         removals: items('removals', RemovalMarker.fromJson),
         tracks: tracks,
@@ -453,6 +496,18 @@ class DeviceState {
       ),
     );
   }
+}
+
+/// A Device State written by a newer build, in a format this one cannot read.
+class NewerDeviceStateFormat implements Exception {
+  final int formatVersion;
+
+  const NewerDeviceStateFormat(this.formatVersion);
+
+  @override
+  String toString() =>
+      'NewerDeviceStateFormat: version $formatVersion, this build reads up to '
+      '${DeviceState.formatVersion}';
 }
 
 String _string(Map<String, dynamic> json, String key) {
@@ -491,9 +546,14 @@ class SyncIdentity {
   final String deviceName;
   final DateTime? lastSyncAt;
 
+  /// Whether the owner declined a merge the Removal Guard held: sync stays
+  /// paused until they confirm it.
+  final bool paused;
+
   const SyncIdentity({
     required this.deviceId,
     required this.deviceName,
     this.lastSyncAt,
+    this.paused = false,
   });
 }

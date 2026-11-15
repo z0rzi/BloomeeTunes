@@ -119,6 +119,9 @@ repository/cubit/UI flow. It inspects copies of retained v3 databases and reuses
 protected atomic merge, including download mappings. Recovery models are grouped in
 `recovery_copy.dart`; file resolution belongs to `DownloadDAO`. Pre-v3 database
 schemas and migration runners remain removed.
+Library Sync's `SyncEngine` (`lib/repository/sync/`) takes its protection snapshot
+through `BackupRepository.createSnapshot` (reason `before_sync`) before applying any
+merge that changes the library.
 
 ### DAOs
 
