@@ -21,19 +21,68 @@ class DocumentTreeSyncLocation implements SyncLocation {
   /// Whether [folder], as chosen, is such a folder rather than a path.
   static bool isDocumentTree(String folder) => folder.startsWith('content://');
 
-  /// How to show the chosen [folder] to the owner: a tree URI as the place
-  /// it names (`Sync/Bloomee` on the phone's own storage, `1A2B-3C4D:Music`
-  /// on a memory card), a path as it is.
-  static String describe(String folder) {
-    if (!isDocumentTree(folder)) return folder;
-    final segments = Uri.parse(folder).pathSegments;
+  static const _storageProvider = 'com.android.externalstorage.documents';
+  static const _downloadsProvider = 'com.android.providers.downloads.documents';
+
+  /// Where a path of the phone's storage is: its own (`/storage/emulated/0`,
+  /// for the owner's user), or a memory card's (`/storage/1A2B-3C4D`).
+  static final _storagePath =
+      RegExp(r'^/storage/(?:emulated/\d+|([^/]+))(?:/(.*))?$');
+
+  /// The place in the phone's storage that [tree] is, as the owner reads it
+  /// (`Sync/Bloomee`, `Documents/Bloomee`, `Download/Sync`, or
+  /// `1A2B-3C4D/Music` on a memory card), when its document ID names one;
+  /// null when it is an ID that names no place (`msf:123`), or another
+  /// provider's.
+  static String? placeOf(String tree) {
+    final uri = Uri.parse(tree);
+    final segments = uri.pathSegments;
     final at = segments.indexOf('tree');
-    if (at < 0 || at + 1 >= segments.length) return folder;
-    final place = segments[at + 1];
-    // The whole of the phone's own storage keeps its name, `primary:`.
-    return place.startsWith('primary:') && place.length > 'primary:'.length
-        ? place.substring('primary:'.length)
-        : place;
+    if (at < 0 || at + 1 >= segments.length) return null;
+    final id = segments[at + 1];
+    String join(String root, String path) =>
+        [root, path].where((part) => part.isNotEmpty).join('/');
+    switch (uri.authority) {
+      // `<volume>:<path in it>`: `primary` for the phone's own storage,
+      // `home` for its Documents folder, else a memory card's ID.
+      case _storageProvider:
+        final colon = id.indexOf(':');
+        if (colon <= 0) return null;
+        final (volume, path) =
+            (id.substring(0, colon), id.substring(colon + 1));
+        return switch (volume) {
+          'primary' => path.isEmpty ? '/' : path,
+          'home' => join('Documents', path),
+          _ => join(volume, path),
+        };
+      // `raw:<path>` for a folder under Downloads; `downloads` for Downloads
+      // itself; `msf:<number>` and bare numbers name no place.
+      case _downloadsProvider:
+        if (id == 'downloads') return 'Download';
+        if (!id.startsWith('raw:')) return null;
+        final path = id.substring('raw:'.length);
+        return switch (_storagePath.firstMatch(path)) {
+          final match? => join(match.group(1) ?? '', match.group(2) ?? ''),
+          null => path,
+        };
+    }
+    return null;
+  }
+
+  /// How to show this folder to the owner: the place it is ([placeOf]),
+  /// else its own name as its provider gives it, else its document ID.
+  Future<String> describe() async {
+    if (placeOf(tree) case final place?) return place;
+    try {
+      if (await _call<String>('name') case final name? when name.isNotEmpty) {
+        return name;
+      }
+    } on SyncLocationException {
+      // Out of reach now: the ID will do.
+    }
+    final segments = Uri.parse(tree).pathSegments;
+    final at = segments.indexOf('tree');
+    return at >= 0 && at + 1 < segments.length ? segments[at + 1] : tree;
   }
 
   /// The tree URI of the chosen folder.

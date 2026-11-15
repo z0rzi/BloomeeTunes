@@ -41,11 +41,14 @@ class DocumentTreeStandIn {
   }
 
   /// A tree URI, as the system folder picker returns, for [folder]; granted
-  /// unless [grant] is false.
-  String treeFor(String folder, {bool grant = true}) {
-    final id = 'primary:${p.basename(folder)}${_trees.length}';
-    final tree = 'content://com.android.externalstorage.documents/tree/'
-        '${Uri.encodeComponent(id)}';
+  /// unless [grant] is false. It is the phone's own storage's unless another
+  /// provider's [authority] and document [id] are given.
+  String treeFor(String folder,
+      {bool grant = true,
+      String authority = 'com.android.externalstorage.documents',
+      String? id}) {
+    final documentId = id ?? 'primary:${p.basename(folder)}${_trees.length}';
+    final tree = 'content://$authority/tree/${Uri.encodeComponent(documentId)}';
     _trees[tree] = folder;
     if (grant) granted.add(tree);
     return tree;
@@ -59,6 +62,7 @@ class DocumentTreeStandIn {
         granted.contains(tree) &&
         await Directory(root).exists();
     if (call.method == 'reachable') return reachable;
+    if (call.method == 'name' && reachable) return p.basename(root);
     if (!reachable) {
       throw PlatformException(
           code: 'unavailable', message: 'No access to the folder $tree');

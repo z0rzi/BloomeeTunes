@@ -12,7 +12,6 @@ import 'package:Bloomee/screens/widgets/bloomee_ui_kit/bloomee_dialog.dart';
 import 'package:Bloomee/screens/widgets/snackbar.dart';
 import 'package:Bloomee/screens/widgets/sync_alert_listener.dart';
 import 'package:Bloomee/services/download/download_storage.dart';
-import 'package:Bloomee/services/sync/document_tree_sync_location.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -441,10 +440,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           SettingNavTile(
             icon: Icons.folder_outlined,
             title: l10n.syncLocalFolder,
-            subtitle: switch (state.setup.folder) {
-              final folder? => DocumentTreeSyncLocation.describe(folder),
-              null => l10n.syncNoFolder,
-            },
+            subtitle: state.setup.folderShownAs ?? l10n.syncNoFolder,
             badge: inUse,
             onTap: () => _choose(kind, again: true),
           ),

@@ -149,6 +149,15 @@ void main() {
     expect(readOnly.listSync(), isEmpty);
   });
 
+  test('the settings show a folder chosen on Linux by its path', () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final app = appOn(laptop);
+    await app.enable(SyncLocationChoice.folder(world.locationPath),
+        deviceName: 'laptop');
+
+    expect((await app.setup()).folderShownAs, world.locationPath);
+  });
+
   test('testing a folder leaves nothing in it', () async {
     final laptop = await world.device('laptop', enabled: false);
     final app = appOn(laptop);
@@ -188,6 +197,21 @@ void main() {
       await app.syncNow();
       await laptop.sync();
       expect(await laptop.songsOf('Gym'), ['yt::3']);
+    });
+
+    test('the settings show the folder chosen by its place, not its URI',
+        () async {
+      final phone = await world.device('phone', enabled: false);
+      final app = appOn(phone);
+      expect((await app.setup()).folderShownAs, isNull);
+
+      await app.enable(
+          SyncLocationChoice.folder(android.treeFor(world.locationPath,
+              authority: 'com.android.providers.downloads.documents',
+              id: 'raw:/storage/emulated/0/Download/BloomeeSyncTest')),
+          deviceName: 'phone');
+
+      expect((await app.setup()).folderShownAs, 'Download/BloomeeSyncTest');
     });
 
     test('setup says plainly when the folder cannot be reached, and stays off',

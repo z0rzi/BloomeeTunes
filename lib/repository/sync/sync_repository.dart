@@ -134,12 +134,18 @@ class SyncRepository {
   Future<SyncSetup> setup() async {
     final identity = await _dao.identity();
     final machine = (await _machineName()).trim();
+    final folder = await _settings.getSettingStr(SettingKeys.librarySyncFolder);
     return SyncSetup(
       enabled: await _dao.enabled(),
       everEnabled: identity != null,
       locationKind: SyncLocationKind.values.asNameMap()[
           await _settings.getSettingStr(SettingKeys.librarySyncLocationKind)],
-      folder: await _settings.getSettingStr(SettingKeys.librarySyncFolder),
+      folder: folder,
+      folderShownAs: folder == null
+          ? null
+          : DocumentTreeSyncLocation.isDocumentTree(folder)
+              ? await DocumentTreeSyncLocation(folder).describe()
+              : folder,
       webDavAddress:
           await _settings.getSettingStr(SettingKeys.librarySyncWebDavAddress),
       webDavUser:

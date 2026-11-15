@@ -36,7 +36,7 @@ class SyncDocumentTree(private val activity: Activity) {
     private class Entry(val id: String, val name: String, val isDirectory: Boolean)
 
     fun handle(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method !in setOf("reachable", "list", "read", "create", "delete", "rename")) {
+        if (call.method !in setOf("reachable", "name", "list", "read", "create", "delete", "rename")) {
             result.notImplemented()
             return
         }
@@ -48,6 +48,8 @@ class SyncDocumentTree(private val activity: Activity) {
                     val directory = call.argument<List<String>>("directory") ?: emptyList()
                     val name = call.argument<String>("name")
                     when (call.method) {
+                        // The folder's own name, for showing a tree whose ID names no place.
+                        "name" -> displayName(document(tree, DocumentsContract.getTreeDocumentId(tree)))
                         "list" -> list(tree, directory)
                         "read" -> read(tree, directory, requireNotNull(name))
                         "create" -> create(tree, directory, requireNotNull(name),

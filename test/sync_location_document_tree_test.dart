@@ -81,19 +81,76 @@ void _adapterTests() {
         reason: 'no temporary or renamed copy is left behind');
   });
 
-  test('a folder chosen on Android is shown by its place, not its URI', () {
-    expect(
-        DocumentTreeSyncLocation.describe(
-            'content://com.android.externalstorage.documents/tree/primary%3ASync%2FBloomee'),
-        'Sync/Bloomee');
-    expect(
-        DocumentTreeSyncLocation.describe(
-            'content://com.android.externalstorage.documents/tree/1A2B-3C4D%3AMusic'),
-        '1A2B-3C4D:Music');
-    expect(
-        DocumentTreeSyncLocation.describe(
-            'content://com.android.externalstorage.documents/tree/primary%3A'),
-        'primary:');
-    expect(DocumentTreeSyncLocation.describe('/home/me/Sync'), '/home/me/Sync');
+  group('a folder chosen on Android is shown by its place, not its URI', () {
+    const storage = 'content://com.android.externalstorage.documents/tree/';
+    const downloads =
+        'content://com.android.providers.downloads.documents/tree/';
+    String tree(String authority, String id) =>
+        '$authority${Uri.encodeComponent(id)}';
+
+    test('a folder of the phone\'s own storage, or its Documents', () {
+      expect(
+          DocumentTreeSyncLocation.placeOf(
+              tree(storage, 'primary:Sync/Bloomee')),
+          'Sync/Bloomee');
+      expect(DocumentTreeSyncLocation.placeOf(tree(storage, 'primary:')), '/');
+      expect(DocumentTreeSyncLocation.placeOf(tree(storage, 'home:Bloomee')),
+          'Documents/Bloomee');
+      expect(DocumentTreeSyncLocation.placeOf(tree(storage, 'home:')),
+          'Documents');
+    });
+
+    test('a folder of a memory card', () {
+      expect(
+          DocumentTreeSyncLocation.placeOf(
+              tree(storage, '1A2B-3C4D:Music/Sync')),
+          '1A2B-3C4D/Music/Sync');
+      expect(DocumentTreeSyncLocation.placeOf(tree(storage, '1A2B-3C4D:')),
+          '1A2B-3C4D');
+    });
+
+    test('a folder picked under Downloads', () {
+      expect(
+          DocumentTreeSyncLocation.placeOf(tree(
+              downloads, 'raw:/storage/emulated/0/Download/BloomeeSyncTest')),
+          'Download/BloomeeSyncTest');
+      expect(
+          DocumentTreeSyncLocation.placeOf(
+              tree(downloads, 'raw:/storage/1A2B-3C4D/Download/Sync')),
+          '1A2B-3C4D/Download/Sync');
+      expect(DocumentTreeSyncLocation.placeOf(tree(downloads, 'downloads')),
+          'Download');
+    });
+
+    test('an ID that names no place shows the folder\'s own name', () async {
+      final root = await createTestDirectory('bloomee_sync_tree_');
+      addTearDown(() => root.delete(recursive: true));
+      final android = DocumentTreeStandIn.install();
+      final folder =
+          await Directory(p.join(root.path, 'BloomeeSyncTest')).create();
+      for (final id in ['msf:123', '42']) {
+        final opaque = android.treeFor(folder.path,
+            authority: 'com.android.providers.downloads.documents', id: id);
+        expect(DocumentTreeSyncLocation.placeOf(opaque), isNull);
+        expect(await DocumentTreeSyncLocation(opaque).describe(),
+            'BloomeeSyncTest');
+      }
+      final elsewhere = android.treeFor(folder.path,
+          authority: 'com.example.cloud.documents', id: 'primary:Sync');
+      expect(DocumentTreeSyncLocation.placeOf(elsewhere), isNull,
+          reason: 'only Android\'s own storage names IDs after places');
+      expect(await DocumentTreeSyncLocation(elsewhere).describe(),
+          'BloomeeSyncTest');
+    });
+
+    test('a folder that cannot be reached still shows something', () async {
+      DocumentTreeStandIn.install();
+      final gone = tree(downloads, 'msf:123');
+      expect(await DocumentTreeSyncLocation(gone).describe(), 'msf:123');
+      expect(
+          await DocumentTreeSyncLocation(tree(storage, 'primary:Sync'))
+              .describe(),
+          'Sync');
+    });
   });
 }

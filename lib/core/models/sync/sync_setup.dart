@@ -69,6 +69,10 @@ class SyncSetup extends Equatable {
   /// [locationKind] is [SyncLocationKind.localFolder].
   final String? folder;
 
+  /// [folder] as the owner reads it: a path as it is; on Android, the place
+  /// in the phone's storage, or the folder's name, rather than its tree URI.
+  final String? folderShownAs;
+
   /// The WebDAV folder's address and the user name signed in with, if a
   /// WebDAV server was set up; it is the Sync Location when [locationKind]
   /// is [SyncLocationKind.webDav]. The password is in the keyring only.
@@ -87,6 +91,7 @@ class SyncSetup extends Equatable {
       this.everEnabled = false,
       this.locationKind,
       this.folder,
+      this.folderShownAs,
       this.webDavAddress,
       this.webDavUser,
       this.dropboxAppKey,
@@ -107,6 +112,7 @@ class SyncSetup extends Equatable {
         everEnabled,
         locationKind,
         folder,
+        folderShownAs,
         webDavAddress,
         webDavUser,
         dropboxAppKey,
