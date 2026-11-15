@@ -4202,11 +4202,11 @@ abstract class AppLocalizations {
   /// **'Dropbox no longer accepts this device\'s sign-in: it expired or was revoked. Sync is stopped on this device until you sign in again in the Library Sync settings.'**
   String get dialogSyncSignInBody;
 
-  /// No description provided for @snackbarDropboxSignOutFailed.
+  /// No description provided for @snackbarSyncSignOutFailed.
   ///
   /// In en, this message translates to:
   /// **'Could not sign out: the system keyring cannot be changed.'**
-  String get snackbarDropboxSignOutFailed;
+  String get snackbarSyncSignOutFailed;
 
   /// No description provided for @dialogSyncChooseLocationTitle.
   ///
@@ -4249,6 +4249,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{user} on {address}'**
   String syncWebDavAccount(String user, String address);
+
+  /// No description provided for @buttonWebDavSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out of the WebDAV server'**
+  String get buttonWebDavSignOut;
 
   /// No description provided for @dialogWebDavTitle.
   ///

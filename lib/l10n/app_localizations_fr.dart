@@ -2410,7 +2410,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Dropbox n\'accepte plus la connexion de cet appareil : elle a expiré ou a été révoquée. La synchronisation est arrêtée sur cet appareil jusqu\'à ce que vous vous reconnectiez dans les réglages de synchronisation.';
 
   @override
-  String get snackbarDropboxSignOutFailed =>
+  String get snackbarSyncSignOutFailed =>
       'Déconnexion impossible : le trousseau du système ne peut pas être modifié.';
 
   @override
@@ -2439,6 +2439,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String syncWebDavAccount(String user, String address) {
     return '$user sur $address';
   }
+
+  @override
+  String get buttonWebDavSignOut => 'Se déconnecter du serveur WebDAV';
 
   @override
   String get dialogWebDavTitle => 'Se connecter à un serveur WebDAV';

@@ -386,14 +386,29 @@ Track song(String id,
 class MemoryKeyring implements CredentialStore {
   final Map<String, String> values = {};
 
+  /// Whether it refuses changes, still reading what it holds.
+  bool refusesChanges = false;
+
   @override
   Future<String?> read(String key) async => values[key];
 
   @override
-  Future<void> write(String key, String value) async => values[key] = value;
+  Future<void> write(String key, String value) async {
+    _checkChangeable();
+    values[key] = value;
+  }
 
   @override
-  Future<void> delete(String key) async => values.remove(key);
+  Future<void> delete(String key) async {
+    _checkChangeable();
+    values.remove(key);
+  }
+
+  void _checkChangeable() {
+    if (refusesChanges) {
+      throw const CredentialStoreUnavailable('The keyring refuses changes.');
+    }
+  }
 }
 
 /// A system keyring that cannot be read, as when it is locked.

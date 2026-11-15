@@ -176,13 +176,27 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
       ) ??
       false;
 
-  Future<void> _signOutOfDropbox() async {
+  /// Signs this Device out of [kind].
+  Future<void> _signOutOf(SyncLocationKind kind) async {
     final l10n = AppLocalizations.of(context)!;
-    if (!await _cubit.signOutOfDropbox()) {
-      SnackbarService.showMessage(l10n.snackbarDropboxSignOutFailed);
+    if (!await _cubit.signOutOf(kind)) {
+      SnackbarService.showMessage(l10n.snackbarSyncSignOutFailed);
     }
     if (mounted) setState(() => _switchKey++);
   }
+
+  /// The button signing this Device out of [kind].
+  Widget _signOutButton(SyncLocationKind kind, String label) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _signOutOf(kind),
+            icon: const Icon(Icons.logout_rounded),
+            label: Text(label),
+          ),
+        ),
+      );
 
   Future<void> _forget(KnownDevice device) async {
     final l10n = AppLocalizations.of(context)!;
@@ -363,17 +377,7 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
           ),
           SettingInfoText(text: l10n.syncDropboxNote),
           if (state.dropboxSignedIn)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _signOutOfDropbox,
-                  icon: const Icon(Icons.logout_rounded),
-                  label: Text(l10n.buttonDropboxSignOut),
-                ),
-              ),
-            ),
+            _signOutButton(kind, l10n.buttonDropboxSignOut),
         ],
       SyncLocationKind.webDav => [
           SettingNavTile(
@@ -391,6 +395,8 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
             onTap: () => _choose(kind, again: true),
           ),
           SettingInfoText(text: l10n.syncWebDavNote),
+          if (state.webDavSignedIn)
+            _signOutButton(kind, l10n.buttonWebDavSignOut),
         ],
       SyncLocationKind.localFolder => [
           SettingNavTile(

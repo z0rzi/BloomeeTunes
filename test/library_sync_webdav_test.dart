@@ -44,15 +44,20 @@ void main() {
   /// The folder on the server the owner syncs in.
   String folder() => server.address('/dav/bloomee').toString();
 
-  /// The app on [device], keeping its credentials in [keyring].
-  SyncRepository appOn(SyncDevice device, CredentialStore keyring) {
+  /// The app on [device], keeping its credentials in [keyring], offering
+  /// WebDAV and, [withFolder], a local folder as well.
+  SyncRepository appOn(SyncDevice device, CredentialStore keyring,
+      {bool withFolder = false}) {
     final repository = SyncRepository(
       database: Future.value(device.isar),
       backups: device.backups,
       clock: device.clock,
       machineName: () => device.name,
       credentials: keyring,
-      locationKinds: const [SyncLocationKind.webDav],
+      locationKinds: [
+        SyncLocationKind.webDav,
+        if (withFolder) SyncLocationKind.localFolder
+      ],
     );
     repositories.add(repository);
     return repository;
@@ -328,22 +333,87 @@ void main() {
   });
 
   test(
+      'signing out removes the password from the Device and turns off sync through WebDAV, as turning off does',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final keyring = MemoryKeyring();
+    await laptop.add('Road trip', [song('yt::1')]);
+    final cubit = await syncingThroughWebDav(laptop, keyring);
+    final published = {for (final p in server.paths) p: server.file(p)};
+    final requests = server.requests;
+
+    expect(await cubit.signOutOf(SyncLocationKind.webDav), isTrue);
+
+    expect(keyring.values, isEmpty);
+    expect(cubit.state.webDavSignedIn, isFalse);
+    expect(cubit.state.setup.enabled, isFalse,
+        reason: 'sync cannot go on through WebDAV once signed out');
+    expect(cubit.state.setup.everEnabled, isTrue,
+        reason: 'this Device keeps its identity, as when turned off');
+    expect(await laptop.songsOf('Road trip'), ['yt::1']);
+    expect({for (final p in server.paths) p: server.file(p)}, published,
+        reason: 'the Device State is left as it is');
+    await laptop.add('Focus', [song('yt::2')]);
+    await cubit.syncNow();
+    await pumpEventQueue();
+    expect(server.requests, requests, reason: 'nothing more is sent');
+  });
+
+  test(
+      'a sign-out the keyring refuses says so and changes nothing: sync goes on through WebDAV',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final keyring = MemoryKeyring();
+    final cubit = await syncingThroughWebDav(laptop, keyring);
+    keyring.refusesChanges = true;
+
+    expect(await cubit.signOutOf(SyncLocationKind.webDav), isFalse);
+
+    expect(keyring.values.values, contains(server.password));
+    expect(cubit.state.webDavSignedIn, isTrue);
+    expect(cubit.state.setup.enabled, isTrue);
+    world.clock.advance(const Duration(minutes: 5));
+    await laptop.add('Road trip', [song('yt::1')]);
+    await cubit.syncNow();
+    expect(cubit.state.status.lastError, isNull);
+    final state =
+        server.paths.singleWhere((p) => p.startsWith('/dav/bloomee/sync/'));
+    expect(utf8.decode(server.file(state)!), contains('yt::1'));
+  });
+
+  test(
+      'signing out of WebDAV while a local folder is the Sync Location only removes the password; sync goes on',
+      () async {
+    final laptop = await world.device('laptop', enabled: false);
+    final keyring = MemoryKeyring();
+    final cubit = screenOn(appOn(laptop, keyring, withFolder: true));
+    await cubit.load();
+    expect(await signIn(cubit), isNull);
+    await cubit.choose(SyncLocationChoice.folder(world.locationPath));
+    await cubit.syncNow();
+
+    expect(await cubit.signOutOf(SyncLocationKind.webDav), isTrue);
+
+    expect(keyring.values, isEmpty);
+    expect(cubit.state.webDavSignedIn, isFalse);
+    expect(cubit.state.setup.enabled, isTrue);
+    expect(cubit.state.setup.locationKind, SyncLocationKind.localFolder);
+    world.clock.advance(const Duration(minutes: 5));
+    await laptop.add('Road trip', [song('yt::1')]);
+    await cubit.syncNow();
+    expect(cubit.state.status.lastError, isNull);
+    final state = (await filesIn(world.locationPath))
+        .entries
+        .singleWhere((file) => file.key.startsWith('sync/'));
+    expect(utf8.decode(state.value), contains('yt::1'),
+        reason: 'the folder still gets this Device\'s changes');
+  });
+
+  test(
       'moving from a local folder to WebDAV publishes there and leaves the folder untouched',
       () async {
     final laptop = await world.device('laptop', enabled: false);
-    final repository = SyncRepository(
-      database: Future.value(laptop.isar),
-      backups: laptop.backups,
-      clock: laptop.clock,
-      machineName: () => laptop.name,
-      credentials: MemoryKeyring(),
-      locationKinds: const [
-        SyncLocationKind.webDav,
-        SyncLocationKind.localFolder
-      ],
-    );
-    repositories.add(repository);
-    final cubit = screenOn(repository);
+    final cubit = screenOn(appOn(laptop, MemoryKeyring(), withFolder: true));
     await laptop.add('Road trip', [song('yt::1')]);
     await cubit.load();
     await cubit.choose(SyncLocationChoice.folder(world.locationPath));

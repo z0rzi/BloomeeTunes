@@ -2248,7 +2248,7 @@ class AppLocalizationsZh extends AppLocalizations {
       'Dropbox no longer accepts this device\'s sign-in: it expired or was revoked. Sync is stopped on this device until you sign in again in the Library Sync settings.';
 
   @override
-  String get snackbarDropboxSignOutFailed =>
+  String get snackbarSyncSignOutFailed =>
       'Could not sign out: the system keyring cannot be changed.';
 
   @override
@@ -2276,6 +2276,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String syncWebDavAccount(String user, String address) {
     return '$user on $address';
   }
+
+  @override
+  String get buttonWebDavSignOut => 'Sign out of the WebDAV server';
 
   @override
   String get dialogWebDavTitle => 'Connect to a WebDAV server';

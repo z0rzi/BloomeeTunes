@@ -264,15 +264,16 @@ class SyncCubit extends Cubit<SyncState> {
     return problem;
   }
 
-  /// Signs this Device out of Dropbox, turning off sync through it.
-  /// Completes with whether the sign-in was removed: it is not when the
-  /// system keyring cannot be changed.
-  Future<bool> signOutOfDropbox() async {
+  /// Signs this Device out of [kind] (Dropbox, a WebDAV server), turning
+  /// off sync through it. Completes with whether the sign-in was removed:
+  /// it is not when the system keyring cannot be changed, and then nothing
+  /// changed.
+  Future<bool> signOutOf(SyncLocationKind kind) async {
     try {
-      await _repository.signOutOfDropbox();
+      await _repository.signOutOf(kind);
       return true;
     } catch (error) {
-      log('Could not sign out of Dropbox: $error', name: 'SyncCubit');
+      log('Could not sign out of a Sync Location: $error', name: 'SyncCubit');
       return false;
     } finally {
       await load();

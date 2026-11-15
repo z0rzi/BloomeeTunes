@@ -320,30 +320,51 @@ class SyncRepository {
     }
   }
 
-  /// Signs this Device out of Dropbox: the sign-in is ended on Dropbox when
-  /// it can be reached, and removed from the keyring in any case. Sync
-  /// through Dropbox is turned off, as [disable] does. Throws
-  /// [CredentialStoreUnavailable] when the keyring cannot be changed.
-  Future<void> signOutOfDropbox() => _setupChanges.run(() async {
+  /// Signs this Device out of [kind] (Dropbox, a WebDAV server): its
+  /// sign-in is removed from the keyring, and a Dropbox sign-in is ended on
+  /// Dropbox when it can be reached. Sync through [kind] is turned off, as
+  /// [disable] does; sync through another Sync Location goes on. A WebDAV
+  /// server's address and user name stay in the settings, to be offered
+  /// when the owner signs in again. A local folder has nothing to sign out
+  /// of. Throws [CredentialStoreUnavailable] when the keyring cannot be
+  /// read or changed, and then changes nothing.
+  Future<void> signOutOf(SyncLocationKind kind) => _setupChanges.run(() async {
+        final credential = _credentialOf(kind);
+        if (credential == null) return;
+        final refreshToken = kind == SyncLocationKind.dropbox
+            ? await _credentials.read(dropboxCredential)
+            : null;
+        await _credentials.delete(credential);
         final setup = await this.setup();
-        if (setup.enabled && setup.locationKind == SyncLocationKind.dropbox) {
+        if (setup.enabled && setup.locationKind == kind) {
           await _stopSyncing();
         }
-        try {
-          final refreshToken = await _credentials.read(dropboxCredential);
-          if (refreshToken != null && _dropbox != null) {
-            await DropboxSyncLocation(
-                    app: _dropbox, refreshToken: refreshToken, clock: _clock)
-                .signOut();
-          }
-        } catch (error) {
-          // Removing it from this Device is what matters; Dropbox lists
-          // the sign-in until the owner removes it there.
-          log('Dropbox sign-in not ended on Dropbox: $error',
-              name: 'SyncRepository');
-        }
-        await _credentials.delete(dropboxCredential);
+        if (refreshToken != null) await _endDropboxSignIn(refreshToken);
       });
+
+  /// The keyring entry holding the sign-in to a Sync Location of [kind];
+  /// none for a local folder.
+  static String? _credentialOf(SyncLocationKind kind) => switch (kind) {
+        SyncLocationKind.dropbox => dropboxCredential,
+        SyncLocationKind.webDav => webDavCredential,
+        SyncLocationKind.localFolder => null,
+      };
+
+  /// Ends the Dropbox sign-in [refreshToken] on Dropbox, when it can.
+  Future<void> _endDropboxSignIn(String refreshToken) async {
+    final app = _dropbox;
+    if (app == null) return;
+    try {
+      await DropboxSyncLocation(
+              app: app, refreshToken: refreshToken, clock: _clock)
+          .signOut();
+    } catch (error) {
+      // Removing it from this Device is what matters; Dropbox lists the
+      // sign-in until the owner removes it there.
+      log('Dropbox sign-in not ended on Dropbox: $error',
+          name: 'SyncRepository');
+    }
+  }
 
   /// Stops syncing. The library and the Device State published stay as they
   /// are, and this Device keeps its identity and bookkeeping, so that turning

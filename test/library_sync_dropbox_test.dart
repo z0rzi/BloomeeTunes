@@ -269,7 +269,7 @@ void main() {
     final cubit = await syncingThroughDropbox(laptop, keyring);
     final refreshToken = dropbox.validRefreshTokens.single;
 
-    await cubit.signOutOfDropbox();
+    expect(await cubit.signOutOf(SyncLocationKind.dropbox), isTrue);
 
     expect(keyring.values, isEmpty);
     expect(dropbox.isValid(refreshToken), isFalse);
