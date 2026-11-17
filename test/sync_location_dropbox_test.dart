@@ -169,8 +169,4 @@ void main() {
       expect(standIn.isValid(refreshToken), isFalse);
     });
   });
-
-  test('a build without an app key has no Dropbox app', () {
-    expect(DropboxApp.fromBuild(), isNull);
-  });
 }

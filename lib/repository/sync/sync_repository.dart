@@ -39,8 +39,8 @@ typedef SyncSchedulerFactory = SyncScheduler Function(
 /// ([CredentialStore]), never in the database or anything published. When
 /// the Sync Location stops accepting them, sync stops until the owner signs
 /// in again ([SyncSignInNeeded]). Dropbox is signed in to through the
-/// owner's own Dropbox app when they entered its key on this Device
-/// ([setDropboxAppKey]), or else through the app the build was given.
+/// owner's own Dropbox app, whose key they entered on this Device
+/// ([setDropboxAppKey]); Bloomee has none of its own.
 class SyncRepository {
   /// The file written and removed to test a Sync Location, in the area
   /// that holds Device States (which only reads `.json` files).
@@ -60,9 +60,6 @@ class SyncRepository {
   final FutureOr<String> Function() _machineName;
   final SyncSchedulerFactory _schedulerFor;
   final CredentialStore _credentials;
-
-  /// The Dropbox app the build was given, if any.
-  final DropboxApp? _builtInDropbox;
 
   /// Makes the Dropbox app of a key the owner entered.
   final DropboxApp Function(String key) _dropboxWithKey;
@@ -105,7 +102,6 @@ class SyncRepository {
     SyncSchedulerFactory? scheduler,
     List<SyncLocationKind>? locationKinds,
     CredentialStore? credentials,
-    DropboxApp? dropbox,
     DropboxApp Function(String key)? dropboxWithKey,
   })  : _database = database,
         _backups = backups,
@@ -115,14 +111,9 @@ class SyncRepository {
         _machineName = machineName ?? thisMachineName,
         _schedulerFor = scheduler ?? ((run) => SyncScheduler(run: run)),
         _credentials = credentials ?? const KeyringCredentialStore(),
-        _builtInDropbox = dropbox ?? DropboxApp.fromBuild(),
         _dropboxWithKey = dropboxWithKey ?? ((key) => DropboxApp(key: key)),
         locationKinds = locationKinds ??
             SyncLocationKind.offeredOn(Platform.operatingSystem);
-
-  /// Whether the build was given a Dropbox app key; without one, Dropbox
-  /// needs the key of the owner's own app ([setDropboxAppKey]).
-  bool get hasBuiltInDropboxApp => _builtInDropbox != null;
 
   SyncStatus get status => _status;
   Stream<SyncStatus> get statusChanges => _statusChanges.stream;
@@ -246,8 +237,8 @@ class SyncRepository {
   /// Starts signing in to Dropbox through the Dropbox app this Device uses
   /// (see [setDropboxAppKey]), returning the Dropbox page the owner opens to
   /// allow Bloomee; they paste back the code it shows, for
-  /// [finishDropboxSignIn]. Null when there is no app to sign in through: a
-  /// build without a Dropbox app key, where the owner has entered none.
+  /// [finishDropboxSignIn]. Null when there is no app to sign in through:
+  /// the owner has entered no Dropbox app key on this Device.
   Future<Uri?> beginDropboxSignIn() async {
     // Counted before the app is read, so that a key changed meanwhile is
     // seen at [finishDropboxSignIn].
@@ -386,7 +377,7 @@ class SyncRepository {
 
   /// Makes [key] the key of the Dropbox app this Device signs in through:
   /// the owner's own app, which they registered themselves; an empty key
-  /// goes back to the app the build was given. The key is kept in this
+  /// leaves no app to sign in through. The key is kept in this
   /// Device's settings, which never travel in a backup or a Device State.
   ///
   /// When that changes the app, this Device's Dropbox sign-in ends, as
@@ -417,15 +408,14 @@ class SyncRepository {
     return key == null || key.isEmpty ? null : key;
   }
 
-  /// The Dropbox app this Device signs in through: the owner's own, when
-  /// they entered its key, or else the build's; null when there is neither.
+  /// The Dropbox app this Device signs in through: the owner's own, whose
+  /// key they entered; null when they entered none.
   Future<DropboxApp?> _dropboxApp() async =>
       _dropboxAppFor(await _ownDropboxKey());
 
-  /// The Dropbox app of the owner's own key [ownKey], or the build's when
-  /// there is none.
+  /// The Dropbox app of the owner's own key [ownKey], if any.
   DropboxApp? _dropboxAppFor(String? ownKey) {
-    if (ownKey == null) return _builtInDropbox;
+    if (ownKey == null) return null;
     final own = _ownDropbox;
     if (own != null && own.key == ownKey) return own;
     return _ownDropbox = _dropboxWithKey(ownKey);
@@ -547,8 +537,7 @@ class SyncRepository {
       case SyncLocationKind.dropbox:
         final app = await _dropboxApp() ??
             (throw const SyncLocationAppRefused(
-                'This build has no Dropbox app key, and none was entered on '
-                'this Device.'));
+                'No Dropbox app key was entered on this Device.'));
         final refreshToken = await _credentials.read(dropboxCredential) ??
             (throw const SyncLocationSignInRefused(
                 'This Device is not signed in to Dropbox.'));

@@ -2365,12 +2365,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get syncDropboxOwnApp => '自分の Dropbox アプリを使用';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      '任意: 設定しない場合は Bloomee の Dropbox アプリを使用します';
-
-  @override
-  String get syncDropboxOwnAppNeeded =>
-      '必須: このバージョンの Bloomee には独自の Dropbox アプリがありません';
+  String get syncDropboxOwnAppNeeded => '必須: Bloomee には独自の Dropbox アプリがありません';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2382,7 +2377,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'ご自身で Dropbox アプリを登録すると、このデバイスは Bloomee のアプリではなくそのアプリを通してログインします。\n1. Dropbox App Console でアプリを作成します。Scoped access、次に App folder を選び、名前を付けてください。Dropbox 内のフォルダーは Apps/<名前> になります。\n2. アプリの Permissions タブで files.metadata.read、files.content.read、files.content.write にチェックを入れ、Submit を押してください。\n3. Settings タブで App key をコピーし、下に貼り付けてください。このキーは秘密ではなく、App secret は不要です。\nすべてのデバイスで同じキーを入力してください。アプリごとにフォルダーが分かれているため、異なるアプリを使うデバイス同士は同期しません。';
+      'ご自身で Dropbox アプリを登録してください。このデバイスはそのアプリを通してログインします。\n1. Dropbox App Console でアプリを作成します。Scoped access、次に App folder を選び、名前を付けてください。Dropbox 内のフォルダーは Apps/<名前> になります。\n2. アプリの Permissions タブで files.metadata.read、files.content.read、files.content.write にチェックを入れ、Submit を押してください。\n3. Settings タブで App key をコピーし、下に貼り付けてください。このキーは秘密ではなく、App secret は不要です。\nすべてのデバイスで同じキーを入力してください。アプリごとにフォルダーが分かれているため、異なるアプリを使うデバイス同士は同期しません。';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Dropbox App Console を開く';
@@ -2391,12 +2386,8 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dialogDropboxAppKey => 'アプリキー (App key)';
 
   @override
-  String get dialogDropboxAppBuiltInNote =>
-      '空欄のままにすると、Bloomee の Dropbox アプリを使用します。';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      'このバージョンの Bloomee には独自の Dropbox アプリがないため、ご自身のアプリが必要です。';
+      'Bloomee には独自の Dropbox アプリがないため、ご自身のアプリが必要です。';
 
   @override
   String get dialogDropboxAppSignOutNote =>

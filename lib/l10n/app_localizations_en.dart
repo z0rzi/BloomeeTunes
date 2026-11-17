@@ -2486,12 +2486,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncDropboxOwnApp => 'Use your own Dropbox app';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      'Optional: without it, Bloomee\'s own Dropbox app is used';
-
-  @override
   String get syncDropboxOwnAppNeeded =>
-      'Needed: this version of Bloomee has no Dropbox app of its own';
+      'Needed: Bloomee has no Dropbox app of its own';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2503,7 +2499,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'Register a Dropbox app of your own, and this device signs in through it instead of Bloomee\'s:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it below. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.';
+      'Register a Dropbox app of your own, which this device signs in through:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it below. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Open the Dropbox App Console';
@@ -2512,12 +2508,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dialogDropboxAppKey => 'App key';
 
   @override
-  String get dialogDropboxAppBuiltInNote =>
-      'Leave it empty to use Bloomee\'s own Dropbox app.';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      'This version of Bloomee has no Dropbox app of its own: Dropbox needs yours.';
+      'Bloomee has no Dropbox app of its own: Dropbox needs yours.';
 
   @override
   String get dialogDropboxAppSignOutNote =>

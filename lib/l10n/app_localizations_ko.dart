@@ -2367,12 +2367,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get syncDropboxOwnApp => '내 Dropbox 앱 사용';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      '선택 사항: 없으면 Bloomee의 Dropbox 앱을 사용합니다';
-
-  @override
-  String get syncDropboxOwnAppNeeded =>
-      '필수: 이 버전의 Bloomee에는 자체 Dropbox 앱이 없습니다';
+  String get syncDropboxOwnAppNeeded => '필수: Bloomee에는 자체 Dropbox 앱이 없습니다';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2384,7 +2379,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'Dropbox 앱을 직접 등록하면 이 기기는 Bloomee의 앱 대신 그 앱을 통해 로그인합니다.\n1. Dropbox App Console에서 앱을 만드세요. Scoped access, 그다음 App folder를 선택하고 이름을 지정하세요. Dropbox에서 앱 폴더는 Apps/<이름>이 됩니다.\n2. 앱의 Permissions 탭에서 files.metadata.read, files.content.read, files.content.write를 선택한 다음 Submit을 누르세요.\n3. Settings 탭에서 App key를 복사해 아래에 붙여 넣으세요. 이 키는 비밀이 아니며 App secret은 필요하지 않습니다.\n모든 기기에 같은 키를 입력하세요. 앱마다 폴더가 따로 있어서 서로 다른 앱을 쓰는 기기끼리는 동기화되지 않습니다.';
+      'Dropbox 앱을 직접 등록하세요. 이 기기는 그 앱을 통해 로그인합니다.\n1. Dropbox App Console에서 앱을 만드세요. Scoped access, 그다음 App folder를 선택하고 이름을 지정하세요. Dropbox에서 앱 폴더는 Apps/<이름>이 됩니다.\n2. 앱의 Permissions 탭에서 files.metadata.read, files.content.read, files.content.write를 선택한 다음 Submit을 누르세요.\n3. Settings 탭에서 App key를 복사해 아래에 붙여 넣으세요. 이 키는 비밀이 아니며 App secret은 필요하지 않습니다.\n모든 기기에 같은 키를 입력하세요. 앱마다 폴더가 따로 있어서 서로 다른 앱을 쓰는 기기끼리는 동기화되지 않습니다.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Dropbox App Console 열기';
@@ -2393,11 +2388,8 @@ class AppLocalizationsKo extends AppLocalizations {
   String get dialogDropboxAppKey => '앱 키 (App key)';
 
   @override
-  String get dialogDropboxAppBuiltInNote => 'Bloomee의 Dropbox 앱을 사용하려면 비워 두세요.';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      '이 버전의 Bloomee에는 자체 Dropbox 앱이 없으므로 직접 등록한 앱이 필요합니다.';
+      'Bloomee에는 자체 Dropbox 앱이 없으므로 직접 등록한 앱이 필요합니다.';
 
   @override
   String get dialogDropboxAppSignOutNote =>

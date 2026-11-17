@@ -2451,12 +2451,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get syncDropboxOwnApp => 'Kendi Dropbox uygulamanızı kullanın';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      'İsteğe bağlı: olmadığında Bloomee\'nin Dropbox uygulaması kullanılır';
-
-  @override
   String get syncDropboxOwnAppNeeded =>
-      'Gerekli: Bloomee\'nin bu sürümünün kendi Dropbox uygulaması yok';
+      'Gerekli: Bloomee\'nin kendi Dropbox uygulaması yok';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2468,7 +2464,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'Kendi Dropbox uygulamanızı kaydedin; bu cihaz Bloomee\'ninki yerine onun üzerinden giriş yapar:\n1. Dropbox App Console\'da bir uygulama oluşturun: Scoped access\'i, ardından App folder\'ı seçin ve bir ad verin. Dropbox\'ınızdaki klasörü Apps/<ad> olur.\n2. Uygulamanın Permissions sekmesinde files.metadata.read, files.content.read ve files.content.write seçeneklerini işaretleyin, sonra Submit\'e tıklayın.\n3. Settings sekmesinde App key\'i kopyalayıp aşağıya yapıştırın. Anahtar gizli değildir ve App secret gerekmez.\nHer cihazınıza aynı anahtarı girin: her uygulamanın kendi klasörü vardır, bu yüzden farklı uygulamalardaki cihazlar birbiriyle senkronize olmaz.';
+      'Kendi Dropbox uygulamanızı kaydedin; bu cihaz onun üzerinden giriş yapar:\n1. Dropbox App Console\'da bir uygulama oluşturun: Scoped access\'i, ardından App folder\'ı seçin ve bir ad verin. Dropbox\'ınızdaki klasörü Apps/<ad> olur.\n2. Uygulamanın Permissions sekmesinde files.metadata.read, files.content.read ve files.content.write seçeneklerini işaretleyin, sonra Submit\'e tıklayın.\n3. Settings sekmesinde App key\'i kopyalayıp aşağıya yapıştırın. Anahtar gizli değildir ve App secret gerekmez.\nHer cihazınıza aynı anahtarı girin: her uygulamanın kendi klasörü vardır, bu yüzden farklı uygulamalardaki cihazlar birbiriyle senkronize olmaz.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Dropbox App Console\'u aç';
@@ -2477,12 +2473,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get dialogDropboxAppKey => 'Uygulama anahtarı (App key)';
 
   @override
-  String get dialogDropboxAppBuiltInNote =>
-      'Bloomee\'nin Dropbox uygulamasını kullanmak için boş bırakın.';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      'Bloomee\'nin bu sürümünün kendi Dropbox uygulaması yok: Dropbox sizinkine ihtiyaç duyar.';
+      'Bloomee\'nin kendi Dropbox uygulaması yok: Dropbox sizinkine ihtiyaç duyar.';
 
   @override
   String get dialogDropboxAppSignOutNote =>

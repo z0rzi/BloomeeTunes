@@ -4400,16 +4400,10 @@ abstract class AppLocalizations {
   /// **'Use your own Dropbox app'**
   String get syncDropboxOwnApp;
 
-  /// No description provided for @syncDropboxOwnAppOptional.
-  ///
-  /// In en, this message translates to:
-  /// **'Optional: without it, Bloomee\'s own Dropbox app is used'**
-  String get syncDropboxOwnAppOptional;
-
   /// No description provided for @syncDropboxOwnAppNeeded.
   ///
   /// In en, this message translates to:
-  /// **'Needed: this version of Bloomee has no Dropbox app of its own'**
+  /// **'Needed: Bloomee has no Dropbox app of its own'**
   String get syncDropboxOwnAppNeeded;
 
   /// No description provided for @syncDropboxOwnAppKey.
@@ -4427,7 +4421,7 @@ abstract class AppLocalizations {
   /// No description provided for @dialogDropboxAppBody.
   ///
   /// In en, this message translates to:
-  /// **'Register a Dropbox app of your own, and this device signs in through it instead of Bloomee\'s:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it below. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.'**
+  /// **'Register a Dropbox app of your own, which this device signs in through:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it below. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.'**
   String get dialogDropboxAppBody;
 
   /// No description provided for @buttonDropboxOpenAppConsole.
@@ -4442,16 +4436,10 @@ abstract class AppLocalizations {
   /// **'App key'**
   String get dialogDropboxAppKey;
 
-  /// No description provided for @dialogDropboxAppBuiltInNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave it empty to use Bloomee\'s own Dropbox app.'**
-  String get dialogDropboxAppBuiltInNote;
-
   /// No description provided for @dialogDropboxAppRequiredNote.
   ///
   /// In en, this message translates to:
-  /// **'This version of Bloomee has no Dropbox app of its own: Dropbox needs yours.'**
+  /// **'Bloomee has no Dropbox app of its own: Dropbox needs yours.'**
   String get dialogDropboxAppRequiredNote;
 
   /// No description provided for @dialogDropboxAppSignOutNote.

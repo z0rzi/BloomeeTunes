@@ -2517,12 +2517,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get syncDropboxOwnApp => 'Usar tu propia aplicación de Dropbox';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      'Opcional: sin ella, se usa la aplicación de Dropbox de Bloomee';
-
-  @override
   String get syncDropboxOwnAppNeeded =>
-      'Necesaria: esta versión de Bloomee no tiene una aplicación de Dropbox propia';
+      'Necesaria: Bloomee no tiene una aplicación de Dropbox propia';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2534,7 +2530,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'Registra tu propia aplicación de Dropbox y este dispositivo iniciará sesión a través de ella en lugar de la de Bloomee:\n1. En la App Console de Dropbox, crea una aplicación: elige Scoped access, luego App folder, y dale un nombre. Su carpeta en tu Dropbox es Apps/<nombre>.\n2. En la pestaña Permissions de la aplicación, marca files.metadata.read, files.content.read y files.content.write, y luego pulsa Submit.\n3. En su pestaña Settings, copia la App key y pégala abajo. La clave no es secreta y el App secret no hace falta.\nIntroduce la misma clave en cada uno de tus dispositivos: cada aplicación tiene su propia carpeta, así que los dispositivos con aplicaciones distintas no se sincronizan entre sí.';
+      'Registra tu propia aplicación de Dropbox, a través de la cual este dispositivo iniciará sesión:\n1. En la App Console de Dropbox, crea una aplicación: elige Scoped access, luego App folder, y dale un nombre. Su carpeta en tu Dropbox es Apps/<nombre>.\n2. En la pestaña Permissions de la aplicación, marca files.metadata.read, files.content.read y files.content.write, y luego pulsa Submit.\n3. En su pestaña Settings, copia la App key y pégala abajo. La clave no es secreta y el App secret no hace falta.\nIntroduce la misma clave en cada uno de tus dispositivos: cada aplicación tiene su propia carpeta, así que los dispositivos con aplicaciones distintas no se sincronizan entre sí.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Abrir la App Console de Dropbox';
@@ -2543,12 +2539,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dialogDropboxAppKey => 'Clave de la aplicación (App key)';
 
   @override
-  String get dialogDropboxAppBuiltInNote =>
-      'Déjala vacía para usar la aplicación de Dropbox de Bloomee.';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      'Esta versión de Bloomee no tiene una aplicación de Dropbox propia: Dropbox necesita la tuya.';
+      'Bloomee no tiene una aplicación de Dropbox propia: Dropbox necesita la tuya.';
 
   @override
   String get dialogDropboxAppSignOutNote =>

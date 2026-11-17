@@ -20,7 +20,7 @@ void main() {
   late DropboxStandIn dropbox;
 
   /// The key of a Dropbox app the owner registered themselves, which the
-  /// stand-in knows besides the build's.
+  /// stand-in knows besides [DropboxStandIn.appKey].
   const ownKey = 'own-app-key';
   final cubits = <SyncCubit>[];
   final repositories = <SyncRepository>[];
@@ -48,25 +48,22 @@ void main() {
     await world.dispose();
   });
 
-  /// The Dropbox app with [key] ([DropboxStandIn.appKey], the build's, if
-  /// not given), as the stand-in answers it.
+  /// The Dropbox app with [key] ([DropboxStandIn.appKey], the owner's first
+  /// app, if not given), as the stand-in answers it.
   DropboxApp app([String? key]) => DropboxApp(
       key: key ?? dropbox.appKey,
       authorizePage: dropbox.authorizePage,
       api: dropbox.base,
       content: dropbox.base);
 
-  /// The app on [device], built with a Dropbox app key unless [builtInKey]
-  /// is false, keeping its credentials in [keyring].
-  SyncRepository appOn(SyncDevice device, MemoryKeyring keyring,
-      {bool builtInKey = true}) {
+  /// The app on [device], keeping its credentials in [keyring].
+  SyncRepository appOn(SyncDevice device, MemoryKeyring keyring) {
     final repository = SyncRepository(
       database: Future.value(device.isar),
       backups: device.backups,
       clock: device.clock,
       machineName: () => device.name,
       credentials: keyring,
-      dropbox: builtInKey ? app() : null,
       dropboxWithKey: app,
     );
     repositories.add(repository);
@@ -79,9 +76,14 @@ void main() {
     return cubit;
   }
 
-  /// The owner signs in to Dropbox on [cubit]'s Device: opens the page,
-  /// allows Bloomee and pastes the code back.
+  /// The owner signs in to Dropbox on [cubit]'s Device: enters the key of
+  /// their app ([DropboxStandIn.appKey]) if none is entered yet, as the
+  /// screen asks, then opens the page, allows Bloomee and pastes the code
+  /// back.
   Future<SyncLocationProblem?> signIn(SyncCubit cubit) async {
+    if (cubit.state.setup.dropboxAppKey == null) {
+      expect(await cubit.setDropboxAppKey(dropbox.appKey), isTrue);
+    }
     final page = await cubit.beginDropboxSignIn();
     return cubit.finishDropboxSignIn(dropbox.approve(page!));
   }
@@ -155,8 +157,9 @@ void main() {
     final laptop = await world.device('laptop', enabled: false);
     final cubit = screenOn(appOn(laptop, MemoryKeyring()));
     await cubit.load();
+    expect(await cubit.setDropboxAppKey(dropbox.appKey), isTrue);
 
-    cubit.beginDropboxSignIn();
+    expect(await cubit.beginDropboxSignIn(), isNotNull);
     expect(await cubit.finishDropboxSignIn('not the code'),
         SyncLocationProblem.signInRefused);
 
@@ -346,7 +349,7 @@ void main() {
       expect(dropbox.appOf(dropbox.validRefreshTokens.single), ownKey);
       expect(dropbox.pathsOf(ownKey).where((p) => p.startsWith('/sync/')),
           hasLength(1));
-      expect(dropbox.paths, isEmpty, reason: 'nothing in the build\'s app');
+      expect(dropbox.paths, isEmpty, reason: 'nothing in the other app');
 
       dropbox.expireAccessTokens();
       world.clock.advance(const Duration(minutes: 5));
@@ -362,34 +365,22 @@ void main() {
       expect(utf8.decode(dropbox.file(state, app: ownKey)!), contains('yt::2'));
     });
 
-    test('with no key entered, or an empty one, the build\'s app is used',
-        () async {
-      final laptop = await world.device('laptop', enabled: false);
-      final cubit = screenOn(appOn(laptop, MemoryKeyring()));
-      await cubit.load();
-      expect(cubit.state.dropboxBuiltIn, isTrue);
-      expect(cubit.state.setup.dropboxAppKey, isNull);
-
-      expect(await cubit.setDropboxAppKey('   '), isTrue);
-      expect(cubit.state.setup.dropboxAppKey, isNull);
-      expect(await signIn(cubit), isNull);
-
-      expect(dropbox.pagesOpened.single['client_id'], dropbox.appKey);
-      expect(dropbox.appOf(dropbox.validRefreshTokens.single), dropbox.appKey);
-    });
-
     test(
-        'a build without a Dropbox app key offers Dropbox, asking for the owner\'s own app',
+        'Dropbox is offered with no app of Bloomee\'s own: it asks for the owner\'s',
         () async {
       final laptop = await world.device('laptop', enabled: false);
       await laptop.add('Road trip', [song('yt::1')]);
-      final cubit = screenOn(appOn(laptop, MemoryKeyring(), builtInKey: false));
+      final cubit = screenOn(appOn(laptop, MemoryKeyring()));
       await cubit.load();
 
       expect(cubit.state.locationKinds, contains(SyncLocationKind.dropbox));
-      expect(cubit.state.dropboxBuiltIn, isFalse);
+      expect(cubit.state.hasDropboxApp, isFalse);
       expect(await cubit.beginDropboxSignIn(), isNull,
           reason: 'there is no app to sign in through yet');
+      expect(await cubit.setDropboxAppKey('   '), isTrue);
+      expect(cubit.state.setup.dropboxAppKey, isNull);
+      expect(await cubit.beginDropboxSignIn(), isNull,
+          reason: 'an empty key is no app');
       await cubit.choose(const SyncLocationChoice.dropbox());
       expect(cubit.state.setup.enabled, isFalse);
 
@@ -410,12 +401,12 @@ void main() {
       final laptop = await world.device('laptop', enabled: false);
       final keyring = MemoryKeyring();
       final cubit = await syncingThroughDropbox(laptop, keyring);
-      final throughBuild = dropbox.validRefreshTokens.single;
+      final throughFirstApp = dropbox.validRefreshTokens.single;
 
       expect(await cubit.setDropboxAppKey(ownKey), isTrue);
 
       expect(keyring.values, isEmpty);
-      expect(dropbox.isValid(throughBuild), isFalse,
+      expect(dropbox.isValid(throughFirstApp), isFalse,
           reason: 'ended on Dropbox too');
       expect(cubit.state.dropboxSignedIn, isFalse);
       expect(cubit.state.setup.enabled, isFalse,
@@ -448,7 +439,7 @@ void main() {
       keyring.refusesChanges = true;
       expect(await cubit.setDropboxAppKey(ownKey), isFalse);
 
-      expect(cubit.state.setup.dropboxAppKey, isNull);
+      expect(cubit.state.setup.dropboxAppKey, dropbox.appKey);
       expect(cubit.state.dropboxSignedIn, isTrue);
       expect(cubit.state.setup.enabled, isTrue);
       expect(dropbox.validRefreshTokens, hasLength(1));
@@ -458,6 +449,7 @@ void main() {
       final laptop = await world.device('laptop', enabled: false);
       final cubit = screenOn(appOn(laptop, MemoryKeyring()));
       await cubit.load();
+      expect(await cubit.setDropboxAppKey(dropbox.appKey), isTrue);
 
       final code = dropbox.approve((await cubit.beginDropboxSignIn())!);
       expect(await cubit.setDropboxAppKey(ownKey), isTrue);

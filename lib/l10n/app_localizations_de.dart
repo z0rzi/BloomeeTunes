@@ -2512,12 +2512,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get syncDropboxOwnApp => 'Eigene Dropbox-App verwenden';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      'Optional: Ohne sie wird die Dropbox-App von Bloomee verwendet';
-
-  @override
   String get syncDropboxOwnAppNeeded =>
-      'Erforderlich: Diese Version von Bloomee hat keine eigene Dropbox-App';
+      'Erforderlich: Bloomee hat keine eigene Dropbox-App';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2529,7 +2525,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'Registriere eine eigene Dropbox-App, dann meldet sich dieses Gerät über sie statt über die von Bloomee an:\n1. Erstelle in der Dropbox App Console eine App: Wähle Scoped access, dann App folder, und gib ihr einen Namen. Ihr Ordner in deiner Dropbox ist Apps/<Name>.\n2. Setze im Tab Permissions der App Häkchen bei files.metadata.read, files.content.read und files.content.write und klicke auf Submit.\n3. Kopiere im Tab Settings den App key und füge ihn unten ein. Der Schlüssel ist nicht geheim, und das App secret wird nicht benötigt.\nGib auf jedem deiner Geräte denselben Schlüssel ein: Jede App hat ihren eigenen Ordner, daher synchronisieren Geräte mit verschiedenen Apps nicht miteinander.';
+      'Registriere eine eigene Dropbox-App, über die sich dieses Gerät anmeldet:\n1. Erstelle in der Dropbox App Console eine App: Wähle Scoped access, dann App folder, und gib ihr einen Namen. Ihr Ordner in deiner Dropbox ist Apps/<Name>.\n2. Setze im Tab Permissions der App Häkchen bei files.metadata.read, files.content.read und files.content.write und klicke auf Submit.\n3. Kopiere im Tab Settings den App key und füge ihn unten ein. Der Schlüssel ist nicht geheim, und das App secret wird nicht benötigt.\nGib auf jedem deiner Geräte denselben Schlüssel ein: Jede App hat ihren eigenen Ordner, daher synchronisieren Geräte mit verschiedenen Apps nicht miteinander.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Dropbox App Console öffnen';
@@ -2538,12 +2534,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dialogDropboxAppKey => 'App-Schlüssel (App key)';
 
   @override
-  String get dialogDropboxAppBuiltInNote =>
-      'Lass das Feld leer, um die Dropbox-App von Bloomee zu verwenden.';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      'Diese Version von Bloomee hat keine eigene Dropbox-App: Dropbox braucht deine.';
+      'Bloomee hat keine eigene Dropbox-App: Dropbox braucht deine.';
 
   @override
   String get dialogDropboxAppSignOutNote =>

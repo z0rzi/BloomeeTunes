@@ -168,9 +168,9 @@ refresh token and the WebDAV password are kept only in the system keyring throug
 service on Linux), never in the database, a Device State or a backup. The app key is
 the one the owner entered on the Device for a Dropbox app they registered themselves
 (`SyncRepository.setDropboxAppKey`, kept in the device-local setting
-`librarySyncDropboxAppKey`, which is not on the backup allowlist), else the build's
-(`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`); a build without one offers Dropbox through
-the owner's own app. A sign-in belongs to one app, so changing the app ends the Dropbox
+`librarySyncDropboxAppKey`, which is not on the backup allowlist). Bloomee has no
+Dropbox app of its own, so that no app is shared by everyone using a build: without a
+key entered, Dropbox asks for one before signing in. A sign-in belongs to one app, so changing the app ends the Dropbox
 sign-in as signing out does. When Dropbox or the WebDAV server refuses the sign-in, sync
 stops (`SyncSignInNeeded`, alerted each time sync stops for it, including at a start
 without a sign-in) until the owner signs in again; a refused Dropbox sign-in is

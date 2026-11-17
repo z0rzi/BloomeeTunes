@@ -10,18 +10,14 @@ import 'package:http/http.dart' as http;
 
 /// The Dropbox app Bloomee signs in to: its app key, and where Dropbox
 /// answers. The key is the one the owner entered on this Device for an app
-/// they registered themselves, or else the one supplied at build time
-/// (`--dart-define=BLOOMEE_DROPBOX_APP_KEY=...`).
+/// they registered themselves; Bloomee has no app of its own, so that no
+/// one's app is shared by everyone who uses a build.
 ///
 /// The app is registered with the App Folder permission type, so whatever it
 /// is granted reaches only its own folder (`Apps/<app name>/`). Its key is
 /// not a secret: sign-in uses PKCE and no client secret. A sign-in belongs
 /// to the app it was made with.
 class DropboxApp {
-  /// The build-time define holding the app key.
-  static const keyDefine = 'BLOOMEE_DROPBOX_APP_KEY';
-  static const _keyFromBuild = String.fromEnvironment(keyDefine);
-
   /// What Bloomee asks Dropbox for: reading and writing files in its app
   /// folder, and nothing about the account.
   static const scopes = [
@@ -55,14 +51,6 @@ class DropboxApp {
         content = content ?? Uri.parse('https://content.dropboxapi.com'),
         _http = SyncLocationHttp('Dropbox',
             requestTimeout: requestTimeout, client: client);
-
-  /// The app this build was given a key for, or null for a build without
-  /// one, where the owner enters the key of their own app.
-  static DropboxApp? fromBuild() => _fromBuild;
-
-  static final DropboxApp? _fromBuild = _keyFromBuild.trim().isEmpty
-      ? null
-      : DropboxApp(key: _keyFromBuild.trim());
 
   /// Starts signing in on this Device: the owner opens [DropboxSignIn.page],
   /// allows Bloomee, and pastes back the code Dropbox shows.

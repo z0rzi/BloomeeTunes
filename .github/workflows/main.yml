@@ -108,12 +108,7 @@ jobs:
           PY
 
       - name: Build Android APKs
-        env:
-          DROPBOX_APP_KEY: ${{ secrets.BLOOMEE_DROPBOX_APP_KEY }}
-        run: |
-          DEFINES=()
-          if [ -n "$DROPBOX_APP_KEY" ]; then DEFINES+=(--dart-define=BLOOMEE_DROPBOX_APP_KEY="$DROPBOX_APP_KEY"); fi
-          flutter build apk --release --split-per-abi --build-number "$GITHUB_RUN_NUMBER" "${DEFINES[@]}"
+        run: flutter build apk --release --split-per-abi --build-number "$GITHUB_RUN_NUMBER"
 
       - name: Verify and Stage Signed APKs
         run: |
@@ -180,13 +175,7 @@ jobs:
           "VERSION=$version" >> $env:GITHUB_ENV
 
       - name: Build Windows App
-        shell: pwsh
-        env:
-          DROPBOX_APP_KEY: ${{ secrets.BLOOMEE_DROPBOX_APP_KEY }}
-        run: |
-          $defines = @()
-          if ($env:DROPBOX_APP_KEY) { $defines += "--dart-define=BLOOMEE_DROPBOX_APP_KEY=$env:DROPBOX_APP_KEY" }
-          flutter build windows --release --build-number $env:GITHUB_RUN_NUMBER @defines
+        run: flutter build windows --release --build-number $env:GITHUB_RUN_NUMBER
 
       - name: Package Windows App
         shell: pwsh
@@ -244,12 +233,7 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build Linux App
-        env:
-          DROPBOX_APP_KEY: ${{ secrets.BLOOMEE_DROPBOX_APP_KEY }}
-        run: |
-          DEFINES=()
-          if [ -n "$DROPBOX_APP_KEY" ]; then DEFINES+=(--dart-define=BLOOMEE_DROPBOX_APP_KEY="$DROPBOX_APP_KEY"); fi
-          flutter build linux --release --build-number "$GITHUB_RUN_NUMBER" "${DEFINES[@]}"
+        run: flutter build linux --release --build-number "$GITHUB_RUN_NUMBER"
 
       - name: Package Linux App
         run: |

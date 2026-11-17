@@ -2503,12 +2503,8 @@ class AppLocalizationsHi extends AppLocalizations {
   String get syncDropboxOwnApp => 'अपना Dropbox ऐप इस्तेमाल करें';
 
   @override
-  String get syncDropboxOwnAppOptional =>
-      'वैकल्पिक: इसके बिना Bloomee का अपना Dropbox ऐप इस्तेमाल होता है';
-
-  @override
   String get syncDropboxOwnAppNeeded =>
-      'ज़रूरी: Bloomee के इस संस्करण में अपना Dropbox ऐप नहीं है';
+      'ज़रूरी: Bloomee का अपना कोई Dropbox ऐप नहीं है';
 
   @override
   String syncDropboxOwnAppKey(String key) {
@@ -2520,7 +2516,7 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get dialogDropboxAppBody =>
-      'अपना खुद का Dropbox ऐप रजिस्टर करें, फिर यह डिवाइस Bloomee के ऐप की जगह उसी से लॉगिन करेगा:\n1. Dropbox App Console में एक ऐप बनाएँ: Scoped access चुनें, फिर App folder, और उसे एक नाम दें। आपके Dropbox में उसका फ़ोल्डर Apps/<नाम> होगा।\n2. ऐप के Permissions टैब में files.metadata.read, files.content.read और files.content.write चुनें, फिर Submit करें।\n3. उसके Settings टैब में App key कॉपी करें और नीचे पेस्ट करें। यह कुंजी गुप्त नहीं है, और App secret की ज़रूरत नहीं है।\nअपने हर डिवाइस पर यही कुंजी डालें: हर ऐप का अपना फ़ोल्डर होता है, इसलिए अलग-अलग ऐप वाले डिवाइस आपस में सिंक नहीं होते।';
+      'अपना खुद का Dropbox ऐप रजिस्टर करें, यह डिवाइस उसी से लॉगिन करेगा:\n1. Dropbox App Console में एक ऐप बनाएँ: Scoped access चुनें, फिर App folder, और उसे एक नाम दें। आपके Dropbox में उसका फ़ोल्डर Apps/<नाम> होगा।\n2. ऐप के Permissions टैब में files.metadata.read, files.content.read और files.content.write चुनें, फिर Submit करें।\n3. उसके Settings टैब में App key कॉपी करें और नीचे पेस्ट करें। यह कुंजी गुप्त नहीं है, और App secret की ज़रूरत नहीं है।\nअपने हर डिवाइस पर यही कुंजी डालें: हर ऐप का अपना फ़ोल्डर होता है, इसलिए अलग-अलग ऐप वाले डिवाइस आपस में सिंक नहीं होते।';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Dropbox App Console खोलें';
@@ -2529,12 +2525,8 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dialogDropboxAppKey => 'ऐप कुंजी (App key)';
 
   @override
-  String get dialogDropboxAppBuiltInNote =>
-      'Bloomee का अपना Dropbox ऐप इस्तेमाल करने के लिए इसे खाली छोड़ें।';
-
-  @override
   String get dialogDropboxAppRequiredNote =>
-      'Bloomee के इस संस्करण में अपना Dropbox ऐप नहीं है: Dropbox के लिए आपका ऐप चाहिए।';
+      'Bloomee का अपना कोई Dropbox ऐप नहीं है: Dropbox के लिए आपका ऐप चाहिए।';
 
   @override
   String get dialogDropboxAppSignOutNote =>

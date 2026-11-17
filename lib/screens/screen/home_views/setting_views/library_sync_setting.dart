@@ -163,8 +163,8 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     await _cubit.choose(choice, deviceName: _deviceName.text);
   }
 
-  /// Signs this Device in to Dropbox; completes with whether it is. A build
-  /// without a Dropbox app first asks for the owner's own.
+  /// Signs this Device in to Dropbox; completes with whether it is. Without
+  /// a Dropbox app key entered, first asks for the owner's own app.
   Future<bool> _signInToDropbox() async {
     if (!_cubit.state.hasDropboxApp && !await _editDropboxApp()) {
       return false;
@@ -411,7 +411,6 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
             title: l10n.syncDropboxOwnApp,
             subtitle: switch (state.setup.dropboxAppKey) {
               final key? => l10n.syncDropboxOwnAppKey(key),
-              null when state.dropboxBuiltIn => l10n.syncDropboxOwnAppOptional,
               null => l10n.syncDropboxOwnAppNeeded,
             },
             onTap: _editDropboxApp,
@@ -751,11 +750,7 @@ class _DropboxAppDialogState extends State<_DropboxAppDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-                state.dropboxBuiltIn
-                    ? l10n.dialogDropboxAppBuiltInNote
-                    : l10n.dialogDropboxAppRequiredNote,
-                style: noteStyle),
+            Text(l10n.dialogDropboxAppRequiredNote, style: noteStyle),
             if (state.dropboxSignedIn) ...[
               const SizedBox(height: 8),
               Text(l10n.dialogDropboxAppSignOutNote, style: noteStyle),
@@ -779,12 +774,10 @@ class _DropboxAppDialogState extends State<_DropboxAppDialog> {
                 ListenableBuilder(
                   listenable: _key,
                   builder: (context, _) => FilledButton(
-                    // Without an app of the build's, an empty key would leave
-                    // nothing to sign in through, unless it clears the one
-                    // entered.
+                    // An empty key would leave nothing to sign in through,
+                    // unless it clears the one entered.
                     onPressed: _saving ||
-                            (!state.dropboxBuiltIn &&
-                                state.setup.dropboxAppKey == null &&
+                            (state.setup.dropboxAppKey == null &&
                                 _key.text.trim().isEmpty)
                         ? null
                         : _save,
