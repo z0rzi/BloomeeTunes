@@ -825,5 +825,5 @@
   "dialogDropboxAppSignOutNote": "キーを変更または消去すると、このデバイスは Dropbox からログアウトします。ログインは 1 つのアプリに属するためです。もう一度ログインするまで、Dropbox での同期は停止します。",
   "dialogDropboxAppKeyFailed": "キーは変更されませんでした: Dropbox のログイン情報を保持するシステムのキーリングを変更できません。",
   "buttonDropboxAppSave": "保存",
-  "syncDropboxAppKeyRefused": "Dropbox はこのアプリキーを認識しません。ご自身のキーを入力した場合は「自分の Dropbox アプリを使用」で確認し、Dropbox App Console のアプリの Settings タブからもう一度コピーしてください。"
+  "syncDropboxAppKeyRefused": "Dropbox はこのアプリキーを認識しません。「自分の Dropbox アプリを使用」で確認し、Dropbox App Console のアプリの Settings タブからもう一度コピーしてください。"
 }

@@ -2402,5 +2402,5 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox はこのアプリキーを認識しません。ご自身のキーを入力した場合は「自分の Dropbox アプリを使用」で確認し、Dropbox App Console のアプリの Settings タブからもう一度コピーしてください。';
+      'Dropbox はこのアプリキーを認識しません。「自分の Dropbox アプリを使用」で確認し、Dropbox App Console のアプリの Settings タブからもう一度コピーしてください。';
 }

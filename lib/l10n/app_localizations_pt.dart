@@ -2560,5 +2560,5 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'O Dropbox não reconhece esta chave de aplicativo. Se você digitou a sua, confira-a em “Usar seu próprio aplicativo do Dropbox”: copie-a novamente da aba Settings do seu aplicativo no App Console do Dropbox.';
+      'O Dropbox não reconhece esta chave de aplicativo. Confira-a em “Usar seu próprio aplicativo do Dropbox”: copie-a novamente da aba Settings do seu aplicativo no App Console do Dropbox.';
 }

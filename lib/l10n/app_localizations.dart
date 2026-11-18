@@ -4463,7 +4463,7 @@ abstract class AppLocalizations {
   /// No description provided for @syncDropboxAppKeyRefused.
   ///
   /// In en, this message translates to:
-  /// **'Dropbox does not know this app key. If you entered your own, check it under “Use your own Dropbox app”: copy it again from the Settings tab of your app in the Dropbox App Console.'**
+  /// **'Dropbox does not know this app key. Check it under “Use your own Dropbox app”: copy it again from the Settings tab of your app in the Dropbox App Console.'**
   String get syncDropboxAppKeyRefused;
 }
 

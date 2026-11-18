@@ -2404,5 +2404,5 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox에서 이 앱 키를 알 수 없습니다. 직접 입력한 키라면 “내 Dropbox 앱 사용”에서 확인하고, Dropbox App Console에 있는 앱의 Settings 탭에서 다시 복사하세요.';
+      'Dropbox에서 이 앱 키를 알 수 없습니다. “내 Dropbox 앱 사용”에서 확인하고, Dropbox App Console에 있는 앱의 Settings 탭에서 다시 복사하세요.';
 }

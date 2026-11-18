@@ -4,8 +4,8 @@ import 'package:equatable/equatable.dart';
 /// The kinds of Sync Location a Device can choose.
 enum SyncLocationKind {
   /// The owner's Dropbox, in the app folder of the Dropbox app Bloomee signs
-  /// in through: the owner's own, or the one the build was given. Offered on
-  /// Linux and Android.
+  /// in through: the owner's own, whose key they entered on the Device.
+  /// Offered on Linux and Android.
   dropbox,
 
   /// A folder on the owner's own WebDAV server, signed in to with a user
@@ -80,7 +80,7 @@ class SyncSetup extends Equatable {
   final String? webDavUser;
 
   /// The key of the owner's own Dropbox app, entered on this Device; null
-  /// when Bloomee signs in to Dropbox through the app the build was given.
+  /// until they enter one, and Dropbox cannot be signed in to before.
   final String? dropboxAppKey;
 
   /// This Device's name: the one chosen, or the machine's name until then.

@@ -2383,5 +2383,5 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox 无法识别此应用密钥。如果您输入的是自己的密钥，请在“使用您自己的 Dropbox 应用”中检查：从 Dropbox App Console 中您应用的 Settings 标签页重新复制。';
+      'Dropbox 无法识别此应用密钥。请在“使用您自己的 Dropbox 应用”中检查：从 Dropbox App Console 中您应用的 Settings 标签页重新复制。';
 }

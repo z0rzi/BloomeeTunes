@@ -2489,5 +2489,5 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox bu uygulama anahtarını tanımıyor. Kendi anahtarınızı girdiyseniz “Kendi Dropbox uygulamanızı kullanın” bölümünden kontrol edin: Dropbox App Console\'da uygulamanızın Settings sekmesinden yeniden kopyalayın.';
+      'Dropbox bu uygulama anahtarını tanımıyor. Anahtarı “Kendi Dropbox uygulamanızı kullanın” bölümünden kontrol edin: Dropbox App Console\'da uygulamanızın Settings sekmesinden yeniden kopyalayın.';
 }

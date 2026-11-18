@@ -2572,5 +2572,5 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox ne connaît pas cette clé d\'application. Si vous avez saisi la vôtre, vérifiez-la dans « Utiliser votre propre application Dropbox » : copiez-la de nouveau depuis l\'onglet Settings de votre application dans l\'App Console de Dropbox.';
+      'Dropbox ne connaît pas cette clé d\'application. Vérifiez-la dans « Utiliser votre propre application Dropbox » : copiez-la de nouveau depuis l\'onglet Settings de votre application dans l\'App Console de Dropbox.';
 }

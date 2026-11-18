@@ -71,8 +71,8 @@ class SettingKeys {
   static const String librarySyncWebDavUser = "librarySyncWebDavUser";
 
   /// The key of the owner's own Dropbox app, entered on this Device; empty or
-  /// missing for the app the build was given. An app identifier, not a
-  /// credential (Dropbox sign-in uses PKCE and no secret).
+  /// missing until they enter one, for Bloomee has no app of its own. An app
+  /// identifier, not a credential (Dropbox sign-in uses PKCE and no secret).
   static const String librarySyncDropboxAppKey = "librarySyncDropboxAppKey";
 
   /// The Device name the owner chose, kept so that sync can be turned back

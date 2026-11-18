@@ -875,5 +875,5 @@
   "dialogDropboxAppSignOutNote": "Changing or clearing the key signs this device out of Dropbox, as a sign-in belongs to one app. Sync through Dropbox stops until you sign in again.",
   "dialogDropboxAppKeyFailed": "The key was not changed: the system keyring, which holds the Dropbox sign-in, cannot be changed.",
   "buttonDropboxAppSave": "Save",
-  "syncDropboxAppKeyRefused": "Dropbox does not know this app key. If you entered your own, check it under “Use your own Dropbox app”: copy it again from the Settings tab of your app in the Dropbox App Console."
+  "syncDropboxAppKeyRefused": "Dropbox does not know this app key. Check it under “Use your own Dropbox app”: copy it again from the Settings tab of your app in the Dropbox App Console."
 }

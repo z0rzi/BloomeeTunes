@@ -825,5 +825,5 @@
   "dialogDropboxAppSignOutNote": "कुंजी बदलने या हटाने पर यह डिवाइस Dropbox से लॉगआउट हो जाता है, क्योंकि एक लॉगिन एक ही ऐप का होता है। फिर से लॉगिन करने तक Dropbox से सिंक रुका रहता है।",
   "dialogDropboxAppKeyFailed": "कुंजी नहीं बदली गई: Dropbox लॉगिन रखने वाली सिस्टम कीरिंग को बदला नहीं जा सकता।",
   "buttonDropboxAppSave": "सहेजें",
-  "syncDropboxAppKeyRefused": "Dropbox इस ऐप कुंजी को नहीं पहचानता। अगर आपने अपनी कुंजी डाली है, तो उसे “अपना Dropbox ऐप इस्तेमाल करें” में जाँचें: Dropbox App Console में अपने ऐप के Settings टैब से उसे फिर से कॉपी करें।"
+  "syncDropboxAppKeyRefused": "Dropbox इस ऐप कुंजी को नहीं पहचानता। कुंजी को “अपना Dropbox ऐप इस्तेमाल करें” में जाँचें: Dropbox App Console में अपने ऐप के Settings टैब से उसे फिर से कॉपी करें।"
 }

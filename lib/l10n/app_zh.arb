@@ -825,5 +825,5 @@
   "dialogDropboxAppSignOutNote": "更改或清除密钥会使此设备退出 Dropbox 登录，因为一次登录只属于一个应用。在您重新登录之前，通过 Dropbox 的同步会停止。",
   "dialogDropboxAppKeyFailed": "密钥未更改：无法更改保存 Dropbox 登录信息的系统密钥环。",
   "buttonDropboxAppSave": "保存",
-  "syncDropboxAppKeyRefused": "Dropbox 无法识别此应用密钥。如果您输入的是自己的密钥，请在“使用您自己的 Dropbox 应用”中检查：从 Dropbox App Console 中您应用的 Settings 标签页重新复制。"
+  "syncDropboxAppKeyRefused": "Dropbox 无法识别此应用密钥。请在“使用您自己的 Dropbox 应用”中检查：从 Dropbox App Console 中您应用的 Settings 标签页重新复制。"
 }

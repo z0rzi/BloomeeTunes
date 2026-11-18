@@ -1168,5 +1168,5 @@
   "dialogDropboxAppSignOutNote": "Changer ou effacer la clé déconnecte cet appareil de Dropbox, car une connexion appartient à une seule application. La synchronisation par Dropbox s'arrête jusqu'à ce que vous vous reconnectiez.",
   "dialogDropboxAppKeyFailed": "La clé n'a pas été changée : le trousseau du système, qui conserve la connexion à Dropbox, ne peut pas être modifié.",
   "buttonDropboxAppSave": "Enregistrer",
-  "syncDropboxAppKeyRefused": "Dropbox ne connaît pas cette clé d'application. Si vous avez saisi la vôtre, vérifiez-la dans « Utiliser votre propre application Dropbox » : copiez-la de nouveau depuis l'onglet Settings de votre application dans l'App Console de Dropbox."
+  "syncDropboxAppKeyRefused": "Dropbox ne connaît pas cette clé d'application. Vérifiez-la dans « Utiliser votre propre application Dropbox » : copiez-la de nouveau depuis l'onglet Settings de votre application dans l'App Console de Dropbox."
 }

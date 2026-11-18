@@ -825,5 +825,5 @@
   "dialogDropboxAppSignOutNote": "Wenn du den Schlüssel änderst oder löschst, wird dieses Gerät von Dropbox abgemeldet, denn eine Anmeldung gehört zu einer App. Die Synchronisierung über Dropbox stoppt, bis du dich wieder anmeldest.",
   "dialogDropboxAppKeyFailed": "Der Schlüssel wurde nicht geändert: Der Schlüsselbund des Systems, der die Dropbox-Anmeldung enthält, kann nicht geändert werden.",
   "buttonDropboxAppSave": "Speichern",
-  "syncDropboxAppKeyRefused": "Dropbox kennt diesen App-Schlüssel nicht. Wenn du deinen eigenen eingegeben hast, prüfe ihn unter „Eigene Dropbox-App verwenden“: Kopiere ihn erneut aus dem Tab Settings deiner App in der Dropbox App Console."
+  "syncDropboxAppKeyRefused": "Dropbox kennt diesen App-Schlüssel nicht. Prüfe ihn unter „Eigene Dropbox-App verwenden“: Kopiere ihn erneut aus dem Tab Settings deiner App in der Dropbox App Console."
 }

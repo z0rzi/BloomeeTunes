@@ -2541,5 +2541,5 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox इस ऐप कुंजी को नहीं पहचानता। अगर आपने अपनी कुंजी डाली है, तो उसे “अपना Dropbox ऐप इस्तेमाल करें” में जाँचें: Dropbox App Console में अपने ऐप के Settings टैब से उसे फिर से कॉपी करें।';
+      'Dropbox इस ऐप कुंजी को नहीं पहचानता। कुंजी को “अपना Dropbox ऐप इस्तेमाल करें” में जाँचें: Dropbox App Console में अपने ऐप के Settings टैब से उसे फिर से कॉपी करें।';
 }
