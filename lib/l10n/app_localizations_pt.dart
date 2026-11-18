@@ -2360,7 +2360,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dialogDropboxSignInBody =>
-      '1. Abra a página do Dropbox e autorize o Bloomee.\n2. O Dropbox mostra então um código: copie-o e cole-o aqui.';
+      'Com a chave digitada, abra a página do Dropbox e autorize o Bloomee. O Dropbox mostra então um código: copie-o e cole-o abaixo.';
 
   @override
   String get buttonDropboxOpenPage => 'Abrir a página do Dropbox';
@@ -2515,27 +2515,8 @@ class AppLocalizationsPt extends AppLocalizations {
       'O Bloomee guarda no chaveiro do sistema o login deste dispositivo no local de sincronização, mas o chaveiro não pode ser lido agora, então este dispositivo não sincroniza. Desbloqueie o chaveiro (no Linux, GNOME Keyring ou KWallet) e reinicie o Bloomee.';
 
   @override
-  String get syncDropboxNeedsAppKey =>
-      'Precisa do seu próprio aplicativo do Dropbox';
-
-  @override
-  String get syncDropboxOwnApp => 'Usar seu próprio aplicativo do Dropbox';
-
-  @override
-  String get syncDropboxOwnAppNeeded =>
-      'Necessário: o Bloomee não tem um aplicativo do Dropbox próprio';
-
-  @override
-  String syncDropboxOwnAppKey(String key) {
-    return 'Chave do aplicativo: $key';
-  }
-
-  @override
-  String get dialogDropboxAppTitle => 'Usar seu próprio aplicativo do Dropbox';
-
-  @override
   String get dialogDropboxAppBody =>
-      'Registre seu próprio aplicativo do Dropbox, pelo qual este dispositivo entra:\n1. No App Console do Dropbox, crie um aplicativo: escolha Scoped access, depois App folder, e dê um nome a ele. A pasta dele no seu Dropbox é Apps/<nome>.\n2. Na aba Permissions do aplicativo, marque files.metadata.read, files.content.read e files.content.write e clique em Submit.\n3. Na aba Settings, copie a App key e cole-a abaixo. A chave não é secreta, e o App secret não é necessário.\nDigite a mesma chave em cada um dos seus dispositivos: cada aplicativo tem sua própria pasta, então dispositivos com aplicativos diferentes não sincronizam entre si.';
+      'Registre seu próprio aplicativo do Dropbox, pelo qual este dispositivo entra:\n1. No App Console do Dropbox, crie um aplicativo: escolha Scoped access, depois App folder, e dê um nome a ele. A pasta dele no seu Dropbox é Apps/<nome>.\n2. Na aba Permissions do aplicativo, marque files.metadata.read, files.content.read e files.content.write e clique em Submit.\n3. Na aba Settings, copie a App key e cole-a acima, no campo Chave do aplicativo. A chave não é secreta, e o App secret não é necessário.\nDigite a mesma chave em cada um dos seus dispositivos: cada aplicativo tem sua própria pasta, então dispositivos com aplicativos diferentes não sincronizam entre si.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Abrir o App Console do Dropbox';
@@ -2548,17 +2529,17 @@ class AppLocalizationsPt extends AppLocalizations {
       'O Bloomee não tem um aplicativo do Dropbox próprio: o Dropbox precisa do seu.';
 
   @override
-  String get dialogDropboxAppSignOutNote =>
-      'Alterar ou apagar a chave faz este dispositivo sair do Dropbox, pois um login pertence a um só aplicativo. A sincronização pelo Dropbox para até você entrar novamente.';
-
-  @override
-  String get dialogDropboxAppKeyFailed =>
-      'A chave não foi alterada: o chaveiro do sistema, que guarda o login do Dropbox, não pode ser alterado.';
-
-  @override
-  String get buttonDropboxAppSave => 'Salvar';
-
-  @override
   String get syncDropboxAppKeyRefused =>
-      'O Dropbox não reconhece esta chave de aplicativo. Confira-a em “Usar seu próprio aplicativo do Dropbox”: copie-a novamente da aba Settings do seu aplicativo no App Console do Dropbox.';
+      'O Dropbox não reconhece esta chave de aplicativo. Saia do Dropbox e entre novamente com a App key da aba Settings do seu aplicativo no App Console do Dropbox.';
+
+  @override
+  String get buttonDropboxAppKeyHelp => 'Como consigo uma chave de aplicativo?';
+
+  @override
+  String get dialogDropboxKeyChanged =>
+      'A chave mudou: abra a página do Dropbox novamente.';
+
+  @override
+  String get dialogDropboxAppKeyRefused =>
+      'O Dropbox não reconhece esta chave de aplicativo. Copie-a novamente da aba Settings do seu aplicativo no App Console do Dropbox e abra a página do Dropbox novamente.';
 }

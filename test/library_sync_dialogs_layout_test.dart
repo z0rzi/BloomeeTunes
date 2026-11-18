@@ -14,12 +14,14 @@ import 'package:Bloomee/screens/screen/home_views/setting_views/library_sync_set
 import 'package:Bloomee/screens/widgets/sync_alert_listener.dart';
 import 'package:Bloomee/services/db/dao/backup_dao.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 
 /// Library Sync as the dialogs see it: [state] as given, and a Dropbox
-/// sign-in that begins at once. Nothing reaches a database.
+/// sign-in that begins and finishes at once, noting the keys it began with
+/// and the codes it finished with. Nothing reaches a database.
 class _StandInSyncCubit extends SyncCubit {
   _StandInSyncCubit(SyncState state) : super(_repository()) {
     emit(state);
@@ -40,9 +42,29 @@ class _StandInSyncCubit extends SyncCubit {
   @override
   Future<void> load() async {}
 
+  /// The keys each Dropbox sign-in began with, and the codes finishing one.
+  final List<String> begunWith = [];
+  final List<String> finishedWith = [];
+
   @override
-  Future<Uri?> beginDropboxSignIn() async =>
-      Uri.parse('https://www.dropbox.com/oauth2/authorize');
+  Future<Uri?> beginDropboxSignIn(String key) async {
+    begunWith.add(key.trim());
+    return Uri.parse('https://www.dropbox.com/oauth2/authorize')
+        .replace(queryParameters: {'client_id': key.trim()});
+  }
+
+  @override
+  Future<SyncLocationProblem?> finishDropboxSignIn(String code) async {
+    finishedWith.add(code);
+    return null;
+  }
+
+  /// The Sync Locations chosen once signed in.
+  final List<SyncLocationChoice> chosen = [];
+
+  @override
+  Future<void> choose(SyncLocationChoice choice, {String? deviceName}) async =>
+      chosen.add(choice);
 }
 
 /// A phone's width, where the longest translations are the tightest fit.
@@ -50,6 +72,26 @@ class _StandInSyncCubit extends SyncCubit {
 /// app's fonts draw Latin text: a dialog that fits here fits on a phone at
 /// the default text size.
 const _phone = Size(360, 740);
+
+/// Opening a web page fails at once, as on a Device with no browser, rather
+/// than waiting on a platform that tests do not have.
+void noBrowser() {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  const channel = MethodChannel('plugins.flutter.io/url_launcher');
+  // The Linux implementation answers an error text.
+  const linuxLaunch =
+      'dev.flutter.pigeon.url_launcher_linux.UrlLauncherApi.launchUrl';
+  messenger
+    ..setMockMethodCallHandler(channel, (call) async => false)
+    ..setMockMessageHandler(
+        linuxLaunch,
+        (_) async => const StandardMessageCodec()
+            .encodeMessage(<Object?>['No browser in tests.']));
+  addTearDown(() => messenger
+    ..setMockMethodCallHandler(channel, null)
+    ..setMockMessageHandler(linuxLaunch, null));
+}
 
 void main() {
   const otherDevice = KnownDevice(
@@ -74,6 +116,7 @@ void main() {
     tester.view.physicalSize = _phone;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
+    noBrowser();
     final navigatorKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(BlocProvider<SyncCubit>.value(
       value: cubit,
@@ -130,17 +173,23 @@ void main() {
       await tester.pumpAndSettle();
       await expectFits(tester, 'choosing a Sync Location');
 
+      // No key signed in with yet: the steps to register an app are shown.
       await tapText(tester, l10n.syncDropbox);
-      await expectFits(tester, 'Dropbox app, needed');
+      expect(find.text(l10n.dialogDropboxAppBody), findsOneWidget);
+      await tester.enterText(
+          find.widgetWithText(TextField, l10n.dialogDropboxAppKey), 'own key');
+      await tester.pump();
+      await tapText(tester, l10n.buttonDropboxOpenPage);
+      // The test opens no browser: the page's address is shown instead.
+      expect(find.text(l10n.dialogDropboxPageNotOpened), findsOneWidget);
+      await expectFits(tester, 'Dropbox sign-in, steps shown');
 
       cubit.show(cubit.state
           .copyWith(setup: const SyncSetup(dropboxAppKey: 'own key')));
       await tester.pumpAndSettle();
       await tapText(tester, l10n.syncDropbox);
+      expect(find.text(l10n.dialogDropboxAppBody), findsNothing);
       await expectFits(tester, 'Dropbox sign-in');
-
-      await tapText(tester, l10n.syncDropboxOwnApp);
-      await expectFits(tester, 'Dropbox app');
 
       await tapText(tester, l10n.syncWebDav);
       await expectFits(tester, 'WebDAV sign-in');
@@ -163,6 +212,78 @@ void main() {
       await expectFits(tester, 'forgetting a Device');
       expect(overflows, isEmpty);
     });
+
+    if (locale.languageCode == 'en') {
+      testWidgets(
+          'the Dropbox sign-in dialog takes the key and the code together, and a key changed after the page was opened needs it opened again',
+          (tester) async {
+        final l10n = await AppLocalizations.delegate.load(locale);
+        final cubit = _StandInSyncCubit(const SyncState(
+            locationKinds: SyncLocationKind.values, loaded: true));
+        addTearDown(cubit.close);
+        await pumpApp(tester, locale, cubit, const LibrarySyncSettings());
+        final keyField =
+            find.widgetWithText(TextField, l10n.dialogDropboxAppKey);
+        final codeField =
+            find.widgetWithText(TextField, l10n.dialogDropboxCode);
+        bool enabled(String label) => tester
+            .widget<ButtonStyleButton>(find.ancestor(
+                of: find.text(label),
+                matching: find.bySubtype<ButtonStyleButton>()))
+            .enabled;
+
+        expect(find.text(l10n.syncDropboxSignedOut), findsOneWidget);
+        await tapText(tester, l10n.syncDropbox);
+        expect(find.text(l10n.dialogDropboxAppRequiredNote), findsOneWidget);
+        expect(find.text(l10n.dialogDropboxAppBody), findsOneWidget,
+            reason: 'no key was ever entered on this Device');
+        expect(enabled(l10n.buttonDropboxOpenPage), isFalse,
+            reason: 'no key typed yet');
+
+        await tester.enterText(keyField, ' own key ');
+        await tester.pump();
+        expect(enabled(l10n.buttonDropboxOpenPage), isTrue);
+        await tester.enterText(codeField, 'the code');
+        await tester.pump();
+        expect(enabled(l10n.buttonDropboxSignIn), isFalse,
+            reason: 'no sign-in begun');
+
+        await tapText(tester, l10n.buttonDropboxOpenPage);
+        expect(cubit.begunWith, ['own key']);
+        expect(enabled(l10n.buttonDropboxSignIn), isTrue);
+        expect(find.text(l10n.dialogDropboxPageNotOpened), findsOneWidget);
+
+        await tester.enterText(keyField, 'other key');
+        await tester.pump();
+        expect(enabled(l10n.buttonDropboxSignIn), isFalse,
+            reason: 'the sign-in begun went through the other key');
+        expect(find.text(l10n.dialogDropboxKeyChanged), findsOneWidget);
+        expect(find.text(l10n.dialogDropboxPageNotOpened), findsNothing,
+            reason: 'that page is of the key before');
+
+        await tapText(tester, l10n.buttonDropboxOpenPage);
+        expect(cubit.begunWith, ['own key', 'other key']);
+        expect(find.text(l10n.dialogDropboxKeyChanged), findsNothing);
+        await tapText(tester, l10n.buttonDropboxSignIn);
+        expect(cubit.finishedWith, ['the code']);
+        expect(find.byType(Dialog), findsNothing, reason: 'signed in');
+        expect(cubit.chosen, [const SyncLocationChoice.dropbox()]);
+
+        // Signed out since, the key kept: it is offered, the steps folded.
+        cubit.show(cubit.state
+            .copyWith(setup: const SyncSetup(dropboxAppKey: 'other key')));
+        await tester.pumpAndSettle();
+        await tapText(tester, l10n.syncDropbox);
+        expect(
+            tester.widget<TextField>(keyField).controller!.text, 'other key');
+        expect(find.text(l10n.dialogDropboxAppBody), findsNothing);
+        expect(enabled(l10n.buttonDropboxOpenPage), isTrue);
+        await tapText(tester, l10n.buttonDropboxAppKeyHelp);
+        expect(find.text(l10n.dialogDropboxAppBody), findsOneWidget);
+        expect(overflows, isEmpty);
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('$tag: the sync alerts and the Removal Guard fit a phone',
         (tester) async {

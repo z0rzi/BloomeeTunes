@@ -166,12 +166,17 @@ offline access and no redirect: the owner pastes back the code Dropbox shows. Th
 refresh token and the WebDAV password are kept only in the system keyring through
 `CredentialStore` (`flutter_secure_storage`: Android Keystore, the desktop secret
 service on Linux), never in the database, a Device State or a backup. The app key is
-the one the owner entered on the Device for a Dropbox app they registered themselves
-(`SyncRepository.setDropboxAppKey`, kept in the device-local setting
-`librarySyncDropboxAppKey`, which is not on the backup allowlist). Bloomee has no
-Dropbox app of its own, so that no app is shared by everyone using a build: without a
-key entered, Dropbox asks for one before signing in. A sign-in belongs to one app, so changing the app ends the Dropbox
-sign-in as signing out does. When Dropbox or the WebDAV server refuses the sign-in, sync
+the one the owner enters with the sign-in, for a Dropbox app they registered themselves:
+one dialog takes the key and the code Dropbox shows. `SyncRepository.beginDropboxSignIn`
+begins a sign-in through the app of the key entered, keeping nothing; only
+`finishDropboxSignIn`, once Dropbox accepts the code, saves the key (in the device-local
+setting `librarySyncDropboxAppKey`, which is not on the backup allowlist) with the
+sign-in, which replaces any other (ended on Dropbox through the app of the key saved
+before). A failed sign-in changes nothing kept, and a key changed after the Dropbox page
+was opened needs the page opened again, since a sign-in belongs to one app. The Device is
+signed in only with both a sign-in in the keyring and a key saved; signing out keeps the
+key, offered at the next sign-in. Bloomee has no Dropbox app of its own, so that no app
+is shared by everyone using a build. When Dropbox or the WebDAV server refuses the sign-in, sync
 stops (`SyncSignInNeeded`, alerted each time sync stops for it, including at a start
 without a sign-in) until the owner signs in again; a refused Dropbox sign-in is
 forgotten, a refused WebDAV password is kept until the owner enters another. A keyring

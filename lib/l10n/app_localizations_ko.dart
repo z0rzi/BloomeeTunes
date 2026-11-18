@@ -2213,7 +2213,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get dialogDropboxSignInBody =>
-      '1. Dropbox 페이지를 열고 Bloomee를 허용하세요.\n2. Dropbox에 코드가 표시되면 복사해서 여기에 붙여 넣으세요.';
+      '키를 입력한 다음 Dropbox 페이지를 열고 Bloomee를 허용하세요. Dropbox에 코드가 표시되면 복사해서 아래에 붙여 넣으세요.';
 
   @override
   String get buttonDropboxOpenPage => 'Dropbox 페이지 열기';
@@ -2361,25 +2361,8 @@ class AppLocalizationsKo extends AppLocalizations {
       'Bloomee는 이 기기의 동기화 위치 로그인 정보를 시스템 키링에 보관하는데, 지금 키링을 읽을 수 없어서 이 기기가 동기화되지 않습니다. 키링 잠금을 해제한 뒤(Linux에서는 GNOME Keyring 또는 KWallet) Bloomee를 다시 시작하세요.';
 
   @override
-  String get syncDropboxNeedsAppKey => '직접 등록한 Dropbox 앱이 필요합니다';
-
-  @override
-  String get syncDropboxOwnApp => '내 Dropbox 앱 사용';
-
-  @override
-  String get syncDropboxOwnAppNeeded => '필수: Bloomee에는 자체 Dropbox 앱이 없습니다';
-
-  @override
-  String syncDropboxOwnAppKey(String key) {
-    return '앱 키: $key';
-  }
-
-  @override
-  String get dialogDropboxAppTitle => '내 Dropbox 앱 사용';
-
-  @override
   String get dialogDropboxAppBody =>
-      'Dropbox 앱을 직접 등록하세요. 이 기기는 그 앱을 통해 로그인합니다.\n1. Dropbox App Console에서 앱을 만드세요. Scoped access, 그다음 App folder를 선택하고 이름을 지정하세요. Dropbox에서 앱 폴더는 Apps/<이름>이 됩니다.\n2. 앱의 Permissions 탭에서 files.metadata.read, files.content.read, files.content.write를 선택한 다음 Submit을 누르세요.\n3. Settings 탭에서 App key를 복사해 아래에 붙여 넣으세요. 이 키는 비밀이 아니며 App secret은 필요하지 않습니다.\n모든 기기에 같은 키를 입력하세요. 앱마다 폴더가 따로 있어서 서로 다른 앱을 쓰는 기기끼리는 동기화되지 않습니다.';
+      'Dropbox 앱을 직접 등록하세요. 이 기기는 그 앱을 통해 로그인합니다.\n1. Dropbox App Console에서 앱을 만드세요. Scoped access, 그다음 App folder를 선택하고 이름을 지정하세요. Dropbox에서 앱 폴더는 Apps/<이름>이 됩니다.\n2. 앱의 Permissions 탭에서 files.metadata.read, files.content.read, files.content.write를 선택한 다음 Submit을 누르세요.\n3. Settings 탭에서 App key를 복사해 위의 앱 키 칸에 붙여 넣으세요. 이 키는 비밀이 아니며 App secret은 필요하지 않습니다.\n모든 기기에 같은 키를 입력하세요. 앱마다 폴더가 따로 있어서 서로 다른 앱을 쓰는 기기끼리는 동기화되지 않습니다.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Dropbox App Console 열기';
@@ -2392,17 +2375,16 @@ class AppLocalizationsKo extends AppLocalizations {
       'Bloomee에는 자체 Dropbox 앱이 없으므로 직접 등록한 앱이 필요합니다.';
 
   @override
-  String get dialogDropboxAppSignOutNote =>
-      '키를 변경하거나 지우면 이 기기는 Dropbox에서 로그아웃됩니다. 로그인은 하나의 앱에 속하기 때문입니다. 다시 로그인할 때까지 Dropbox를 통한 동기화가 중지됩니다.';
-
-  @override
-  String get dialogDropboxAppKeyFailed =>
-      '키가 변경되지 않았습니다: Dropbox 로그인을 보관하는 시스템 키링을 변경할 수 없습니다.';
-
-  @override
-  String get buttonDropboxAppSave => '저장';
-
-  @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox에서 이 앱 키를 알 수 없습니다. “내 Dropbox 앱 사용”에서 확인하고, Dropbox App Console에 있는 앱의 Settings 탭에서 다시 복사하세요.';
+      'Dropbox에서 이 앱 키를 알 수 없습니다. Dropbox에서 로그아웃한 다음, Dropbox App Console에 있는 앱의 Settings 탭에 나오는 App key로 다시 로그인하세요.';
+
+  @override
+  String get buttonDropboxAppKeyHelp => '앱 키는 어떻게 받나요?';
+
+  @override
+  String get dialogDropboxKeyChanged => '키가 변경되었습니다. Dropbox 페이지를 다시 여세요.';
+
+  @override
+  String get dialogDropboxAppKeyRefused =>
+      'Dropbox에서 이 앱 키를 알 수 없습니다. Dropbox App Console에 있는 앱의 Settings 탭에서 다시 복사한 다음 Dropbox 페이지를 다시 여세요.';
 }

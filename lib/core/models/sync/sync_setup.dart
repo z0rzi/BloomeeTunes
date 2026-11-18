@@ -79,8 +79,9 @@ class SyncSetup extends Equatable {
   final String? webDavAddress;
   final String? webDavUser;
 
-  /// The key of the owner's own Dropbox app, entered on this Device; null
-  /// until they enter one, and Dropbox cannot be signed in to before.
+  /// The key of the owner's own Dropbox app, saved on this Device with its
+  /// last Dropbox sign-in and kept when it signs out, to be offered again;
+  /// null until a sign-in succeeded.
   final String? dropboxAppKey;
 
   /// This Device's name: the one chosen, or the machine's name until then.

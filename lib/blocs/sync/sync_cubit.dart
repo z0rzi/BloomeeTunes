@@ -73,15 +73,13 @@ class SyncState extends Equatable {
   /// be set up here yet.
   final List<SyncLocationKind> locationKinds;
 
-  /// Whether there is a Dropbox app to sign in through: the owner's own,
-  /// whose key they entered on this Device.
-  bool get hasDropboxApp => setup.dropboxAppKey != null;
   final bool loaded;
 
   /// How sync is set up on this Device, as last read.
   final SyncSetup setup;
 
-  /// Whether this Device is signed in to Dropbox.
+  /// Whether this Device is signed in to Dropbox, through the app of the key
+  /// saved with the sign-in ([SyncSetup.dropboxAppKey]).
   final bool dropboxSignedIn;
 
   /// Whether this Device has a WebDAV server set up, with its password.
@@ -237,30 +235,16 @@ class SyncCubit extends Cubit<SyncState> {
     await load();
   }
 
-  /// Starts signing in to Dropbox, returning the Dropbox page the owner
-  /// opens to allow Bloomee; null when there is no Dropbox app to sign in
-  /// through (the owner entered no key on this Device).
-  Future<Uri?> beginDropboxSignIn() => _repository.beginDropboxSignIn();
+  /// Starts signing in to Dropbox through the owner's own app, whose [key]
+  /// they entered, returning the Dropbox page they open to allow Bloomee;
+  /// null for an empty key. Each call begins a new sign-in; the key is saved
+  /// only once one succeeds.
+  Future<Uri?> beginDropboxSignIn(String key) =>
+      _repository.beginDropboxSignIn(key);
 
-  /// Makes [key] the key of the owner's own Dropbox app on this Device; an
-  /// empty key leaves no app to sign in through. Changing the app ends this
-  /// Device's Dropbox sign-in, as signing out does. Completes with false
-  /// when the system keyring, which holds the sign-in, cannot be changed,
-  /// and then nothing changed.
-  Future<bool> setDropboxAppKey(String key) async {
-    try {
-      await _repository.setDropboxAppKey(key);
-      return true;
-    } catch (error) {
-      log('Could not change the Dropbox app key: $error', name: 'SyncCubit');
-      return false;
-    } finally {
-      await load();
-    }
-  }
-
-  /// Finishes the sign-in with the [code] the owner pasted from that page;
-  /// completes with why it failed, or null once signed in.
+  /// Finishes the sign-in begun last with the [code] the owner pasted from
+  /// its page, saving its key with it; completes with why it failed, and
+  /// then nothing changed, or null once signed in.
   Future<SyncLocationProblem?> finishDropboxSignIn(String code) =>
       _reloadingAfter(() => _repository.finishDropboxSignIn(code));
 

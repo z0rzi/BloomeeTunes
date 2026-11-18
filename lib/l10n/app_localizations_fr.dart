@@ -2371,7 +2371,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dialogDropboxSignInBody =>
-      '1. Ouvrez la page Dropbox et autorisez Bloomee.\n2. Dropbox affiche alors un code : copiez-le et collez-le ici.';
+      'Une fois la clé saisie, ouvrez la page Dropbox et autorisez Bloomee. Dropbox affiche alors un code : copiez-le et collez-le ci-dessous.';
 
   @override
   String get buttonDropboxOpenPage => 'Ouvrir la page Dropbox';
@@ -2526,28 +2526,8 @@ class AppLocalizationsFr extends AppLocalizations {
       'Bloomee conserve la connexion de cet appareil à son emplacement de synchronisation dans le trousseau du système, illisible pour l\'instant : cet appareil ne se synchronise donc pas. Déverrouillez le trousseau (sous Linux, GNOME Keyring ou KWallet), puis redémarrez Bloomee.';
 
   @override
-  String get syncDropboxNeedsAppKey =>
-      'Nécessite votre propre application Dropbox';
-
-  @override
-  String get syncDropboxOwnApp => 'Utiliser votre propre application Dropbox';
-
-  @override
-  String get syncDropboxOwnAppNeeded =>
-      'Nécessaire : Bloomee n\'a pas sa propre application Dropbox';
-
-  @override
-  String syncDropboxOwnAppKey(String key) {
-    return 'Clé d\'application : $key';
-  }
-
-  @override
-  String get dialogDropboxAppTitle =>
-      'Utiliser votre propre application Dropbox';
-
-  @override
   String get dialogDropboxAppBody =>
-      'Enregistrez votre propre application Dropbox, par laquelle cet appareil se connecte :\n1. Dans l\'App Console de Dropbox, créez une application : choisissez Scoped access, puis App folder, et donnez-lui un nom. Son dossier dans votre Dropbox est Apps/<nom>.\n2. Dans l\'onglet Permissions de l\'application, cochez files.metadata.read, files.content.read et files.content.write, puis cliquez sur Submit.\n3. Dans son onglet Settings, copiez l\'App key et collez-la ci-dessous. La clé n\'est pas un secret, et l\'App secret n\'est pas nécessaire.\nSaisissez la même clé sur chacun de vos appareils : chaque application a son propre dossier, et des appareils sur des applications différentes ne se synchronisent pas entre eux.';
+      'Enregistrez votre propre application Dropbox, par laquelle cet appareil se connecte :\n1. Dans l\'App Console de Dropbox, créez une application : choisissez Scoped access, puis App folder, et donnez-lui un nom. Son dossier dans votre Dropbox est Apps/<nom>.\n2. Dans l\'onglet Permissions de l\'application, cochez files.metadata.read, files.content.read et files.content.write, puis cliquez sur Submit.\n3. Dans son onglet Settings, copiez l\'App key et collez-la dans le champ « Clé d\'application » ci-dessus. La clé n\'est pas un secret, et l\'App secret n\'est pas nécessaire.\nSaisissez la même clé sur chacun de vos appareils : chaque application a son propre dossier, et des appareils sur des applications différentes ne se synchronisent pas entre eux.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Ouvrir l\'App Console de Dropbox';
@@ -2560,17 +2540,18 @@ class AppLocalizationsFr extends AppLocalizations {
       'Bloomee n\'a pas sa propre application Dropbox : Dropbox a besoin de la vôtre.';
 
   @override
-  String get dialogDropboxAppSignOutNote =>
-      'Changer ou effacer la clé déconnecte cet appareil de Dropbox, car une connexion appartient à une seule application. La synchronisation par Dropbox s\'arrête jusqu\'à ce que vous vous reconnectiez.';
-
-  @override
-  String get dialogDropboxAppKeyFailed =>
-      'La clé n\'a pas été changée : le trousseau du système, qui conserve la connexion à Dropbox, ne peut pas être modifié.';
-
-  @override
-  String get buttonDropboxAppSave => 'Enregistrer';
-
-  @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox ne connaît pas cette clé d\'application. Vérifiez-la dans « Utiliser votre propre application Dropbox » : copiez-la de nouveau depuis l\'onglet Settings de votre application dans l\'App Console de Dropbox.';
+      'Dropbox ne connaît pas cette clé d\'application. Déconnectez-vous de Dropbox, puis reconnectez-vous avec l\'App key de l\'onglet Settings de votre application dans l\'App Console de Dropbox.';
+
+  @override
+  String get buttonDropboxAppKeyHelp =>
+      'Comment obtenir une clé d\'application ?';
+
+  @override
+  String get dialogDropboxKeyChanged =>
+      'La clé a changé : rouvrez la page Dropbox.';
+
+  @override
+  String get dialogDropboxAppKeyRefused =>
+      'Dropbox ne connaît pas cette clé d\'application. Copiez-la de nouveau depuis l\'onglet Settings de votre application dans l\'App Console de Dropbox, puis rouvrez la page Dropbox.';
 }

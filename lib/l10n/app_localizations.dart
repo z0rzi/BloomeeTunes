@@ -4139,7 +4139,7 @@ abstract class AppLocalizations {
   /// No description provided for @dialogDropboxSignInBody.
   ///
   /// In en, this message translates to:
-  /// **'1. Open the Dropbox page and allow Bloomee.\n2. Dropbox then shows a code: copy it and paste it here.'**
+  /// **'With the key entered, open the Dropbox page and allow Bloomee. Dropbox then shows a code: copy it and paste it below.'**
   String get dialogDropboxSignInBody;
 
   /// No description provided for @buttonDropboxOpenPage.
@@ -4388,40 +4388,10 @@ abstract class AppLocalizations {
   /// **'Bloomee keeps this device\'s sign-in to its sync location in the system keyring, which cannot be read now, so this device does not sync. Unlock the keyring (on Linux, GNOME Keyring or KWallet), then restart Bloomee.'**
   String get dialogSyncKeyringBody;
 
-  /// No description provided for @syncDropboxNeedsAppKey.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs your own Dropbox app'**
-  String get syncDropboxNeedsAppKey;
-
-  /// No description provided for @syncDropboxOwnApp.
-  ///
-  /// In en, this message translates to:
-  /// **'Use your own Dropbox app'**
-  String get syncDropboxOwnApp;
-
-  /// No description provided for @syncDropboxOwnAppNeeded.
-  ///
-  /// In en, this message translates to:
-  /// **'Needed: Bloomee has no Dropbox app of its own'**
-  String get syncDropboxOwnAppNeeded;
-
-  /// No description provided for @syncDropboxOwnAppKey.
-  ///
-  /// In en, this message translates to:
-  /// **'App key: {key}'**
-  String syncDropboxOwnAppKey(String key);
-
-  /// No description provided for @dialogDropboxAppTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Use your own Dropbox app'**
-  String get dialogDropboxAppTitle;
-
   /// No description provided for @dialogDropboxAppBody.
   ///
   /// In en, this message translates to:
-  /// **'Register a Dropbox app of your own, which this device signs in through:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it below. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.'**
+  /// **'Register a Dropbox app of your own, which this device signs in through:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it in the App key field above. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.'**
   String get dialogDropboxAppBody;
 
   /// No description provided for @buttonDropboxOpenAppConsole.
@@ -4442,29 +4412,29 @@ abstract class AppLocalizations {
   /// **'Bloomee has no Dropbox app of its own: Dropbox needs yours.'**
   String get dialogDropboxAppRequiredNote;
 
-  /// No description provided for @dialogDropboxAppSignOutNote.
-  ///
-  /// In en, this message translates to:
-  /// **'Changing or clearing the key signs this device out of Dropbox, as a sign-in belongs to one app. Sync through Dropbox stops until you sign in again.'**
-  String get dialogDropboxAppSignOutNote;
-
-  /// No description provided for @dialogDropboxAppKeyFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'The key was not changed: the system keyring, which holds the Dropbox sign-in, cannot be changed.'**
-  String get dialogDropboxAppKeyFailed;
-
-  /// No description provided for @buttonDropboxAppSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get buttonDropboxAppSave;
-
   /// No description provided for @syncDropboxAppKeyRefused.
   ///
   /// In en, this message translates to:
-  /// **'Dropbox does not know this app key. Check it under “Use your own Dropbox app”: copy it again from the Settings tab of your app in the Dropbox App Console.'**
+  /// **'Dropbox does not know this app key. Sign out of Dropbox, then sign in again with the App key from the Settings tab of your app in the Dropbox App Console.'**
   String get syncDropboxAppKeyRefused;
+
+  /// No description provided for @buttonDropboxAppKeyHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I get an app key?'**
+  String get buttonDropboxAppKeyHelp;
+
+  /// No description provided for @dialogDropboxKeyChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The key changed: open the Dropbox page again.'**
+  String get dialogDropboxKeyChanged;
+
+  /// No description provided for @dialogDropboxAppKeyRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropbox does not know this app key. Copy it again from the Settings tab of your app in the Dropbox App Console, then open the Dropbox page again.'**
+  String get dialogDropboxAppKeyRefused;
 }
 
 class _AppLocalizationsDelegate

@@ -2326,7 +2326,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dialogDropboxSignInBody =>
-      '1. Open the Dropbox page and allow Bloomee.\n2. Dropbox then shows a code: copy it and paste it here.';
+      'With the key entered, open the Dropbox page and allow Bloomee. Dropbox then shows a code: copy it and paste it below.';
 
   @override
   String get buttonDropboxOpenPage => 'Open the Dropbox page';
@@ -2480,26 +2480,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Bloomee keeps this device\'s sign-in to its sync location in the system keyring, which cannot be read now, so this device does not sync. Unlock the keyring (on Linux, GNOME Keyring or KWallet), then restart Bloomee.';
 
   @override
-  String get syncDropboxNeedsAppKey => 'Needs your own Dropbox app';
-
-  @override
-  String get syncDropboxOwnApp => 'Use your own Dropbox app';
-
-  @override
-  String get syncDropboxOwnAppNeeded =>
-      'Needed: Bloomee has no Dropbox app of its own';
-
-  @override
-  String syncDropboxOwnAppKey(String key) {
-    return 'App key: $key';
-  }
-
-  @override
-  String get dialogDropboxAppTitle => 'Use your own Dropbox app';
-
-  @override
   String get dialogDropboxAppBody =>
-      'Register a Dropbox app of your own, which this device signs in through:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it below. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.';
+      'Register a Dropbox app of your own, which this device signs in through:\n1. In the Dropbox App Console, create an app: choose Scoped access, then App folder, and give it a name. Its folder in your Dropbox is Apps/<name>.\n2. In the app\'s Permissions tab, tick files.metadata.read, files.content.read and files.content.write, then Submit.\n3. In its Settings tab, copy the App key and paste it in the App key field above. The key is not a secret, and the App secret is not needed.\nEnter the same key on each of your devices: each app has its own folder, so devices on different apps do not sync together.';
 
   @override
   String get buttonDropboxOpenAppConsole => 'Open the Dropbox App Console';
@@ -2512,17 +2494,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Bloomee has no Dropbox app of its own: Dropbox needs yours.';
 
   @override
-  String get dialogDropboxAppSignOutNote =>
-      'Changing or clearing the key signs this device out of Dropbox, as a sign-in belongs to one app. Sync through Dropbox stops until you sign in again.';
-
-  @override
-  String get dialogDropboxAppKeyFailed =>
-      'The key was not changed: the system keyring, which holds the Dropbox sign-in, cannot be changed.';
-
-  @override
-  String get buttonDropboxAppSave => 'Save';
-
-  @override
   String get syncDropboxAppKeyRefused =>
-      'Dropbox does not know this app key. Check it under “Use your own Dropbox app”: copy it again from the Settings tab of your app in the Dropbox App Console.';
+      'Dropbox does not know this app key. Sign out of Dropbox, then sign in again with the App key from the Settings tab of your app in the Dropbox App Console.';
+
+  @override
+  String get buttonDropboxAppKeyHelp => 'How do I get an app key?';
+
+  @override
+  String get dialogDropboxKeyChanged =>
+      'The key changed: open the Dropbox page again.';
+
+  @override
+  String get dialogDropboxAppKeyRefused =>
+      'Dropbox does not know this app key. Copy it again from the Settings tab of your app in the Dropbox App Console, then open the Dropbox page again.';
 }

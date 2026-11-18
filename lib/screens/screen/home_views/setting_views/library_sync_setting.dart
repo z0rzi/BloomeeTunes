@@ -163,34 +163,16 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
     await _cubit.choose(choice, deviceName: _deviceName.text);
   }
 
-  /// Signs this Device in to Dropbox; completes with whether it is. Without
-  /// a Dropbox app key entered, first asks for the owner's own app.
-  Future<bool> _signInToDropbox() async {
-    if (!_cubit.state.hasDropboxApp && !await _editDropboxApp()) {
-      return false;
-    }
-    final page = await _cubit.beginDropboxSignIn();
-    if (page == null || !mounted) return false;
-    return await showDialog<bool>(
-          context: context,
-          barrierColor: Colors.black54,
-          builder: (_) => _DropboxSignInDialog(cubit: _cubit, page: page),
-        ) ??
-        false;
-  }
-
-  /// Asks for the key of the owner's own Dropbox app; completes with whether
-  /// it was saved.
-  Future<bool> _editDropboxApp() async {
-    final changed = await showDialog<bool>(
-          context: context,
-          barrierColor: Colors.black54,
-          builder: (_) => _DropboxAppDialog(cubit: _cubit),
-        ) ??
-        false;
-    if (mounted) setState(() => _switchKey++);
-    return changed;
-  }
+  /// Asks for the key of the owner's own Dropbox app and the code Dropbox
+  /// shows, and signs in with them; completes with whether this Device is
+  /// signed in.
+  Future<bool> _signInToDropbox() async =>
+      await showDialog<bool>(
+        context: context,
+        barrierColor: Colors.black54,
+        builder: (_) => _DropboxSignInDialog(cubit: _cubit),
+      ) ??
+      false;
 
   /// Asks for the WebDAV server's address, user name and password, and
   /// signs in with them; completes with whether this Device is signed in.
@@ -397,24 +379,13 @@ class _LibrarySyncSettingsState extends State<LibrarySyncSettings> {
             title: l10n.syncDropbox,
             subtitle: state.dropboxSignedIn
                 ? l10n.syncDropboxSignedIn
-                : state.hasDropboxApp
-                    ? l10n.syncDropboxSignedOut
-                    : l10n.syncDropboxNeedsAppKey,
+                : l10n.syncDropboxSignedOut,
             badge: inUse,
             onTap: () => _choose(kind, again: false),
           ),
           SettingInfoText(text: l10n.syncDropboxNote),
           if (state.dropboxSignedIn)
             _signOutButton(kind, l10n.buttonDropboxSignOut),
-          SettingNavTile(
-            icon: Icons.key_rounded,
-            title: l10n.syncDropboxOwnApp,
-            subtitle: switch (state.setup.dropboxAppKey) {
-              final key? => l10n.syncDropboxOwnAppKey(key),
-              null => l10n.syncDropboxOwnAppNeeded,
-            },
-            onTap: _editDropboxApp,
-          ),
         ],
       SyncLocationKind.webDav => [
           SettingNavTile(
@@ -517,48 +488,99 @@ String problemText(AppLocalizations l10n, SyncLocationProblem problem,
       (SyncLocationProblem.refused, _) => l10n.syncLocationRefused,
     };
 
-/// Signing in to Dropbox: the owner opens the Dropbox page, allows Bloomee,
-/// and pastes back the code Dropbox shows. Pops with whether this Device is
-/// signed in.
+/// Signing in to Dropbox through the owner's own Dropbox app: they enter
+/// its key (the one last signed in with on this Device is offered, and the
+/// steps to register an app are shown until one was), open the Dropbox page,
+/// allow Bloomee and paste back the code Dropbox shows. Each opening of the
+/// page begins a new sign-in with the key entered; changing the key
+/// afterwards makes it stale, until the page is opened again. Pops with
+/// whether this Device is signed in.
 class _DropboxSignInDialog extends StatefulWidget {
   final SyncCubit cubit;
 
-  /// The Dropbox page of the sign-in begun.
-  final Uri page;
-
-  const _DropboxSignInDialog({required this.cubit, required this.page});
+  const _DropboxSignInDialog({required this.cubit});
 
   @override
   State<_DropboxSignInDialog> createState() => _DropboxSignInDialogState();
 }
 
 class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
+  /// Where Dropbox apps are registered.
+  static final _appConsole =
+      Uri.parse('https://www.dropbox.com/developers/apps');
+
+  late final TextEditingController _key =
+      TextEditingController(text: widget.cubit.state.setup.dropboxAppKey ?? '')
+        ..addListener(_keyEdited);
   final TextEditingController _code = TextEditingController();
+
+  /// Whether the steps to register a Dropbox app are shown: at first, only
+  /// when no key was ever signed in with on this Device.
+  late bool _showSteps = widget.cubit.state.setup.dropboxAppKey == null;
+
+  /// The Dropbox page of the sign-in begun last, and the key it was begun
+  /// with; null before the page is opened, and once the key changed since.
+  Uri? _page;
+  String? _pageKey;
+
+  /// Whether the key changed since the page was last opened.
+  bool _keyChanged = false;
   bool _pageNotOpened = false;
   bool _signingIn = false;
   SyncLocationProblem? _problem;
 
   @override
   void dispose() {
+    _key.dispose();
     _code.dispose();
     super.dispose();
   }
 
+  void _keyEdited() {
+    if (_page != null && _key.text.trim() != _pageKey) {
+      setState(() {
+        _page = null;
+        _pageKey = null;
+        _keyChanged = true;
+        _pageNotOpened = false;
+      });
+    }
+  }
+
+  Future<void> _openConsole() async {
+    try {
+      await launchUrl(_appConsole, mode: LaunchMode.externalApplication);
+    } catch (error) {
+      log('The Dropbox App Console could not be opened: $error',
+          name: 'LibrarySyncSettings');
+    }
+  }
+
   Future<void> _openPage() async {
+    final key = _key.text.trim();
+    final page = await widget.cubit.beginDropboxSignIn(key);
+    if (page == null || !mounted) return;
+    setState(() {
+      _page = page;
+      _pageKey = key;
+      _keyChanged = false;
+      _problem = null;
+    });
     var opened = false;
     try {
-      opened =
-          await launchUrl(widget.page, mode: LaunchMode.externalApplication);
+      opened = await launchUrl(page, mode: LaunchMode.externalApplication);
     } catch (error) {
       log('The Dropbox page could not be opened: $error',
           name: 'LibrarySyncSettings');
     }
-    if (mounted) setState(() => _pageNotOpened = !opened);
+    if (mounted && identical(_page, page)) {
+      setState(() => _pageNotOpened = !opened);
+    }
   }
 
   Future<void> _finish() async {
     final code = _code.text.trim();
-    if (code.isEmpty || _signingIn) return;
+    if (code.isEmpty || _page == null || _signingIn) return;
     setState(() {
       _signingIn = true;
       _problem = null;
@@ -582,6 +604,11 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final secondary = Default_Theme.primaryColor2.withValues(alpha: 0.7);
+    final bodyStyle = TextStyle(color: secondary, fontSize: 14);
+    final noteStyle = TextStyle(color: secondary, fontSize: 13);
+    const addressStyle =
+        TextStyle(color: Default_Theme.primaryColor2, fontSize: 12);
+    const problemStyle = TextStyle(color: Colors.redAccent, fontSize: 13);
     return BloomeeDialogSurface(
       title: l10n.dialogDropboxSignInTitle,
       icon: Icons.cloud_outlined,
@@ -590,22 +617,57 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l10n.dialogDropboxSignInBody,
-                style: TextStyle(color: secondary, fontSize: 14)),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: _openPage,
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: Text(l10n.buttonDropboxOpenPage),
+            Text(l10n.dialogDropboxAppRequiredNote, style: bodyStyle),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _key,
+              enabled: !_signingIn,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: const TextStyle(
+                  color: Default_Theme.primaryColor2, fontSize: 15),
+              decoration: InputDecoration(
+                labelText: l10n.dialogDropboxAppKey,
+                labelStyle: TextStyle(color: secondary),
+              ),
             ),
-            if (_pageNotOpened) ...[
-              Text(l10n.dialogDropboxPageNotOpened,
-                  style: TextStyle(color: secondary, fontSize: 13)),
-              const SizedBox(height: 4),
-              SelectableText(widget.page.toString(),
-                  style: const TextStyle(
-                      color: Default_Theme.primaryColor2, fontSize: 12)),
+            const SizedBox(height: 4),
+            TextButton.icon(
+              onPressed: () => setState(() => _showSteps = !_showSteps),
+              icon: Icon(_showSteps
+                  ? Icons.expand_less_rounded
+                  : Icons.expand_more_rounded),
+              label: Text(l10n.buttonDropboxAppKeyHelp),
+            ),
+            if (_showSteps) ...[
+              Text(l10n.dialogDropboxAppBody, style: noteStyle),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _openConsole,
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: Text(l10n.buttonDropboxOpenAppConsole),
+              ),
+              SelectableText(_appConsole.toString(), style: addressStyle),
             ],
+            const SizedBox(height: 12),
+            Text(l10n.dialogDropboxSignInBody, style: bodyStyle),
+            const SizedBox(height: 12),
+            ListenableBuilder(
+              listenable: _key,
+              builder: (context, _) => TextButton.icon(
+                onPressed:
+                    _signingIn || _key.text.trim().isEmpty ? null : _openPage,
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: Text(l10n.buttonDropboxOpenPage),
+              ),
+            ),
+            if (_page case final page? when _pageNotOpened) ...[
+              Text(l10n.dialogDropboxPageNotOpened, style: noteStyle),
+              const SizedBox(height: 4),
+              SelectableText(page.toString(), style: addressStyle),
+            ],
+            if (_keyChanged)
+              Text(l10n.dialogDropboxKeyChanged, style: noteStyle),
             const SizedBox(height: 8),
             TextField(
               controller: _code,
@@ -621,9 +683,12 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
             ),
             if (_problem case final problem?) ...[
               const SizedBox(height: 8),
-              Text(problemText(l10n, problem, SyncLocationKind.dropbox),
-                  style:
-                      const TextStyle(color: Colors.redAccent, fontSize: 13)),
+              Text(
+                  // Here the key just entered is the one to correct.
+                  problem == SyncLocationProblem.appKeyRefused
+                      ? l10n.dialogDropboxAppKeyRefused
+                      : problemText(l10n, problem, SyncLocationKind.dropbox),
+                  style: problemStyle),
             ],
             const SizedBox(height: 12),
             // Wraps on a narrow screen rather than overflowing.
@@ -639,153 +704,15 @@ class _DropboxSignInDialogState extends State<_DropboxSignInDialog> {
                 ValueListenableBuilder(
                   valueListenable: _code,
                   builder: (context, value, _) => FilledButton(
-                    onPressed: _signingIn || value.text.trim().isEmpty
-                        ? null
-                        : _finish,
+                    onPressed:
+                        _signingIn || _page == null || value.text.trim().isEmpty
+                            ? null
+                            : _finish,
                     child: _signingIn
                         ? const SizedBox.square(
                             dimension: 16,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : Text(l10n.buttonDropboxSignIn),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The owner's own Dropbox app: the steps to register one, and its key,
-/// which this Device then signs in through. Pops with whether it was
-/// saved.
-class _DropboxAppDialog extends StatefulWidget {
-  final SyncCubit cubit;
-
-  const _DropboxAppDialog({required this.cubit});
-
-  @override
-  State<_DropboxAppDialog> createState() => _DropboxAppDialogState();
-}
-
-class _DropboxAppDialogState extends State<_DropboxAppDialog> {
-  /// Where Dropbox apps are registered.
-  static final _appConsole =
-      Uri.parse('https://www.dropbox.com/developers/apps');
-
-  late final TextEditingController _key =
-      TextEditingController(text: widget.cubit.state.setup.dropboxAppKey ?? '');
-  bool _saving = false;
-  bool _failed = false;
-
-  @override
-  void dispose() {
-    _key.dispose();
-    super.dispose();
-  }
-
-  Future<void> _openConsole() async {
-    try {
-      await launchUrl(_appConsole, mode: LaunchMode.externalApplication);
-    } catch (error) {
-      log('The Dropbox App Console could not be opened: $error',
-          name: 'LibrarySyncSettings');
-    }
-  }
-
-  Future<void> _save() async {
-    if (_saving) return;
-    setState(() {
-      _saving = true;
-      _failed = false;
-    });
-    final saved = await widget.cubit.setDropboxAppKey(_key.text);
-    if (!mounted) return;
-    if (saved) return Navigator.of(context).pop(true);
-    setState(() {
-      _saving = false;
-      _failed = true;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final state = widget.cubit.state;
-    final secondary = Default_Theme.primaryColor2.withValues(alpha: 0.7);
-    final noteStyle = TextStyle(color: secondary, fontSize: 13);
-    return BloomeeDialogSurface(
-      title: l10n.dialogDropboxAppTitle,
-      icon: Icons.key_rounded,
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.dialogDropboxAppBody,
-                style: TextStyle(color: secondary, fontSize: 14)),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: _openConsole,
-              icon: const Icon(Icons.open_in_new_rounded),
-              label: Text(l10n.buttonDropboxOpenAppConsole),
-            ),
-            SelectableText(_appConsole.toString(),
-                style: const TextStyle(
-                    color: Default_Theme.primaryColor2, fontSize: 12)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _key,
-              enabled: !_saving,
-              autocorrect: false,
-              enableSuggestions: false,
-              onSubmitted: (_) => _save(),
-              style: const TextStyle(
-                  color: Default_Theme.primaryColor2, fontSize: 15),
-              decoration: InputDecoration(
-                labelText: l10n.dialogDropboxAppKey,
-                labelStyle: TextStyle(color: secondary),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(l10n.dialogDropboxAppRequiredNote, style: noteStyle),
-            if (state.dropboxSignedIn) ...[
-              const SizedBox(height: 8),
-              Text(l10n.dialogDropboxAppSignOutNote, style: noteStyle),
-            ],
-            if (_failed) ...[
-              const SizedBox(height: 8),
-              Text(l10n.dialogDropboxAppKeyFailed,
-                  style:
-                      const TextStyle(color: Colors.redAccent, fontSize: 13)),
-            ],
-            const SizedBox(height: 12),
-            OverflowBar(
-              alignment: MainAxisAlignment.end,
-              spacing: 8,
-              overflowAlignment: OverflowBarAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: Text(l10n.buttonCancel),
-                ),
-                ListenableBuilder(
-                  listenable: _key,
-                  builder: (context, _) => FilledButton(
-                    // An empty key would leave nothing to sign in through,
-                    // unless it clears the one entered.
-                    onPressed: _saving ||
-                            (state.setup.dropboxAppKey == null &&
-                                _key.text.trim().isEmpty)
-                        ? null
-                        : _save,
-                    child: _saving
-                        ? const SizedBox.square(
-                            dimension: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(l10n.buttonDropboxAppSave),
                   ),
                 ),
               ],

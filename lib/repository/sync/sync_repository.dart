@@ -39,8 +39,8 @@ typedef SyncSchedulerFactory = SyncScheduler Function(
 /// ([CredentialStore]), never in the database or anything published. When
 /// the Sync Location stops accepting them, sync stops until the owner signs
 /// in again ([SyncSignInNeeded]). Dropbox is signed in to through the
-/// owner's own Dropbox app, whose key they entered on this Device
-/// ([setDropboxAppKey]); Bloomee has none of its own.
+/// owner's own Dropbox app, whose key they enter with the sign-in
+/// ([beginDropboxSignIn]); Bloomee has none of its own.
 class SyncRepository {
   /// The file written and removed to test a Sync Location, in the area
   /// that holds Device States (which only reads `.json` files).
@@ -67,10 +67,6 @@ class SyncRepository {
   /// The owner's own Dropbox app, as last made.
   DropboxApp? _ownDropbox;
 
-  /// Counts the changes of the Dropbox app this Device signs in through, so
-  /// that a sign-in begun through another app is not kept.
-  int _dropboxAppChanges = 0;
-
   /// The kinds of Sync Location this Device offers.
   final List<SyncLocationKind> locationKinds;
 
@@ -85,8 +81,8 @@ class SyncRepository {
   SyncLocationKind? _engineKind;
 
   /// The Dropbox sign-in under way, waiting for the owner's code, and the
-  /// count of [_dropboxAppChanges] when it began.
-  ({DropboxSignIn signIn, int appChanges})? _pendingSignIn;
+  /// key of the app it goes through.
+  ({DropboxSignIn signIn, String key})? _pendingSignIn;
   SyncScheduler? _scheduler;
   StreamSubscription<void>? _libraryChanges;
   bool _inBackground = false;
@@ -224,8 +220,11 @@ class SyncRepository {
       enable(choice, deviceName: (await setup()).deviceName);
 
   /// Whether this Device is signed in to Dropbox: its sign-in is in the
-  /// keyring. False when the keyring cannot be read.
+  /// keyring, and the key of the app it was made through in the settings.
+  /// A sign-in without a key, as made through the app earlier builds had,
+  /// does not count. False when the keyring cannot be read.
   Future<bool> dropboxSignedIn() async {
+    if (await _ownDropboxKey() == null) return false;
     try {
       return await _credentials.read(dropboxCredential) != null;
     } on CredentialStoreUnavailable catch (error) {
@@ -234,28 +233,31 @@ class SyncRepository {
     }
   }
 
-  /// Starts signing in to Dropbox through the Dropbox app this Device uses
-  /// (see [setDropboxAppKey]), returning the Dropbox page the owner opens to
-  /// allow Bloomee; they paste back the code it shows, for
-  /// [finishDropboxSignIn]. Null when there is no app to sign in through:
-  /// the owner has entered no Dropbox app key on this Device.
-  Future<Uri?> beginDropboxSignIn() async {
-    // Counted before the app is read, so that a key changed meanwhile is
-    // seen at [finishDropboxSignIn].
-    final appChanges = _dropboxAppChanges;
-    final signIn = (await _dropboxApp())?.beginSignIn();
-    _pendingSignIn =
-        signIn == null ? null : (signIn: signIn, appChanges: appChanges);
+  /// Starts signing in to Dropbox through the owner's own Dropbox app,
+  /// whose [key] they entered, returning the Dropbox page they open to allow
+  /// Bloomee; they paste back the code it shows, for [finishDropboxSignIn].
+  /// Nothing is kept before then: the key is saved with the sign-in. Each
+  /// call begins a new sign-in, and only the last begun can be finished.
+  /// Null for an empty key, which is no app to sign in through.
+  Future<Uri?> beginDropboxSignIn(String key) async {
+    final entered = key.trim();
+    final signIn =
+        entered.isEmpty ? null : _dropboxAppFor(entered).beginSignIn();
+    _pendingSignIn = signIn == null ? null : (signIn: signIn, key: entered);
     return signIn?.page;
   }
 
-  /// Finishes the sign-in [beginDropboxSignIn] started with the [code] the
-  /// owner pasted, keeping it in the keyring; otherwise says why it failed.
-  /// Sync stopped for want of a sign-in resumes at once.
+  /// Finishes the sign-in [beginDropboxSignIn] started last with the [code]
+  /// the owner pasted: the sign-in is kept in the keyring, replacing any
+  /// other, and its app key in this Device's settings, which never travel in
+  /// a backup or a Device State. A sign-in it replaces is ended on Dropbox
+  /// when it can be, through the app of the key saved before. Otherwise
+  /// says why it failed, and nothing kept changes: not the key saved, nor
+  /// the sign-in. Sync stopped for want of a sign-in resumes at once.
   Future<SyncLocationProblem?> finishDropboxSignIn(String code) async {
     final pending = _pendingSignIn;
     if (pending == null) return SyncLocationProblem.signInRefused;
-    final (:signIn, :appChanges) = pending;
+    final (:signIn, :key) = pending;
     final String refreshToken;
     try {
       refreshToken = await signIn.finish(code);
@@ -265,17 +267,21 @@ class SyncRepository {
     }
     if (_pendingSignIn == pending) _pendingSignIn = null;
     final resumed = await _setupChanges.run(() async {
-      // The app key changed since the sign-in began: it belongs to the old
-      // app.
-      if (appChanges != _dropboxAppChanges) {
-        return SyncLocationProblem.signInRefused;
-      }
+      final String? replaced;
+      final previousKey = await _ownDropboxKey();
       try {
+        replaced = await _credentials.read(dropboxCredential);
         await _credentials.write(dropboxCredential, refreshToken);
       } on CredentialStoreUnavailable {
         return SyncLocationProblem.keyringUnavailable;
       }
-      return _resumeSignedIn(SyncLocationKind.dropbox);
+      await _settings.putSettingStr(SettingKeys.librarySyncDropboxAppKey, key);
+      final scheduler = await _resumeSignedIn(SyncLocationKind.dropbox);
+      // Ended once sync goes on through the new sign-in.
+      if (replaced != null && previousKey != null) {
+        await _endDropboxSignIn(_dropboxAppFor(previousKey), replaced);
+      }
+      return scheduler;
     });
     if (resumed is SyncLocationProblem) return resumed;
     if (resumed is SyncScheduler) unawaited(resumed.start());
@@ -375,32 +381,8 @@ class SyncRepository {
         }
       });
 
-  /// Makes [key] the key of the Dropbox app this Device signs in through:
-  /// the owner's own app, which they registered themselves; an empty key
-  /// leaves no app to sign in through. The key is kept in this
-  /// Device's settings, which never travel in a backup or a Device State.
-  ///
-  /// When that changes the app, this Device's Dropbox sign-in ends, as
-  /// [signOutOf] ends it, for a sign-in belongs to one app: sync through
-  /// Dropbox is turned off until the owner signs in again. Throws
-  /// [CredentialStoreUnavailable] when the keyring cannot be read or
-  /// changed, and then changes nothing.
-  Future<void> setDropboxAppKey(String key) => _setupChanges.run(() async {
-        final entered = key.trim();
-        final previous = await _ownDropboxKey();
-        if (entered == (previous ?? '')) return;
-        final before = _dropboxAppFor(previous);
-        final after = _dropboxAppFor(entered.isEmpty ? null : entered);
-        if (before?.key != after?.key) {
-          await _signOutOfDropbox(before);
-          _dropboxAppChanges++;
-          _pendingSignIn = null;
-        }
-        await _settings.putSettingStr(
-            SettingKeys.librarySyncDropboxAppKey, entered);
-      });
-
-  /// The key of the owner's own Dropbox app entered on this Device, if any.
+  /// The key of the owner's own Dropbox app saved on this Device with its
+  /// last sign-in, if any; signing out keeps it.
   Future<String?> _ownDropboxKey() async {
     final key =
         (await _settings.getSettingStr(SettingKeys.librarySyncDropboxAppKey))
@@ -408,17 +390,18 @@ class SyncRepository {
     return key == null || key.isEmpty ? null : key;
   }
 
-  /// The Dropbox app this Device signs in through: the owner's own, whose
-  /// key they entered; null when they entered none.
-  Future<DropboxApp?> _dropboxApp() async =>
-      _dropboxAppFor(await _ownDropboxKey());
+  /// The Dropbox app this Device is signed in through: the owner's own,
+  /// whose key was saved with the sign-in; null when none was.
+  Future<DropboxApp?> _dropboxApp() async => switch (await _ownDropboxKey()) {
+        final key? => _dropboxAppFor(key),
+        null => null,
+      };
 
-  /// The Dropbox app of the owner's own key [ownKey], if any.
-  DropboxApp? _dropboxAppFor(String? ownKey) {
-    if (ownKey == null) return null;
+  /// The Dropbox app of the owner's own key [key].
+  DropboxApp _dropboxAppFor(String key) {
     final own = _ownDropbox;
-    if (own != null && own.key == ownKey) return own;
-    return _ownDropbox = _dropboxWithKey(ownKey);
+    if (own != null && own.key == key) return own;
+    return _ownDropbox = _dropboxWithKey(key);
   }
 
   /// Ends this Device's Dropbox sign-in, made through [app]: it leaves the
